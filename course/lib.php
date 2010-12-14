@@ -1139,6 +1139,9 @@ function get_array_of_activities($courseid) {
                            if (!empty($info->name)) {
                                $mod[$seq]->name = $info->name;
                            }
+                           if (!empty($info->customdata)) {
+                               $mod[$seq]->customdata = $info->customdata;
+                           }
                        }
                    }
                    if (!isset($mod[$seq]->name)) {

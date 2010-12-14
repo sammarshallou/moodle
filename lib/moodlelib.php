@@ -3106,6 +3106,7 @@ function &get_fast_modinfo(&$course, $userid=0) {
         $cm->url              = isset($mod->url) ? $mod->url : '';
         $cm->icon             = isset($mod->icon) ? $mod->icon : '';
         $cm->iconcomponent    = isset($mod->iconcomponent) ? $mod->iconcomponent : '';
+        $cm->customdata       = isset($mod->customdata) ? $mod->customdata : '';
         $cm->uservisible      = true;
         if (!empty($CFG->enableavailability)) {
             // We must have completion information from modinfo. If it's not
