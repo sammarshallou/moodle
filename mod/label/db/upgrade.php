@@ -82,6 +82,14 @@ function xmldb_label_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2009042201, 'label');
     }
 
+    // Because the way labels are rendered changed to make it more consistent,
+    // need to invalidate everything in course cache
+    if ($oldversion < 2010121300) {
+        require_once($CFG->dirroot . '/course/lib.php');
+        rebuild_course_cache(0, true);
+        upgrade_mod_savepoint(true, 2010121300, 'label');
+    }
+
     return true;
 }
 

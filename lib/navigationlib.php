@@ -1453,7 +1453,8 @@ class global_navigation extends navigation_node {
             $activitynode = $sectionnode->add(format_string($cm->name), $url, navigation_node::TYPE_ACTIVITY, null, $cm->id, $icon);
             $activitynode->title(get_string('modulename', $cm->modname));
             $activitynode->hidden = (!$cm->visible);
-            if ($cm->modname == 'label') {
+            if (!empty($cm->url) && $cm->url===MOD_URL_NOLINK) {
+                // Do not show activities that don't have links!
                 $activitynode->display = false;
             } else if ($this->module_extends_navigation($cm->modname)) {
                 $activitynode->nodetype = navigation_node::NODETYPE_BRANCH;
@@ -1486,7 +1487,8 @@ class global_navigation extends navigation_node {
         $activitynode = $coursenode->add(format_string($cm->name), $url, navigation_node::TYPE_ACTIVITY, null, $cm->id, $icon);
         $activitynode->title(get_string('modulename', $cm->modname));
         $activitynode->hidden = (!$cm->visible);
-        if ($cm->modname == 'label') {
+        if (!empty($cm->url) && $cm->url === MOD_URL_NOLINK) {
+            // Don't show activities that don't have links!
             $activitynode->display = false;
         } else if ($this->module_extends_navigation($cm->modname)) {
             $activitynode->nodetype = navigation_node::NODETYPE_BRANCH;

@@ -144,8 +144,8 @@ function label_get_coursemodule_info($coursemodule) {
         }
         $info = new stdClass();
         // no filtering hre because this info is cached and filtered later
-        $info->extra = format_module_intro('label', $label, $coursemodule->id, false);
-        $info->name  = $label->name;
+        $info->content = format_module_intro('label', $label, $coursemodule->id, false);
+        $info->url = MOD_URL_NOLINK;
         return $info;
     } else {
         return null;

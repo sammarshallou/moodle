@@ -74,7 +74,7 @@
     foreach ($modinfo->sections as $sectionnum=>$section) {
         foreach ($section as $cmid) {
             $cm = $modinfo->cms[$cmid];
-            if ($cm->modname == 'label') {
+            if (!empty($cm->url) && $cm->url === MOD_URL_NOLINK) {
                 continue;
             }
             if (!$cm->uservisible) {

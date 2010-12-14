@@ -48,6 +48,8 @@ define('FIRSTUSEDEXCELROW', 3);
 define('MOD_CLASS_ACTIVITY', 0);
 define('MOD_CLASS_RESOURCE', 1);
 
+define('MOD_URL_NOLINK', '!nolink');
+
 if (!defined('MAX_MODINFO_CACHE_SIZE')) {
     define('MAX_MODINFO_CACHE_SIZE', 10);
 }
@@ -959,6 +961,10 @@ function print_recent_activity($course) {
             }
             $info = explode(' ', $log->info);
 
+            // note: in most cases I replaced hardcoding of label with use of
+            // the field $cm->url === MOD_URL_NOLINK, which indicates a generic
+            // module that provides display-only information; it was not possible
+            // to do this here because we don't necessarily have the $cm for it
             if ($info[0] == 'label') {     // Labels are ignored in recent activity
                 continue;
             }
@@ -1115,6 +1121,15 @@ function get_array_of_activities($courseid) {
                            if (!empty($info->extra)) {
                                $mod[$seq]->extra = $info->extra;
                            }
+                           if (!empty($info->extraclasses)) {
+                               $mod[$seq]->extraclasses = $info->extraclasses;
+                           }
+                           if (!empty($info->url)) {
+                               $mod[$seq]->url = $info->url;
+                           }
+                           if (!empty($info->content)) {
+                               $mod[$seq]->content = $info->content;
+                           }
                            if (!empty($info->icon)) {
                                $mod[$seq]->icon = $info->icon;
                            }
@@ -1251,6 +1266,72 @@ function set_section_visible($courseid, $sectionnumber, $visibility) {
 }
 
 /**
+ * Obtains shared data that is used in print_section when displaying a
+ * course-module entry.
+ *
+ * This data is also used in other areas of the code.
+ * @param object $cm Course-module data (must come from get_fast_modinfo)
+ * @param object $course Moodle course object
+ * @return array An array with the following values in this order:
+ *   $extra (deprecated),
+ *   $extraclasses (classes for item tag),
+ *   $url (moodle_url or MOD_URL_NOLINK),
+ *   $content (optional extra content for after link),
+ *   $instancename (optional to change text of link),
+ *   $icon (url of icon for if link is used)
+ */
+function get_print_section_course_module_data($cm, $course) {
+    global $OUTPUT;
+
+    $extra = '';
+    if (!empty($cm->extra)) {
+        $extra = $cm->extra;
+    }
+
+    // Get extra classes from modinfo if specified, otherwise default
+    // to empty string
+    $extraclasses = '';
+    if (!empty($cm->extraclasses)) {
+        $extraclasses = $cm->extraclasses;
+    }
+
+    // Get URL from modinfo if specified.
+    if (!empty($cm->url)) {
+        // Specified URL (maybe null)
+        $url = $cm->url;
+    } else {
+        // Default URL
+        $url = new moodle_url('/mod/' . $cm->modname . '/view.php',
+                array('id' => $cm->id));
+    }
+
+    // Get content from modinfo if specified. Content displays either
+    // in addition to the standard link (below), or replaces it if
+    // the link is turned off by setting ->url to null.
+    if (!empty($cm->content)) {
+        $content = $cm->content;
+    } else {
+        $content = '';
+    }
+
+    $instancename = format_string($cm->name, true,  $course->id);
+
+    $customicon = $cm->icon;
+    if (!empty($customicon)) {
+        if (substr($customicon, 0, 4) === 'mod/') {
+            list($modname, $iconname) = explode('/', substr($customicon, 4), 2);
+            $icon = $OUTPUT->pix_url($iconname, $modname);
+        } else {
+            $icon = $OUTPUT->pix_url($customicon);
+        }
+    } else {
+        $icon = $OUTPUT->pix_url('icon', $cm->modname);
+    }
+
+    return array($extra, $extraclasses, $url, $content, $instancename, $icon);
+}
+
+/**
  * Prints a section full of activity modules
  */
 function print_section($course, $section, $mods, $modnamesused, $absolute=false, $width="100%", $hidecompletion=false) {
@@ -1384,93 +1465,114 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
             }
             echo html_writer::start_tag('div', array('class'=>join(' ', $classes)));
 
-            $extra = '';
-            if (!empty($modinfo->cms[$modnumber]->extra)) {
-                $extra = $modinfo->cms[$modnumber]->extra;
+            // Get data about this course-module
+            list($extra, $extraclasses, $url, $content, $instancename, $icon) =
+                    get_print_section_course_module_data(
+                    $modinfo->cms[$modnumber], $course);
+
+            //Accessibility: for files get description via icon, this is very ugly hack!
+            $altname = '';
+            $altname = $mod->modfullname;
+            if (!empty($customicon)) {
+                $archetype = plugin_supports('mod', $mod->modname, FEATURE_MOD_ARCHETYPE, MOD_ARCHETYPE_OTHER);
+                if ($archetype == MOD_ARCHETYPE_RESOURCE) {
+                    $mimetype = mimeinfo_from_icon('type', $customicon);
+                    $altname = get_mimetype_description($mimetype);
+                }
+            }
+            // Avoid unnecessary duplication.
+            if (false !== stripos($instancename, $altname)) {
+                $altname = '';
+            }
+            // File type after name, for alphabetic lists (screen reader).
+            if ($altname) {
+                $altname = get_accesshide(' '.$altname);
             }
 
-            if ($mod->modname == "label") {
-                if ($accessiblebutdim || !$mod->uservisible) {
-                    echo '<div class="dimmed_text"><span class="accesshide">'.
-                        get_string('hiddenfromstudents').'</span>';
+            // We may be displaying this just in order to show information
+            // about visibility, without the actual link
+            if ($mod->uservisible) {
+                // Nope - in this case the link is fully working for user
+                $textclasses = $extraclasses;
+                $linkclasses = $extraclasses;
+                if ($accessiblebutdim) {
+                    $linkclasses .= ' dimmed';
+                    $textclasses .= ' dimmed_text';
+                    $accesstext = '<span class="accesshide">'.
+                        get_string('hiddenfromstudents').': </span>';
                 } else {
-                    echo '<div>';
+                    $accesstext = '';
                 }
-                echo format_text($extra, FORMAT_HTML, $labelformatoptions);
-                echo "</div>";
+                if ($linkclasses) {
+                    $linkcss = 'class="' . trim($linkclasses) . '" ';
+                } else {
+                    $linkcss = '';
+                }
+                if ($textclasses) {
+                    $textcss = 'class="' . trim($textclasses) . '" ';
+                } else {
+                    $textcss = '';
+                }
+
+                if ($url != MOD_URL_NOLINK) {
+                    // Display link itself
+                    echo '<a ' . $linkcss . $extra .
+                            ' href="' . $url . '"><img src="' . $icon .
+                            '" class="activityicon" alt="' .
+                            get_string('modulename', $mod->modname) . '" /> ' .
+                            $accesstext . '<span class="instancename">' .
+                            $instancename . $altname . '</span></a>';
+
+                    // If specified, display extra content after link
+                    if ($content) {
+                        echo '<div class="contentafterlink' .
+                                trim($textclasses) . '">' . $content . '</div>';
+                    }
+                } else {
+                    // No link, so display only content
+                    echo '<div ' . $textcss . $extra . '>' .
+                            $accesstext . $content . '</div>';
+                }
+
                 if (!empty($mod->groupingid) && has_capability('moodle/course:managegroups', get_context_instance(CONTEXT_COURSE, $course->id))) {
                     if (!isset($groupings)) {
                         $groupings = groups_get_all_groupings($course->id);
                     }
                     echo " <span class=\"groupinglabel\">(".format_string($groupings[$mod->groupingid]->name).')</span>';
                 }
-
-            } else { // Normal activity
-                $instancename = format_string($modinfo->cms[$modnumber]->name, true,  $course->id);
-
-                $customicon = $modinfo->cms[$modnumber]->icon;
-                if (!empty($customicon)) {
-                    if (substr($customicon, 0, 4) === 'mod/') {
-                        list($modname, $iconname) = explode('/', substr($customicon, 4), 2);
-                        $icon = $OUTPUT->pix_url($iconname, $modname);
-                    } else {
-                        $icon = $OUTPUT->pix_url($customicon);
-                    }
+            } else {
+                $textclasses = $extraclasses;
+                $textclasses .= ' dimmed_text';
+                if ($textclasses) {
+                    $textcss = 'class="' . trim($textclasses) . '" ';
                 } else {
-                    $icon = $OUTPUT->pix_url('icon', $mod->modname);
+                    $textcss = '';
                 }
+                $accesstext = '<span class="accesshide">' .
+                        get_string('notavailableyet', 'condition') .
+                        ': </span>';
 
-                //Accessibility: for files get description via icon, this is very ugly hack!
-                $altname = '';
-                $altname = $mod->modfullname;
-                if (!empty($customicon)) {
-                    $archetype = plugin_supports('mod', $mod->modname, FEATURE_MOD_ARCHETYPE, MOD_ARCHETYPE_OTHER);
-                    if ($archetype == MOD_ARCHETYPE_RESOURCE) {
-                        $mimetype = mimeinfo_from_icon('type', $customicon);
-                        $altname = get_mimetype_description($mimetype);
-                    }
-                }
-                // Avoid unnecessary duplication.
-                if (false !== stripos($instancename, $altname)) {
-                    $altname = '';
-                }
-                // File type after name, for alphabetic lists (screen reader).
-                if ($altname) {
-                    $altname = get_accesshide(' '.$altname);
-                }
-
-                // We may be displaying this just in order to show information
-                // about visibility, without the actual link
-                if ($mod->uservisible) {
-                    // Display normal module link
-                    if (!$accessiblebutdim) {
-                        $linkcss = '';
-                        $accesstext  ='';
-                    } else {
-                        $linkcss = ' class="dimmed" ';
-                        $accesstext = '<span class="accesshide">'.
-                            get_string('hiddenfromstudents').': </span>';
-                    }
-
-                    echo '<a '.$linkcss.' '.$extra.
-                         ' href="'.$CFG->wwwroot.'/mod/'.$mod->modname.'/view.php?id='.$mod->id.'">'.
-                         '<img src="'.$icon.'" class="activityicon" alt="'.get_string('modulename',$mod->modname).'" /> '.
-                         $accesstext.'<span class="instancename">'.$instancename.$altname.'</span></a>';
-
-                    if (!empty($mod->groupingid) && has_capability('moodle/course:managegroups', get_context_instance(CONTEXT_COURSE, $course->id))) {
-                        if (!isset($groupings)) {
-                            $groupings = groups_get_all_groupings($course->id);
-                        }
-                        echo " <span class=\"groupinglabel\">(".format_string($groupings[$mod->groupingid]->name).')</span>';
-                    }
-                } else {
+                if ($url != MOD_URL_NOLINK) {
                     // Display greyed-out text of link
-                    echo '<span class="dimmed_text" '.$extra.' ><span class="accesshide">'.
-                        get_string('notavailableyet','condition').': </span>'.
-                        '<img src="'.$icon.'" class="activityicon" alt="'.get_string('modulename', $mod->modname).'" /> <span>'.
-                        $instancename.$altname.'</span></span>';
+                    echo '<div ' . $textcss . $extra .
+                            ' >' . '<img src="' . $icon .
+                            '" class="activityicon" alt="' .
+                            get_string('modulename', $mod->modname) .
+                            '" /> <span>'. $instancename . $altname .
+                            '</span></div>';
+
+                    // If specified, display extra content after link
+                    if ($content) {
+                        echo '<div class="contentafterlink' .
+                                trim($textclasses) . '">' . $content . '</div>';
+                    }
+                } else {
+                    // No link, so display only content (also greyed)
+                    echo '<div ' . $textcss . $extra . '>' .
+                            $accesstext . $content . '</div>';
                 }
             }
+
             if ($usetracking && $mod->modname == 'forum') {
                 if ($unread = forum_tp_count_forum_unread_posts($mod, $course)) {
                     echo '<span class="unread"> <a href="'.$CFG->wwwroot.'/mod/forum/view.php?id='.$mod->id.'">';
