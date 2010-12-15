@@ -1368,6 +1368,8 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
         $initialised = true;
     }
 
+    $tl = textlib_get_instance();
+
     $labelformatoptions = new stdClass();
     $labelformatoptions->noclean = true;
     $labelformatoptions->overflowdiv = true;
@@ -1483,8 +1485,11 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
                     $altname = get_mimetype_description($mimetype);
                 }
             }
-            // Avoid unnecessary duplication.
-            if (false !== stripos($instancename, $altname)) {
+            // Avoid unnecessary duplication: if e.g. a forum name already
+            // includes the word forum (or Forum, etc) then it is unhelpful
+            // to include that in the accessible description that is added.
+            if (false !== strpos($tl->strtolower($instancename),
+                    $tl->strtolower($altname))) {
                 $altname = '';
             }
             // File type after name, for alphabetic lists (screen reader).
