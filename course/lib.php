@@ -1147,6 +1147,18 @@ function get_array_of_activities($courseid) {
                    if (!isset($mod[$seq]->name)) {
                        $mod[$seq]->name = $DB->get_field($rawmods[$seq]->modname, "name", array("id"=>$rawmods[$seq]->instance));
                    }
+
+                   // Minimise the database size by unsetting default options when they are
+                   // 'empty'. This list corresponds to code in the cm_info constructor.
+                   foreach(array('idnumber', 'groupmode', 'groupingid', 'groupmembersonly',
+                           'indent', 'completion', 'extra', 'extraclasses', 'onclick', 'content',
+                           'icon', 'iconcomponent', 'customdata', 'availablefrom', 'availableuntil',
+                           'conditionscompletion', 'conditionsgrade') as $property) {
+                       if (property_exists($mod[$seq], $property) &&
+                               empty($mod[$seq]->{$property})) {
+                           unset($mod[$seq]->{$property});
+                       }
+                   }
                }
             }
         }

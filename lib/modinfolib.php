@@ -775,15 +775,15 @@ class cm_info {
         $this->instance         = $mod->id;
         $this->course           = $course->id;
         $this->modname          = $mod->mod;
-        $this->idnumber         = $mod->idnumber;
+        $this->idnumber         = isset($mod->idnumber) ? $mod->idnumber : '';
         $this->name             = $mod->name;
         $this->visible          = $mod->visible;
         $this->sectionnum       = $mod->section;
-        $this->groupmode        = $mod->groupmode;
-        $this->groupingid       = $mod->groupingid;
-        $this->groupmembersonly = $mod->groupmembersonly;
-        $this->indent           = $mod->indent;
-        $this->completion       = $mod->completion;
+        $this->groupmode        = isset($mod->groupmode) ? $mod->groupmode : 0;
+        $this->groupingid       = isset($mod->groupingid) ? $mod->groupingid : 0;
+        $this->groupmembersonly = isset($mod->groupmembersonly) ? $mod->groupmembersonly : 0;
+        $this->indent           = isset($mod->indent) ? $mod->indent : 0;
+        $this->completion       = isset($mod->completion) ? $mod->completion : 0;
         $this->extra            = isset($mod->extra) ? $mod->extra : '';
         $this->extraclasses     = isset($mod->extraclasses) ? $mod->extraclasses : '';
         $this->onclick          = isset($mod->onclick) ? $mod->onclick : '';
@@ -803,16 +803,18 @@ class cm_info {
         if (!empty($CFG->enableavailability)) {
             // We must have completion information from modinfo. If it's not
             // there, cache needs rebuilding
-            if (!isset($mod->availablefrom)) {
+            if (!isset($mod->showavailability)) {
                 throw new modinfo_rebuild_cache_exception(
                         'enableavailability option was changed; rebuilding '.
                         'cache for course ' . $course->id);
             }
-            $this->availablefrom    = $mod->availablefrom;
-            $this->availableuntil   = $mod->availableuntil;
             $this->showavailability = $mod->showavailability;
-            $this->conditionscompletion = $mod->conditionscompletion;
-            $this->conditionsgrade  = $mod->conditionsgrade;
+            $this->availablefrom = isset($mod->availablefrom) ? $mod->availablefrom : 0;
+            $this->availableuntil = isset($mod->availableuntil) ? $mod->availableuntil : 0;
+            $this->conditionscompletion = isset($mod->conditionscompletion)
+                    ? $mod->conditionscompletion : array();
+            $this->conditionsgrade = isset($mod->conditionsgrade)
+                    ? $mod->conditionsgrade : array();
         }
 
         // Get module plural name.
