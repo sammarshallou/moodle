@@ -20,7 +20,18 @@
  * @package    core
  * @subpackage lib
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @author     sam marshall
  */
+
+
+// Maximum number of modinfo items to keep in memory cache. Do not increase this to a large
+// number because:
+// a) modinfo can be big (megabyte range) for some courses
+// b) performance of cache will deteriorate if there are very many items in it
+if (!defined('MAX_MODINFO_CACHE_SIZE')) {
+    define('MAX_MODINFO_CACHE_SIZE', 10);
+}
+
 
 /**
  * Information about a course that is cached in the course table 'modinfo' field (and then in
@@ -263,6 +274,7 @@ class course_modinfo {
     }
 }
 
+
 /**
  * Data about a single module on a course. This contains most of the fields in the course_modules
  * table, plus additional data when required.
@@ -393,7 +405,7 @@ class cm_info {
     /**
      * Extra HTML that is put in an unhelpful part of the HTML when displaying this module in
      * course page - from cached data in modinfo field
-     * @deprecated This is crazy, don't use it
+     * @deprecated This is crazy, don't use it. Replaced by ->extraclasses and ->onclick
      * @var string
      */
     public $extra;
@@ -448,7 +460,8 @@ class cm_info {
 
     /**
      * Plural name of module type, e.g. 'Forums' - from lang file
-     * @deprecated This shouldn't really be stored in here as it can be obtained with get_string
+     * @deprecated Do not use this value (you can obtain it by calling get_string instead); it
+     *   will be removed in a future version (see later TODO in this file)
      * @var string
      */
     public $modplural;
@@ -493,6 +506,11 @@ class cm_info {
      * @var string
      */
     private $extraclasses;
+
+    /**
+     * @var string
+     */
+    private $onclick;
 
     /**
      * @var mixed
@@ -544,6 +562,14 @@ class cm_info {
         return $this->extraclasses;
     }
 
+    /**
+     * @return string Content of HTML on-click attribute. This string will be used literally
+     * as a string so should be pre-escaped.
+     */
+    public function get_on_click() {
+        // Does not need view data; may be used by navigation
+        return $this->onclick;
+    }
     /**
      * @return mixed Optional custom data stored in modinfo cache for this activity, or null if none
      */
@@ -617,6 +643,7 @@ class cm_info {
     /**
      * Sets content to display on course view page below link (if present).
      * @param string $content New content as HTML string (empty string if none)
+     * @return void
      */
     public function set_content($content) {
         $this->content = $content;
@@ -625,14 +652,28 @@ class cm_info {
     /**
      * Sets extra classes to include in CSS.
      * @param string $extraclasses Extra classes (empty string if none)
+     * @return void
      */
     public function set_extra_classes($extraclasses) {
         $this->extraclasses = $extraclasses;
     }
 
     /**
+     * Sets value of on-click attribute for JavaScript.
+     * Note: May not be called from _cm_info_view (only _cm_info_dynamic).
+     * @param string $onclick New onclick attribute which should be HTML-escaped
+     *   (empty string if none)
+     * @return void
+     */
+    public function set_on_click($onclick) {
+        $this->check_not_view_only();
+        $this->onclick = $onclick;
+    }
+
+    /**
      * Sets HTML that displays after link on course view page.
      * @param string $afterlink HTML string (empty string if none)
+     * @return void
      */
     public function set_after_link($afterlink) {
         $this->afterlink = $afterlink;
@@ -641,6 +682,7 @@ class cm_info {
     /**
      * Sets HTML that displays after edit icons on course view page.
      * @param string $afterediticons HTML string (empty string if none)
+     * @return void
      */
     public function set_after_edit_icons($afterediticons) {
         $this->afterediticons = $afterediticons;
@@ -650,6 +692,7 @@ class cm_info {
      * Changes the name (text of link) for this module instance.
      * Note: May not be called from _cm_info_view (only _cm_info_dynamic).
      * @param string $name Name of activity / link text
+     * @return void
      */
     public function set_name($name) {
         $this->update_user_visible();
@@ -659,6 +702,7 @@ class cm_info {
     /**
      * Turns off the view link for this module instance.
      * Note: May not be called from _cm_info_view (only _cm_info_dynamic).
+     * @return void
      */
     public function set_no_view_link() {
         $this->check_not_view_only();
@@ -670,6 +714,7 @@ class cm_info {
      * display of this module link for the current user.
      * Note: May not be called from _cm_info_view (only _cm_info_dynamic).
      * @param bool $uservisible
+     * @return void
      */
     public function set_user_visible($uservisible) {
         $this->check_not_view_only();
@@ -691,6 +736,7 @@ class cm_info {
      * @param string $availableinfo Information about why this is not available which displays
      *   to those who have viewhiddenactivities, and to everyone if showavailability is set;
      *   note that this function replaces the existing data (if any)
+     * @return void
      */
     public function set_available($available, $showavailability=0, $availableinfo='') {
         $this->check_not_view_only();
@@ -705,6 +751,7 @@ class cm_info {
      * This is because they may affect parts of this object which are used on pages other
      * than the view page (e.g. in the navigation block, or when checking access on
      * module pages).
+     * @return void
      */
     private function check_not_view_only() {
         if ($this->state >= self::STATE_DYNAMIC) {
@@ -739,6 +786,7 @@ class cm_info {
         $this->completion       = $mod->completion;
         $this->extra            = isset($mod->extra) ? $mod->extra : '';
         $this->extraclasses     = isset($mod->extraclasses) ? $mod->extraclasses : '';
+        $this->onclick          = isset($mod->onclick) ? $mod->onclick : '';
         $this->content          = isset($mod->content) ? $mod->content : '';
         $this->icon             = isset($mod->icon) ? $mod->icon : '';
         $this->iconcomponent    = isset($mod->iconcomponent) ? $mod->iconcomponent : '';
@@ -755,12 +803,10 @@ class cm_info {
         if (!empty($CFG->enableavailability)) {
             // We must have completion information from modinfo. If it's not
             // there, cache needs rebuilding
-            if(!isset($mod->availablefrom)) {
-                debugging('enableavailability option was changed; rebuilding '.
-                    'cache for course ' . $course->id);
-                rebuild_course_cache($course->id, true);
-                // Re-enter this routine to do it all properly
-                return get_fast_modinfo($course, $userid);
+            if (!isset($mod->availablefrom)) {
+                throw new modinfo_rebuild_cache_exception(
+                        'enableavailability option was changed; rebuilding '.
+                        'cache for course ' . $course->id);
             }
             $this->availablefrom    = $mod->availablefrom;
             $this->availableuntil   = $mod->availableuntil;
@@ -769,7 +815,10 @@ class cm_info {
             $this->conditionsgrade  = $mod->conditionsgrade;
         }
 
-        // Get module plural name. WHY is this done?! Can't we just get_string if we want it?
+        // Get module plural name.
+        // TODO This was a very old performance hack and should now be removed as the information
+        // certainly doesn't belong in modinfo. On a 'normal' page this is only used in the
+        // activity_modules block, so if it needs caching, it should be cached there.
         static $modplurals;
         if (!isset($modplurals[$this->modname])) {
             $modplurals[$this->modname] = get_string('modulenameplural', $this->modname);
@@ -798,8 +847,9 @@ class cm_info {
      *
      * As part of this function, the module's _cm_info_dynamic function from its lib.php will
      * be called (if it exists).
+     * @return void
      */
-    function obtain_dynamic_data() {
+    public function obtain_dynamic_data() {
         global $CFG;
         if ($this->state >= self::STATE_DYNAMIC) {
             return;
@@ -830,6 +880,7 @@ class cm_info {
     /**
      * Works out whether activity is visible *for current user* - if this is false, they
      * aren't allowed to access it.
+     * @return void
      */
     private function update_user_visible() {
         global $CFG;
@@ -856,6 +907,7 @@ class cm_info {
      * Calls a module function (if exists), passing in one parameter: this object.
      * @param string $type Name of function e.g. if this is 'grooblezorb' and the modname is
      *   'forum' then it will try to call 'mod_forum_grooblezorb' or 'forum_grooblezorb'
+     * @return void
      */
     private function call_mod_function($type) {
         global $CFG;
@@ -886,6 +938,7 @@ class cm_info {
      *
      * As part of this function, the module's _cm_info_view function from its lib.php will
      * be called (if it exists).
+     * @return void
      */
     private function obtain_view_data() {
         if ($this->state >= self::STATE_VIEW) {
@@ -897,6 +950,19 @@ class cm_info {
         $this->state = self::STATE_VIEW;
     }
 }
+
+
+/**
+ * Special exception that may only be thrown within the constructor for course_modinfo to
+ * indicate that the cache needs to be rebuilt. Not for use anywhere else.
+ */
+class modinfo_rebuild_cache_exception extends coding_exception {
+    function __construct($why) {
+        // If it ever escapes, that's a code bug
+        parent::__construct('This exception should be caught by code', $why);
+    }
+}
+
 
 /**
  * Returns reference to full info about modules in course (including visibility).
@@ -933,8 +999,22 @@ function get_fast_modinfo(&$course, $userid=0) {
         return $cache[$course->id];
     }
 
+    if (!property_exists($course, 'modinfo')) {
+        debugging('Coding problem - missing course modinfo property in get_fast_modinfo() call');
+    }
+
     unset($cache[$course->id]); // prevent potential reference problems when switching users
-    $cache[$course->id] = new course_modinfo($course, $userid);
+
+    try {
+        $cache[$course->id] = new course_modinfo($course, $userid);
+    } catch (modinfo_rebuild_cache_exception $e) {
+        debugging($e->debuginfo);
+        rebuild_course_cache($course->id, true);
+        $course = $DB->get_record('course', array('id' => $course->id), '*', MUST_EXIST);
+        // This second time we don't catch the exception - if you request cache rebuild twice
+        // in a row, that's a bug => coding_exception
+        $cache[$course->id] = new course_modinfo($course, $userid);
+    }
 
     // Ensure cache does not use too much RAM
     if (count($cache) > MAX_MODINFO_CACHE_SIZE) {
@@ -945,6 +1025,7 @@ function get_fast_modinfo(&$course, $userid=0) {
 
     return $cache[$course->id];
 }
+
 
 /**
  * Class that is the return value for the _get_coursemodule_info module API function.
@@ -1000,4 +1081,10 @@ class cached_cm_info {
      * @var string
      */
     public $extraclasses;
+
+    /**
+     * Content of onclick JavaScript; escaped HTML to be inserted as attribute value
+     * @var string
+     */
+    public $onclick;
 }

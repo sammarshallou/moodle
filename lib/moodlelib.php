@@ -2315,7 +2315,7 @@ function require_login($courseorid = NULL, $autologinguest = true, $cm = NULL, $
                 throw new coding_exception('course and cm parameters in require_login() call do not match!!');
             }
             // make sure we have a $cm from get_fast_modinfo as this contains activity access details
-            if (!is_a($cm, 'cm_info')) {
+            if ($cm instanceof cm_info) {
                 // note: nearly all pages call get_fast_modinfo anyway and it does not make any
                 // db queries so this is not really a performance concern, however it is obviously
                 // better if you use get_fast_modinfo to get the cm before calling this.
@@ -2654,7 +2654,7 @@ function require_course_login($courseorid, $autologinguest = true, $cm = NULL, $
     global $CFG, $PAGE, $SITE;
     $issite = (is_object($courseorid) and $courseorid->id == SITEID)
           or (!is_object($courseorid) and $courseorid == SITEID);
-    if ($issite && !is_a($cm, 'cm_info')) {
+    if ($issite && !($cm instanceof cm_info)) {
         // note: nearly all pages call get_fast_modinfo anyway and it does not make any
         // db queries so this is not really a performance concern, however it is obviously
         // better if you use get_fast_modinfo to get the cm before calling this.

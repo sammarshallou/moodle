@@ -48,10 +48,6 @@ define('FIRSTUSEDEXCELROW', 3);
 define('MOD_CLASS_ACTIVITY', 0);
 define('MOD_CLASS_RESOURCE', 1);
 
-if (!defined('MAX_MODINFO_CACHE_SIZE')) {
-    define('MAX_MODINFO_CACHE_SIZE', 10);
-}
-
 function make_log_url($module, $url) {
     switch ($module) {
         case 'course':
@@ -1124,7 +1120,7 @@ function get_array_of_activities($courseid) {
                            if (!empty($info->name)) {
                                $mod[$seq]->name = $info->name;
                            }
-                           if (is_a($info, 'cached_cm_info')) {
+                           if ($info instanceof cached_cm_info) {
                                // When using cached_cm_info you can include three new fields
                                // that aren't available for legacy code
                                if (!empty($info->content)) {
@@ -1132,6 +1128,9 @@ function get_array_of_activities($courseid) {
                                }
                                if (!empty($info->extraclasses)) {
                                    $mod[$seq]->extraclasses = $info->extraclasses;
+                               }
+                               if (!empty($info->onclick)) {
+                                   $mod[$seq]->onclick = $info->onclick;
                                }
                                if (!empty($info->customdata)) {
                                    $mod[$seq]->customdata = $info->customdata;
@@ -1285,6 +1284,9 @@ function set_section_visible($courseid, $sectionnumber, $visibility) {
 function get_print_section_cm_text(cm_info $cm, $course) {
     global $OUTPUT;
 
+    // Get course context
+    $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
+
     // Get content from modinfo if specified. Content displays either
     // in addition to the standard link (below), or replaces it if
     // the link is turned off by setting ->url to null.
@@ -1292,12 +1294,15 @@ function get_print_section_cm_text(cm_info $cm, $course) {
         $labelformatoptions = new stdClass();
         $labelformatoptions->noclean = true;
         $labelformatoptions->overflowdiv = true;
+        $labelformatoptions->context = $coursecontext;
         $content = format_text($content, FORMAT_HTML, $labelformatoptions);
     } else {
         $content = '';
     }
 
-    $instancename = format_string($cm->name, true,  $course->id);
+    $stringoptions = new stdClass;
+    $stringoptions->context = $coursecontext;
+    $instancename = format_string($cm->name, true,  $stringoptions);
     return array($content, $instancename);
 }
 
@@ -1493,9 +1498,15 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
                     $textcss = '';
                 }
 
+                // Get on-click attribute value if specified
+                $onclick = $mod->get_on_click();
+                if ($onclick) {
+                    $onclick = ' onclick="' . $onclick . '"';
+                }
+
                 if ($url = $mod->get_url()) {
                     // Display link itself
-                    echo '<a ' . $linkcss . $mod->extra .
+                    echo '<a ' . $linkcss . $mod->extra . $onclick .
                             ' href="' . $url . '"><img src="' . $mod->get_icon_url() .
                             '" class="activityicon" alt="' .
                             $modulename . '" /> ' .

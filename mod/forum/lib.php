@@ -7802,7 +7802,6 @@ function forum_cm_info_view(cm_info $cm) {
     static $initialised;
     static $usetracking, $strunreadpostsone;
     if (!isset($initialised)) {
-        include_once($CFG->dirroot.'/mod/forum/lib.php');
         if ($usetracking = forum_tp_can_track_forums()) {
             $strunreadpostsone = get_string('unreadpostsone', 'forum');
         }
