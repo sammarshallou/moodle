@@ -239,7 +239,7 @@ function xmldb_main_upgrade($oldversion) {
         // add field
         $field = new xmldb_field('tiuserid');
         if (!$dbman->field_exists($table, $field)) {
-            $field->set_attributes(XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, null, 'itemid');
+            $field->set_attributes(XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, 0, 'itemid');
             $dbman->add_field($table, $field);
         }
         // modify index
@@ -5793,8 +5793,8 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
 
         // Check if we need to fix default grade
         if (array_key_exists('defaultgrade', $columns) && (
-                empty($columns['defaultgrade']->unsigned) || 
-                empty($columns['defaultgrade']->not_null) || 
+                empty($columns['defaultgrade']->unsigned) ||
+                empty($columns['defaultgrade']->not_null) ||
                 $columns['defaultgrade']->default_value !== '1.0000000')) {
             // defaultgrade should be unsigned NOT NULL DEFAULT '1.0000000'
             // Fixed in earlier upgrade code
@@ -5899,7 +5899,7 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         if (array_key_exists('tiuserid', $columns) && !empty($columns['tiuserid']->has_default)) {
             // tiuserid should have no default
             // Fixed in earlier upgrade code
-            $field = new xmldb_field('tiuserid', XMLDB_TYPE_INTEGER, 10, XMLDB_UNSIGNED, XMLDB_NOTNULL, null, null, 'itemid');
+            $field = new xmldb_field('tiuserid', XMLDB_TYPE_INTEGER, 10, XMLDB_UNSIGNED, XMLDB_NOTNULL, null, 0, 'itemid');
             $index = new xmldb_index('itemtype-itemid-tagid-tiuserid', XMLDB_INDEX_UNIQUE, array('itemtype', 'itemid', 'tagid', 'tiuserid'));
             if ($dbman->index_exists($table, $index)) {
                 $dbman->drop_index($table, $index);
@@ -5937,23 +5937,60 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
 
         upgrade_main_savepoint(true, 2011011414);
     }
-    
+
     if ($oldversion < 2011011415) {
         //create the rating table indexes if required
         $table = new xmldb_table('rating');
-        
+
         $index = new xmldb_index('itemid', XMLDB_INDEX_NOTUNIQUE, array('itemid'));
         if (!$dbman->index_exists($table, $index)) {
             $dbman->add_index($table, $index);
-            
+
             $key = new xmldb_key('contextid', XMLDB_KEY_FOREIGN, array('contextid'), 'context', array('id'));
             $dbman->add_key($table, $key);
-            
+
             $key = new xmldb_key('userid', XMLDB_KEY_FOREIGN, array('userid'), 'user', array('id'));
             $dbman->add_key($table, $key);
         }
-        
+
         upgrade_main_savepoint(true, 2011011415);
+    }
+
+    if ($oldversion < 2011012400) {
+        // Clean up the old progress tracked roles setting, no longer used (replaced by enrolment)
+        unset_config('progresstrackedroles');
+        upgrade_main_savepoint(true, 2011012400);
+    }
+
+    if ($oldversion < 2011012500) {
+        $columns = $DB->get_columns('tag_instance');
+        $table = new xmldb_table('tag_instance');
+
+        // Drop and recreate index if tiuserid doesn't have default value
+        if (array_key_exists('tiuserid', $columns) && empty($columns['tiuserid']->has_default)) {
+            // Define index itemtype-itemid-tagid-tiuserid (unique) to be dropped form tag_instance
+            $index = new xmldb_index('itemtype-itemid-tagid-tiuserid', XMLDB_INDEX_UNIQUE, array('itemtype', 'itemid', 'tagid', 'tiuserid'));
+            // Conditionally launch drop index itemtype-itemid-tagid-tiuserid
+            if ($dbman->index_exists($table, $index)) {
+                $dbman->drop_index($table, $index);
+            }
+
+            // Changing the default of field tiuserid on table tag_instance to 0
+            $field = new xmldb_field('tiuserid', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0', 'itemid');
+
+            // Launch change of default for field tiuserid
+            $dbman->change_field_default($table, $field);
+
+            $index = new xmldb_index('itemtype-itemid-tagid-tiuserid', XMLDB_INDEX_UNIQUE, array('itemtype', 'itemid', 'tagid', 'tiuserid'));
+
+            // Conditionally launch add index itemtype-itemid-tagid-tiuserid
+            if (!$dbman->index_exists($table, $index)) {
+                $dbman->add_index($table, $index);
+            }
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2011012500);
     }
 
     return true;
