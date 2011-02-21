@@ -573,7 +573,8 @@ abstract class moodle_database {
      */
     public function get_in_or_equal($items, $type=SQL_PARAMS_QM, $start='param0000', $equal=true) {
         if (is_array($items) and empty($items)) {
-            throw new coding_exception('moodle_database::get_in_or_equal() does not accept empty arrays');
+            // '= NULL' is always false even if the result actually is null
+            return array('= NULL', array());
         }
         if ($type == SQL_PARAMS_QM) {
             if (!is_array($items) or count($items) == 1) {
