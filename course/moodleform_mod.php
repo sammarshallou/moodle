@@ -430,9 +430,9 @@ abstract class moodleform_mod extends moodleform {
         if (!empty($CFG->enableavailability)) {
             // Conditional availability
             $mform->addElement('header', 'availabilityconditionsheader', get_string('availabilityconditions', 'condition'));
-            $mform->addElement('date_selector', 'availablefrom', get_string('availablefrom', 'condition'), array('optional'=>true));
+            $mform->addElement('date_time_selector', 'availablefrom', get_string('availablefrom', 'condition'), array('optional'=>true));
             $mform->addHelpButton('availablefrom', 'availablefrom', 'condition');
-            $mform->addElement('date_selector', 'availableuntil', get_string('availableuntil', 'condition'), array('optional'=>true));
+            $mform->addElement('date_time_selector', 'availableuntil', get_string('availableuntil', 'condition'), array('optional'=>true));
 
             // Conditions based on grades
             $gradeoptions = array();
