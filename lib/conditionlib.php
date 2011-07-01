@@ -333,10 +333,23 @@ WHERE
 
         // Dates
         if ($this->cm->availablefrom && $this->cm->availableuntil) {
-            $information .= get_string('requires_date_both', 'condition',
-                (object)array(
-                    'from' => self::show_time($this->cm->availablefrom),
-                    'until' => self::show_time($this->cm->availableuntil)));
+            if ((usergetmidnight($this->cm->availablefrom) == $this->cm->availablefrom) &&
+                 usergetmidnight($this->cm->availableuntil) == $this->cm->availableuntil) {
+                 // Both dates are at midnight
+                 if ($this->cm->availablefrom == strtotime("-1 day", $this->cm->availableuntil)) {
+                     $information .= get_string('requires_date_both_single_day', 'condition', self::show_time($this->cm->availablefrom));
+                 } else {
+                     $information .= get_string('requires_date_both', 'condition',
+                         (object)array(
+                         'from' => self::show_time($this->cm->availablefrom),
+                         'until' => self::show_time(strtotime("-1 day", $this->cm->availableuntil))));
+                 }
+            } else {
+                $information .= get_string('requires_date_both', 'condition',
+                    (object)array(
+                        'from' => self::show_time($this->cm->availablefrom),
+                        'until' => self::show_time($this->cm->availableuntil)));
+            }
         } else if ($this->cm->availablefrom) {
             $information .= get_string('requires_date', 'condition',
                 self::show_time($this->cm->availablefrom));
@@ -498,14 +511,8 @@ WHERE
      * @return string Date
      */
     private function show_time($time) {
-        // Break down the time into fields
-        $userdate = usergetdate($time);
-
-        $dateonly = $userdate['hours']==0 && $userdate['minutes']==0 && 
-            $userdate['seconds']==0;
-
         return userdate($time, get_string(
-            $dateonly ? 'strftimedate' : 'strftimedatetime', 'langconfig'));
+            (usergetmidnight($time) == $time) ? 'strftimedate' : 'strftimedatetime', 'langconfig'));
     }
 
     /**
