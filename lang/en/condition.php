@@ -58,6 +58,7 @@ $string['requires_date'] = 'Available from {$a}.';
 $string['requires_date_before'] = 'Available until {$a}.';
 $string['requires_date_both'] = 'Available from {$a->from} to {$a->until}.';
 $string['requires_date_both_single_day'] = 'Available on {$a}.';
+$string['requires_dates_same'] = 'Warning: The available from and available until dates are equal so access will happen for no time on {$a}.';
 $string['requires_grade_any'] = 'Not available until you have a grade in <strong>{$a}</strong>.';
 $string['requires_grade_max'] = 'Not available unless you get an appropriate score in <strong>{$a}</strong>.';
 $string['requires_grade_min'] = 'Not available until you achieve a required score in <strong>{$a}</strong>.';
