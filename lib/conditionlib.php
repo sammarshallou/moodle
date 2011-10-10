@@ -338,15 +338,14 @@ WHERE
                            ? strtotime("-1 day", usergetmidnight($this->cm->availableuntil)) : $this->cm->availableuntil;
         if ($this->cm->availablefrom && $this->cm->availableuntil) {
             if($this->cm->availablefrom == $this->cm->availableuntil) {
-                 $information .= get_string('requires_dates_same', 'condition', self::show_time($this->cm->availablefrom));
+                $information .= get_string('requires_dates_same', 'condition', self::show_time($this->cm->availablefrom));
             } else if ($this->cm->availablefrom >= $availableuntil) {
                 $information .= get_string('requires_date_both_single_day', 'condition', self::show_time($this->cm->availablefrom));
             } else {
-            	$information .= get_string('requires_date_both', 'condition',
-                         (object)array(
+                $information .= get_string('requires_date_both', 'condition', (object)array(
                          'from' => self::show_time($this->cm->availablefrom),
                          'until' => self::show_time($availableuntil)));
-            }  
+            }
         } else if ($this->cm->availablefrom) {
             $information .= get_string('requires_date', 'condition',
                 self::show_time($this->cm->availablefrom));
