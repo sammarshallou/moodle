@@ -434,7 +434,7 @@ abstract class moodleform_mod extends moodleform {
             // will be nicer where it tells users when they can access it (it
             // shows only the date and not time).
             $date = usergetdate(time());
-            $midnight = make_timestamp($date['year'], $date['month'], $date['mday']);
+            $midnight = make_timestamp($date['year'], $date['mon'], $date['mday']);
 
             // From/until controls
             $mform->addElement('header', 'availabilityconditionsheader',
