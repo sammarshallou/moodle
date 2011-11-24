@@ -120,9 +120,12 @@ class filter_emoticon extends moodle_text_filter {
             $emoticons = $manager->get_emoticons();
             $emoticontexts[$lang][$theme] = array();
             $emoticonimgs[$lang][$theme] = array();
+            $index = 0;
             foreach ($emoticons as $emoticon) {
                 $emoticontexts[$lang][$theme][] = $emoticon->text;
-                $emoticonimgs[$lang][$theme][] = $OUTPUT->render($manager->prepare_renderable_emoticon($emoticon));
+                $emoticonimgs[$lang][$theme][] =
+                        $OUTPUT->render($manager->prepare_renderable_emoticon($emoticon,
+                        array('class' => 'emoticon emoticon-index-' . $index++)));
             }
             unset($emoticons);
         }
