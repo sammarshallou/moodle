@@ -28,6 +28,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once($CFG->libdir.'/conditionlib.php');
+require_once($CFG->libdir.'/completionlib.php');
+
 /**
  * The name that will be used to separate the navigation cache within SESSION
  */
@@ -1611,7 +1614,7 @@ class global_navigation extends navigation_node {
 
         if (!$this->cache->cached('course_sections_'.$course->id) || !$this->cache->cached('course_activites_'.$course->id)) {
             $modinfo = get_fast_modinfo($course);
-            $sections = array_slice(get_all_sections($course->id), 0, $course->numsections+1, true);
+            $sections = array_slice(get_all_sections_secinfo($course), 0, $course->numsections+1, true);
 
             $activities = array();
 
@@ -1698,10 +1701,21 @@ class global_navigation extends navigation_node {
             if ($course->id == SITEID) {
                 $this->load_section_activities($coursenode, $section->section, $activities);
             } else {
-                if ((!$viewhiddensections && !$section->visible) || (!$this->showemptysections &&
+                //Checking availability conditions
+                $section->objtype = CONDITION_OBJECT_SECTION;
+                $si = new condition_info($section);
+                $section->is_available = $si->is_available($information, true, $USER->id); //if not available 'information' will tell why
+                if (!$section->is_available && $section->showavailability) {
+                    $section->greyout = true;
+                } else {
+                    $section->greyout = false;
+                }
+
+                if (!$section->is_available || (!$viewhiddensections && !$section->visible) || (!$this->showemptysections &&
                         !$section->hasactivites && $this->includesectionnum !== $section->section)) {
                     continue;
                 }
+
                 if ($namingfunctionexists) {
                     $sectionname = $namingfunction($course, $section, $sections);
                 } else {
@@ -1714,7 +1728,7 @@ class global_navigation extends navigation_node {
                 }
                 $sectionnode = $coursenode->add($sectionname, $url, navigation_node::TYPE_SECTION, null, $section->id);
                 $sectionnode->nodetype = navigation_node::NODETYPE_BRANCH;
-                $sectionnode->hidden = (!$section->visible);
+                $sectionnode->hidden = (!$section->visible || $section->greyout);
                 if ($key != '0' && $section->section != '0' && $section->section == $key && $this->page->context->contextlevel != CONTEXT_MODULE && $section->hasactivites) {
                     $sectionnode->make_active();
                     $this->load_section_activities($sectionnode, $section->section, $activities);

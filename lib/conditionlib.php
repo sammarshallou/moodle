@@ -1,4 +1,4 @@
-<?php
+<?
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -26,19 +26,23 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-/** The activity is not displayed to students at all when conditions aren't met. */
-define('CONDITION_STUDENTVIEW_HIDE',0);
-/** The activity is displayed to students as a greyed-out name, with informational
+/** The activity/section is not displayed to students at all when conditions aren't met. */
+define('CONDITION_STUDENTVIEW_HIDE', 0);
+/** The activity/section is displayed to students as a greyed-out name, with informational
     text that explains the conditions under which it will be available. */
-define('CONDITION_STUDENTVIEW_SHOW',1);
+define('CONDITION_STUDENTVIEW_SHOW', 1);
 
-/** The $cm variable is expected to contain all completion-related data */
-define('CONDITION_MISSING_NOTHING',0);
-/** The $cm variable is expected to contain the fields from course_modules but
-    not the course_modules_availability data */
-define('CONDITION_MISSING_EXTRATABLE',1);
-/** The $cm variable is expected to contain nothing except the ID */
-define('CONDITION_MISSING_EVERYTHING',2);
+/** The $cmors variable is expected to contain all completion-related data */
+define('CONDITION_MISSING_NOTHING', 0);
+/** The $cmors variable is expected to contain the fields from course_modules/course_sections
+    but not the course_modules_availability/course_sections_availability data */
+define('CONDITION_MISSING_EXTRATABLE', 1);
+/** The $cmors variable is expected to contain nothing except the ID */
+define('CONDITION_MISSING_EVERYTHING', 2);
+
+/** This class can deal with sections and modules, so we have to have a way to distinguish them */
+define('CONDITION_OBJECT_MODULE', 1);
+define('CONDITION_OBJECT_SECTION', 2);
 
 require_once($CFG->libdir.'/completionlib.php');
 
@@ -60,17 +64,16 @@ class condition_info {
     /**
      * @var object, bool
      */
-    private $cm, $gotdata;
-
+     private $cmors, $gotdata, $availtable, $idfieldname, $usergroupings;
     /**
-     * Constructs with course-module details.
+     * Constructs with course-module or course-section details.
      *
      * @global object
      * @uses CONDITION_MISSING_NOTHING
      * @uses CONDITION_MISSING_EVERYTHING
      * @uses DEBUG_DEVELOPER
      * @uses CONDITION_MISSING_EXTRATABLE
-     * @param object $cm Moodle course-module object. May have extra fields
+     * @param object $cmors Moodle course-module (or section) object. May have extra fields
      *   ->conditionsgrade, ->conditionscompletion which should come from
      *   get_fast_modinfo. Should have ->availablefrom, ->availableuntil,
      *   and ->showavailability, ->course; but the only required thing is ->id.
@@ -83,91 +86,127 @@ class condition_info {
      * @return condition_info Object which can retrieve information about the
      *   activity
      */
-    public function __construct($cm, $expectingmissing=CONDITION_MISSING_NOTHING,
+    public function __construct($cmors, $expectingmissing = CONDITION_MISSING_NOTHING,
         $loaddata=true) {
         global $DB;
 
         // Check ID as otherwise we can't do the other queries
-        if (empty($cm->id)) {
-            throw new coding_exception("Invalid parameters; course-module ID not included");
+        if (empty($cmors->id)) {
+            throw new coding_exception("Invalid parameters; course-module or course-section ID not included");
         }
+
+        // Let it be module by default for backward compatibility
+        if (!isset($cmors->objtype)) {
+            $cmors->objtype = CONDITION_OBJECT_MODULE;
+        }
+
+        //  DB table to store availability conditions
+        $this->availtable = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? "course_modules_availability" : "course_sections_availability";
+
+        // name of module/section ID field in DB
+        $idfieldname = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? "coursemoduleid" : "coursesectionid";
 
         // If not loading data, don't do anything else
         if (!$loaddata) {
-            $this->cm = (object)array('id'=>$cm->id);
+            $this->cmors = (object)array('id' => $cmors->id);
             $this->gotdata = false;
             return;
         }
 
         // Missing basic data from course_modules
-        if (!isset($cm->availablefrom) || !isset($cm->availableuntil) ||
-            !isset($cm->showavailability) || !isset($cm->course)) {
+        if (!isset($cmors->availablefrom) || !isset($cmors->availableuntil) ||
+            !isset($cmors->showavailability) || !isset($cmors->course)) {
             if ($expectingmissing<CONDITION_MISSING_EVERYTHING) {
                 debugging('Performance warning: condition_info constructor is
-                    faster if you pass in $cm with at least basic fields
+                    faster if you pass in $cmors with at least basic fields
                     (availablefrom,availableuntil,showavailability,course).
                     [This warning can be disabled, see phpdoc.]',
                     DEBUG_DEVELOPER);
             }
-            $cm = $DB->get_record('course_modules',array('id'=>$cm->id),
-                'id,course,availablefrom,availableuntil,showavailability');
+            if ($cmors->objtype == CONDITION_OBJECT_MODULE) {
+                $cmors = $DB->get_record('course_modules', array('id' => $cmors->id),
+                    'id, course, availablefrom, availableuntil, showavailability');
+            } else {
+                $cmors = $DB->get_record('course_sections', array('id' => $cmors->id), 'id, course, availablefrom, availableuntil, showavailability, groupingid');
+            }
         }
 
-        $this->cm = clone($cm);
+        $this->cmors = clone($cmors);
         $this->gotdata = true;
 
         // Missing extra data
-        if (!isset($cm->conditionsgrade) || !isset($cm->conditionscompletion)) {
+        if ($cmors->objtype == CONDITION_OBJECT_MODULE && (!isset($cmors->conditionsgrade) || !isset($cmors->conditionscompletion))) {
             if ($expectingmissing<CONDITION_MISSING_EXTRATABLE) {
                 debugging('Performance warning: condition_info constructor is
-                    faster if you pass in a $cm from get_fast_modinfo.
+                    faster if you pass in a $cmors from get_fast_modinfo.
                     [This warning can be disabled, see phpdoc.]',
                     DEBUG_DEVELOPER);
             }
 
-            self::fill_availability_conditions($this->cm);
+            self::fill_availability_conditions($this->cmors);
+        }
+
+        if ($cmors->objtype == CONDITION_OBJECT_SECTION && (!isset($cmors->conditionsgrade) || !isset($cmors->conditionscompletion))) {
+                debugging('Performance warning: condition_info constructor is
+                    faster if you pass in a $cmors from get_all_sections_secinfo.
+                    [This warning can be disabled, see phpdoc.]',
+                    DEBUG_DEVELOPER);
+            self::fill_availability_conditions($this->cmors);
         }
     }
 
     /**
      * Adds the extra availability conditions (if any) into the given
-     * course-module object.
+     * course-module (or section) object.
      *
      * @global object
      * @global object
-     * @param object $cm Moodle course-module data object
+     * @param object $cmors Moodle course-module (or section) data object
      */
-    public static function fill_availability_conditions(&$cm) {
-        if (empty($cm->id)) {
-            throw new coding_exception("Invalid parameters; course-module ID not included");
+    public static function fill_availability_conditions(&$cmors) {
+        if (empty($cmors->id)) {
+            throw new coding_exception("Invalid parameters; course-module/section ID not included");
+        }
+
+        //  DB table to store availability conditions
+        if (empty($cmors->objtype)) {
+            $cmors->objtype = CONDITION_OBJECT_MODULE;
+        }
+
+        if ($cmors->objtype == CONDITION_OBJECT_MODULE) {
+            $availtable = "course_modules_availability";
+            $idfield = "coursemoduleid";
+        } else {
+            $availtable = "course_sections_availability";
+            $idfield = "coursesectionid";
         }
 
         // Does nothing if the variables are already present
-        if (!isset($cm->conditionsgrade) ||
-            !isset($cm->conditionscompletion)) {
-            $cm->conditionsgrade=array();
-            $cm->conditionscompletion=array();
+        if (!isset($cmors->conditionsgrade) ||
+            !isset($cmors->conditionscompletion)) {
+            $cmors->conditionsgrade = array();
+            $cmors->conditionscompletion = array();
 
             global $DB, $CFG;
             $conditions = $DB->get_records_sql($sql="
 SELECT
-    cma.id as cmaid, gi.*,cma.sourcecmid,cma.requiredcompletion,cma.gradeitemid,
-    cma.grademin as conditiongrademin, cma.grademax as conditiongrademax
+    cmorsa.id as cmorsaid, gi.*, cmorsa.sourcecmid, cmorsa.requiredcompletion, cmorsa.gradeitemid,
+    cmorsa.grademin as conditiongrademin, cmorsa.grademax as conditiongrademax
 FROM
-    {course_modules_availability} cma
-    LEFT JOIN {grade_items} gi ON gi.id=cma.gradeitemid
+    {".$availtable."} cmorsa
+    LEFT JOIN {grade_items} gi ON gi.id = cmorsa.gradeitemid
 WHERE
-    coursemoduleid=?",array($cm->id));
+    ".$idfield." = ?", array($cmors->id));
             foreach ($conditions as $condition) {
                 if (!is_null($condition->sourcecmid)) {
-                    $cm->conditionscompletion[$condition->sourcecmid] =
+                    $cmors->conditionscompletion[$condition->sourcecmid] =
                         $condition->requiredcompletion;
                 } else {
                     $minmax = new stdClass;
                     $minmax->min = $condition->conditiongrademin;
                     $minmax->max = $condition->conditiongrademax;
                     $minmax->name = self::get_grade_name($condition);
-                    $cm->conditionsgrade[$condition->gradeitemid] = $minmax;
+                    $cmors->conditionsgrade[$condition->gradeitemid] = $minmax;
                 }
             }
         }
@@ -195,12 +234,19 @@ WHERE
 
     /**
      * @see require_data()
-     * @return object A course-module object with all the information required to
+     * @return object A course-module (or section) object with all the information required to
      *   determine availability.
      */
-    public function get_full_course_module() {
+    public function get_full_course_mors() {
         $this->require_data();
-        return $this->cm;
+        return $this->cmors;
+    }
+
+    /**
+    * @return get_full_course_mors(), this is for backward compatibility with conditionlib of older versions
+    */
+    public function get_full_course_module() {
+        return $this->get_full_course_mors();
     }
 
     /**
@@ -213,13 +259,14 @@ WHERE
     public function add_completion_condition($cmid, $requiredcompletion) {
         // Add to DB
         global $DB;
-        $DB->insert_record('course_modules_availability',
-            (object)array('coursemoduleid'=>$this->cm->id,
-                'sourcecmid'=>$cmid, 'requiredcompletion'=>$requiredcompletion),
+        $tablename = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? "course_modules_availability" : "course_sections_availability";
+        $DB->insert_record($tablename,
+            (object)array('coursemoduleid' => $this->cmors->id,
+            'sourcecmid' => $cmid, 'requiredcompletion' => $requiredcompletion),
             false);
 
         // Store in memory too
-        $this->cm->conditionscompletion[$cmid] = $requiredcompletion;
+        $this->cmors->conditionscompletion[$cmid] = $requiredcompletion;
     }
 
     /**
@@ -243,22 +290,21 @@ WHERE
         }
         // Add to DB
         global $DB;
-        $DB->insert_record('course_modules_availability',
-            (object)array('coursemoduleid'=>$this->cm->id,
-                'gradeitemid'=>$gradeitemid, 'grademin'=>$min, 'grademax'=>$max),
+        $DB->insert_record($this->availtable,
+            (object)array($this->idfieldname=>$this->cmors->id,
+            'gradeitemid'=>$gradeitemid, 'grademin'=>$min, 'grademax'=>$max),
             false);
 
         // Store in memory too
         if ($updateinmemory) {
-            $this->cm->conditionsgrade[$gradeitemid]=(object)array(
+            $this->cmors->conditionsgrade[$gradeitemid] = (object) array(
                 'min'=>$min, 'max'=>$max);
-            $this->cm->conditionsgrade[$gradeitemid]->name =
-                self::get_grade_name($DB->get_record('grade_items',
-                    array('id'=>$gradeitemid)));
+            $this->cmors->conditionsgrade[$gradeitemid]->name =
+                self::get_grade_name($DB->get_record('grade_items', array('id'=>$gradeitemid)));
         }
     }
 
-    /**
+     /**
      * Erases from the database all conditions for this activity.
      *
      * @global object
@@ -266,12 +312,12 @@ WHERE
     public function wipe_conditions() {
         // Wipe from DB
         global $DB;
-        $DB->delete_records('course_modules_availability',
-            array('coursemoduleid'=>$this->cm->id));
+        $DB->delete_records($this->availtable,
+            array($this->idfieldname => $this->cmors->id));
 
         // And from memory
-        $this->cm->conditionsgrade = array();
-        $this->cm->conditionscompletion = array();
+        $this->cmors->conditionsgrade = array();
+        $this->cmors->conditionscompletion = array();
     }
 
     /**
@@ -293,13 +339,13 @@ WHERE
         $information = '';
 
         // Completion conditions
-        if(count($this->cm->conditionscompletion)>0) {
-            if ($this->cm->course==$COURSE->id) {
+        if(count($this->cmors->conditionscompletion) > 0) {
+            if ($this->cmors->course == $COURSE->id) {
                 $course = $COURSE;
             } else {
-                $course = $DB->get_record('course',array('id'=>$this->cm->course),'id,enablecompletion,modinfo');
+                $course = $DB->get_record('course', array('id' => $this->cmors->course), 'id, enablecompletion, modinfo');
             }
-            foreach ($this->cm->conditionscompletion as $cmid=>$expectedcompletion) {
+            foreach ($this->cmors->conditionscompletion as $cmid => $expectedcompletion) {
                 if (!$modinfo) {
                     $modinfo = get_fast_modinfo($course);
                 }
@@ -313,8 +359,8 @@ WHERE
         }
 
         // Grade conditions
-        if (count($this->cm->conditionsgrade)>0) {
-            foreach ($this->cm->conditionsgrade as $gradeitemid=>$minmax) {
+        if (count($this->cmors->conditionsgrade) > 0) {
+            foreach ($this->cmors->conditionsgrade as $gradeitemid => $minmax) {
                 // String depends on type of requirement. We are coy about
                 // the actual numbers, in case grades aren't released to
                 // students.
@@ -356,39 +402,39 @@ WHERE
         // k) Until 14 Oct (midnight 15 Oct)
 
         // Check if start and end dates are 'midnights', if so we show in short form
-        $shortfrom = self::is_midnight($this->cm->availablefrom);
-        $shortuntil = self::is_midnight($this->cm->availableuntil);
+        $shortfrom = self::is_midnight($this->cmors->availablefrom);
+        $shortuntil = self::is_midnight($this->cmors->availableuntil);
 
         // For some checks and for display, we need the previous day for the 'until'
         // value, if we are going to display it in short form
-        if ($this->cm->availableuntil) {
-            $daybeforeuntil = strtotime("-1 day", usergetmidnight($this->cm->availableuntil));
+        if ($this->cmors->availableuntil) {
+            $daybeforeuntil = strtotime("-1 day", usergetmidnight($this->cmors->availableuntil));
         }
 
         // Special case for if one but not both are exact and they are within a day
-        if ($this->cm->availablefrom && $this->cm->availableuntil &&
-                $shortfrom != $shortuntil && $daybeforeuntil < $this->cm->availablefrom) {
+        if ($this->cmors->availablefrom && $this->cmors->availableuntil &&
+                $shortfrom != $shortuntil && $daybeforeuntil < $this->cmors->availablefrom) {
             // Don't use abbreviated version (see examples f, g above)
             $shortfrom = false;
             $shortuntil = false;
         }
 
         // When showing short end date, the display time is the 'day before' one
-        $displayuntil = $shortuntil ? $daybeforeuntil : $this->cm->availableuntil;
+        $displayuntil = $shortuntil ? $daybeforeuntil : $this->cmors->availableuntil;
 
-        if ($this->cm->availablefrom && $this->cm->availableuntil) {
-            if ($shortfrom && $shortuntil && $daybeforeuntil == $this->cm->availablefrom) {
+        if ($this->cmors->availablefrom && $this->cmors->availableuntil) {
+            if ($shortfrom && $shortuntil && $daybeforeuntil == $this->cmors->availablefrom) {
                 $information .= get_string('requires_date_both_single_day', 'condition',
-                        self::show_time($this->cm->availablefrom, true));
+                        self::show_time($this->cmors->availablefrom, true));
             } else {
                 $information .= get_string('requires_date_both', 'condition', (object)array(
-                         'from' => self::show_time($this->cm->availablefrom, $shortfrom),
+                         'from' => self::show_time($this->cmors->availablefrom, $shortfrom),
                          'until' => self::show_time($displayuntil, $shortuntil)));
             }
-        } else if ($this->cm->availablefrom) {
+        } else if ($this->cmors->availablefrom) {
             $information .= get_string('requires_date', 'condition',
-                self::show_time($this->cm->availablefrom, $shortfrom));
-        } else if ($this->cm->availableuntil) {
+                self::show_time($this->cmors->availablefrom, $shortfrom));
+        } else if ($this->cmors->availableuntil) {
             $information .= get_string('requires_date_before', 'condition',
                 self::show_time($displayuntil, $shortuntil));
         }
@@ -409,7 +455,7 @@ WHERE
     }
 
     /**
-     * Determines whether this particular course-module is currently available
+     * Determines whether this particular course-module (or section) is currently available
      * according to these criteria.
      *
      * - This does not include the 'visible' setting (i.e. this might return
@@ -436,21 +482,21 @@ WHERE
      */
     public function is_available(&$information, $grabthelot=false, $userid=0, $modinfo=null) {
         $this->require_data();
-        global $COURSE,$DB;
+        global $COURSE, $DB;
 
         $available = true;
         $information = '';
 
         // Check each completion condition
-        if(count($this->cm->conditionscompletion)>0) {
-            if ($this->cm->course==$COURSE->id) {
+        if(count($this->cmors->conditionscompletion) > 0) {
+            if ($this->cmors->course == $COURSE->id) {
                 $course = $COURSE;
             } else {
-                $course = $DB->get_record('course',array('id'=>$this->cm->course),'id,enablecompletion,modinfo');
+                $course = $DB->get_record('course', array('id' => $this->cmors->course), 'id, enablecompletion, modinfo');
             }
 
             $completion = new completion_info($course);
-            foreach ($this->cm->conditionscompletion as $cmid=>$expectedcompletion) {
+            foreach ($this->cmors->conditionscompletion as $cmid => $expectedcompletion) {
                 // If this depends on a deleted module, handle that situation
                 // gracefully.
                 if (!$modinfo) {
@@ -495,8 +541,8 @@ WHERE
         }
 
         // Check each grade condition
-        if (count($this->cm->conditionsgrade)>0) {
-            foreach ($this->cm->conditionsgrade as $gradeitemid=>$minmax) {
+        if (count($this->cmors->conditionsgrade)>0) {
+            foreach ($this->cmors->conditionsgrade as $gradeitemid => $minmax) {
                 $score = $this->get_cached_grade_score($gradeitemid, $grabthelot, $userid);
                 if ($score===false ||
                     (!is_null($minmax->min) && $score<$minmax->min) ||
@@ -521,18 +567,18 @@ WHERE
         }
 
         // Test dates
-        if ($this->cm->availablefrom) {
-            if (time() < $this->cm->availablefrom) {
+        if ($this->cmors->availablefrom) {
+            if (time() < $this->cmors->availablefrom) {
                 $available = false;
 
                 $information .= get_string('requires_date', 'condition',
-                        self::show_time($this->cm->availablefrom,
-                            self::is_midnight($this->cm->availablefrom)));
+                        self::show_time($this->cmors->availablefrom,
+                            self::is_midnight($this->cmors->availablefrom)));
             }
         }
 
-        if ($this->cm->availableuntil) {
-            if (time() >= $this->cm->availableuntil) {
+        if ($this->cmors->availableuntil) {
+            if (time() >= $this->cmors->availableuntil) {
                 $available = false;
                 // But we don't display any information about this case. This is
                 // because the only reason to set a 'disappear' date is usually
@@ -543,6 +589,33 @@ WHERE
                 // date appears below the item while the item is still accessible,
                 // unfortunately this is not possible in the current system. Maybe
                 // later, or if somebody else wants to add it.
+            }
+        }
+
+        // test if user is enrolled to a grouping which has access to the section
+        if (!empty($this->cmors->groupingid)) {
+            // cache user groupings for the course so as to query them only once per page
+            if (!isset($this->usergroupings)) {
+                $this->usergroupings = array();
+                $groupings = $DB->get_records_sql("
+SELECT
+    g.id as gid
+FROM
+    {groupings} g
+    LEFT JOIN {groupings_groups} gg ON g.id = gg.groupingid
+    LEFT JOIN {groups_members} gm ON gg.groupid = gm.groupid
+WHERE
+    g.courseid = ? AND gm.userid = ?", array($COURSE->id, $userid));
+                if (!empty($groupings)) {
+                    foreach($groupings as $grouping) {
+                        $this->usergroupings[] = $grouping->gid;
+                    }
+                }
+            }
+
+            if (!in_array($this->cmors->groupingid, $this->usergroupings)) {
+                $available = false;
+                $information .= get_string('groupingnoaccess', 'condition');
             }
         }
 
@@ -569,7 +642,7 @@ WHERE
      */
     public function show_availability() {
         $this->require_data();
-        return $this->cm->showavailability;
+        return $this->cmors->showavailability;
     }
 
     /**
@@ -584,7 +657,7 @@ WHERE
         }
     }
 
-    /**
+   /**
      * Obtains a grade score. Note that this score should not be displayed to
      * the user, because gradebook rules might prohibit that. It may be a
      * non-final score subject to adjustment later.
@@ -618,7 +691,7 @@ FROM
     {grade_items} gi
     LEFT JOIN {grade_grades} gg ON gi.id=gg.itemid AND gg.userid=?
 WHERE
-    gi.courseid=?", array($USER->id, $this->cm->course));
+    gi.courseid = ?", array($USER->id, $this->cmors->course));
                     foreach ($rs as $record) {
                         $SESSION->gradescorecache[$record->id] =
                             is_null($record->finalgrade)
@@ -688,6 +761,7 @@ WHERE
      * @param bool $wipefirst Defaults to true
      */
     public static function update_cm_from_form($cm, $fromform, $wipefirst=true) {
+        $cm->objtype = CONDITION_OBJECT_MODULE;
         $ci=new condition_info($cm, CONDITION_MISSING_EVERYTHING, false);
         if ($wipefirst) {
             $ci->wipe_conditions();
@@ -708,19 +782,19 @@ WHERE
         }
     }
 
-    /**
+   /**
      * Used in course/lib.php because we need to disable the completion JS if
      * a completion value affects a conditional activity.
      *
      * @global object
      * @param object $course Moodle course object
-     * @param object $cm Moodle course-module
+     * @param object $cmors Moodle course-module
      * @return bool True if this is used in a condition, false otherwise
      */
     public static function completion_value_used_as_condition($course, $cm) {
         // Have we already worked out a list of required completion values
         // for this course? If so just use that
-        global $CONDITIONLIB_PRIVATE;
+        global $CONDITIONLIB_PRIVATE, $DB;
         if (!array_key_exists($course->id, $CONDITIONLIB_PRIVATE->usedincondition)) {
             // We don't have data for this course, build it
             $modinfo = get_fast_modinfo($course);
@@ -731,6 +805,13 @@ WHERE
                 }
             }
         }
-        return array_key_exists($cm->id, $CONDITIONLIB_PRIVATE->usedincondition[$course->id]);
+        $founddependant = array_key_exists($cm->id, $CONDITIONLIB_PRIVATE->usedincondition[$course->id]);
+        // Check for dependant sections too
+        if (!$founddependant) {
+            if ($DB->record_exists('course_sections_availability', array('sourcecmid' => $cm->id)) > 0 ) {
+                $founddependant = true;
+            }
+        }
+        return $founddependant;
     }
 }
