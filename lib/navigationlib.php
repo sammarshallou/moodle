@@ -1701,14 +1701,19 @@ class global_navigation extends navigation_node {
             if ($course->id == SITEID) {
                 $this->load_section_activities($coursenode, $section->section, $activities);
             } else {
-                //Checking availability conditions
-                $section->objtype = CONDITION_OBJECT_SECTION;
-                $si = new condition_info($section);
-                $section->is_available = $si->is_available($information, true, $USER->id); //if not available 'information' will tell why
-                if (!$section->is_available && $section->showavailability) {
-                    $section->greyout = true;
+                if ($CFG->enableavailability) {
+                    //Checking availability conditions
+                    $section->objtype = CONDITION_OBJECT_SECTION;
+                    $si = new condition_info($section);
+                    $section->is_available = $si->is_available($information, true, $USER->id); //if not available 'information' will tell why
+                    if (!$section->is_available && $section->showavailability) {
+                        $section->greyout = true;
+                    } else {
+                        $section->greyout = false;
+                    }
                 } else {
-                    $section->greyout = false;
+                     $section->is_available = true;
+                     $section->greyout = false;
                 }
 
                 if (!$section->is_available || (!$viewhiddensections && !$section->visible) || (!$this->showemptysections &&
