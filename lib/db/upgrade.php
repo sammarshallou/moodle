@@ -150,16 +150,24 @@ function xmldb_main_upgrade($oldversion) {
         $table = new xmldb_table('course_sections');
         $field = new xmldb_field('availablefrom');
         $field->set_attributes(XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, true, false, '0', null);
-        $dbman->add_field($table, $field);
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
         $field = new xmldb_field('availableuntil');
         $field->set_attributes(XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, true, false, '0', null);
-        $dbman->add_field($table, $field);
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
         $field = new xmldb_field('showavailability');
         $field->set_attributes(XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED, true, false, '0', null);
-        $dbman->add_field($table, $field);
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
         $field = new xmldb_field('groupingid');
         $field->set_attributes(XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED, true, false, '0', null);
-        $dbman->add_field($table, $field);
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
 
         // Add course_sections_availability to add completion & grade availability conditions
         $table = new xmldb_table('course_sections_availability');
@@ -175,16 +183,15 @@ function xmldb_main_upgrade($oldversion) {
         if (!$dbman->table_exists($table)) {
             $dbman->create_table($table);
         }
-        /// Main savepoint reached
-        upgrade_main_savepoint(true, 2012020200.06);
-    }
 
-    if ($oldversion < 2012020200.06) {
         // Amend course table to add secinfo
         $table = new xmldb_table('course');
         $field = new xmldb_field('secinfo');
         $field->set_attributes(XMLDB_TYPE_TEXT, 'big', null, null, null, null, 'showgrades');
-        $dbman->add_field($table, $field);
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
         /// Main savepoint reached
         upgrade_main_savepoint(true, 2012020200.06);
     }
