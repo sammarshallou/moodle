@@ -38,7 +38,7 @@ $string['completioncondition'] = 'Activity completion condition';
 $string['completioncondition_help'] = 'This setting determines any activity completion conditions which must be met in order to access the activity. Note that completion tracking must first be set before an activity completion condition can be set.
 
 Multiple activity completion conditions may be set if desired.  If so, access to the activity will only be permitted when ALL activity completion conditions are met.';
-$string['completionconditionsection'] = $string['completioncondition'];
+$string['completionconditionsection'] = 'Activity completion condition';
 $string['completionconditionsection_help'] = 'This setting determines any activity completion conditions which must be met in order to access the section. Note that completion tracking must first be set before an activity completion condition can be set.
 
 Multiple activity completion conditions may be set if desired.  If so, access to the section will only be permitted when ALL activity completion conditions are met.';
@@ -52,7 +52,7 @@ $string['gradecondition'] = 'Grade condition';
 $string['gradecondition_help'] = 'This setting determines any grade conditions which must be met in order to access the activity.
 
 Multiple grade conditions may be set if desired. If so, the activity will only allow access when ALL grade conditions are met.';
-$string['gradeconditionsection'] = $string['gradecondition'];
+$string['gradeconditionsection'] = 'Grade condition';
 $string['gradeconditionsection_help'] = 'This setting determines any grade conditions which must be met in order to access the section.
 
 Multiple grade conditions may be set if desired. If so, the section will only allow access when ALL grade conditions are met.';
