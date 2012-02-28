@@ -1,4 +1,4 @@
-<?
+<?php
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -92,7 +92,7 @@ class condition_info {
 
         // Check ID as otherwise we can't do the other queries
         if (empty($cmors->id)) {
-            throw new coding_exception("Invalid parameters; course-module or course-section ID not included");
+            throw new coding_exception('Invalid parameters; course-module or course-section ID not included');
         }
 
         // Let it be module by default for backward compatibility
@@ -101,10 +101,10 @@ class condition_info {
         }
 
         //  DB table to store availability conditions
-        $this->availtable = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? "course_modules_availability" : "course_sections_availability";
+        $this->availtable = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? 'course_modules_availability' : 'course_sections_availability';
 
         // name of module/section ID field in DB
-        $idfieldname = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? "coursemoduleid" : "coursesectionid";
+        $idfieldname = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? 'coursemoduleid' : 'coursesectionid';
 
         // If not loading data, don't do anything else
         if (!$loaddata) {
@@ -165,7 +165,7 @@ class condition_info {
      */
     public static function fill_availability_conditions(&$cmors) {
         if (empty($cmors->id)) {
-            throw new coding_exception("Invalid parameters; course-module/section ID not included");
+            throw new coding_exception('Invalid parameters; course-module/section ID not included');
         }
 
         //  DB table to store availability conditions
@@ -174,11 +174,11 @@ class condition_info {
         }
 
         if ($cmors->objtype == CONDITION_OBJECT_MODULE) {
-            $availtable = "course_modules_availability";
-            $idfield = "coursemoduleid";
+            $availtable = 'course_modules_availability';
+            $idfield = 'coursemoduleid';
         } else {
-            $availtable = "course_sections_availability";
-            $idfield = "coursesectionid";
+            $availtable = 'course_sections_availability';
+            $idfield = 'coursesectionid';
         }
 
         // Does nothing if the variables are already present
@@ -188,15 +188,15 @@ class condition_info {
             $cmors->conditionscompletion = array();
 
             global $DB, $CFG;
-            $conditions = $DB->get_records_sql($sql="
+            $conditions = $DB->get_records_sql('
 SELECT
     cmorsa.id as cmorsaid, gi.*, cmorsa.sourcecmid, cmorsa.requiredcompletion, cmorsa.gradeitemid,
     cmorsa.grademin as conditiongrademin, cmorsa.grademax as conditiongrademax
 FROM
-    {".$availtable."} cmorsa
+    {'.$availtable.'} cmorsa
     LEFT JOIN {grade_items} gi ON gi.id = cmorsa.gradeitemid
 WHERE
-    ".$idfield." = ?", array($cmors->id));
+    '.$idfield.' = ?', array($cmors->id));
             foreach ($conditions as $condition) {
                 if (!is_null($condition->sourcecmid)) {
                     $cmors->conditionscompletion[$condition->sourcecmid] =
@@ -259,7 +259,7 @@ WHERE
     public function add_completion_condition($cmid, $requiredcompletion) {
         // Add to DB
         global $DB;
-        $tablename = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? "course_modules_availability" : "course_sections_availability";
+        $tablename = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? 'course_modules_availability' : 'course_sections_availability';
         $DB->insert_record($tablename,
             (object)array('coursemoduleid' => $this->cmors->id,
             'sourcecmid' => $cmid, 'requiredcompletion' => $requiredcompletion),
@@ -408,7 +408,7 @@ WHERE
         // For some checks and for display, we need the previous day for the 'until'
         // value, if we are going to display it in short form
         if ($this->cmors->availableuntil) {
-            $daybeforeuntil = strtotime("-1 day", usergetmidnight($this->cmors->availableuntil));
+            $daybeforeuntil = strtotime('-1 day', usergetmidnight($this->cmors->availableuntil));
         }
 
         // Special case for if one but not both are exact and they are within a day
@@ -597,7 +597,7 @@ WHERE
             // cache user groupings for the course so as to query them only once per page
             if (!isset($this->usergroupings)) {
                 $this->usergroupings = array();
-                $groupings = $DB->get_records_sql("
+                $groupings = $DB->get_records_sql('
 SELECT
     g.id as gid
 FROM
@@ -605,7 +605,7 @@ FROM
     LEFT JOIN {groupings_groups} gg ON g.id = gg.groupingid
     LEFT JOIN {groups_members} gm ON gg.groupid = gm.groupid
 WHERE
-    g.courseid = ? AND gm.userid = ?", array($COURSE->id, $userid));
+    g.courseid = ? AND gm.userid = ?', array($COURSE->id, $userid));
                 if (!empty($groupings)) {
                     foreach($groupings as $grouping) {
                         $this->usergroupings[] = $grouping->gid;
@@ -684,14 +684,14 @@ WHERE
             if (!array_key_exists($gradeitemid, $SESSION->gradescorecache)) {
                 if ($grabthelot) {
                     // Get all grades for the current course
-                    $rs = $DB->get_recordset_sql("
+                    $rs = $DB->get_recordset_sql('
 SELECT
     gi.id,gg.finalgrade,gg.rawgrademin,gg.rawgrademax
 FROM
     {grade_items} gi
     LEFT JOIN {grade_grades} gg ON gi.id=gg.itemid AND gg.userid=?
 WHERE
-    gi.courseid = ?", array($USER->id, $this->cmors->course));
+    gi.courseid = ?', array($USER->id, $this->cmors->course));
                     foreach ($rs as $record) {
                         $SESSION->gradescorecache[$record->id] =
                             is_null($record->finalgrade)

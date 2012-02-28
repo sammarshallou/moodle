@@ -49,16 +49,8 @@ $section->usedefaultname = (is_null($section->name));
 
 // let's preload availability conditions
 if (!empty($CFG->enableavailability)) {
-    // get section availability conditions from secinfo or rebuild it if empty
-    if (!empty($corse->secinfo)) {
-        $sections = unserialize($corse->secinfo);
-        if (!is_array($sections)) {
-            // hmm, something is wrong - let's fix it
-            $sections = rebuild_course_secinfo($course->id);
-        }
-    } else {
-        $sections = rebuild_course_secinfo($course->id);
-    }
+    // get section availability conditions from secinfo
+    $sections = get_all_sections_secinfo($course->id);
     $sectionno = $section->section;
     $section->conditionsgrade = $sections[$sectionno]->conditionsgrade;
     $section->conditionscompletion = $sections[$sectionno]->conditionscompletion;

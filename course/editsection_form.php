@@ -8,9 +8,6 @@ require_once($CFG->libdir.'/formslib.php');
 
 class editsection_form extends moodleform {
 
-    public $cs;
-    public $showavailability;
-
     function definition() {
 
         $mform  = $this->_form;

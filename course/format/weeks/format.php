@@ -146,7 +146,7 @@ defined('MOODLE_INTERNAL') || die();
 
         } else {
             // Make sure it really doesn't exist, as now we cache sections in course secinfo field.
-            $trysection = $DB->get_record("course_sections", array("course" => $course->id, "section" => $section));
+            $trysection = $DB->get_record('course_sections', array('course' => $course->id, 'section' => $section));
             if ($trysection) {
                 $thissection = $sections[$section] = $trysection;
                 rebuild_course_secinfo($course->id);
@@ -228,7 +228,7 @@ defined('MOODLE_INTERNAL') || die();
             echo '<div class="content">';
             if (!has_capability('moodle/course:viewhiddensections', $context) && (!$thissection->visible || (!$thissection->is_available && $thissection->showavailability == 1)) ) {   // Hidden for students
                 echo $OUTPUT->heading($currenttext.$weekperiod.' ('.get_string('notavailable').')', 3, 'weekdates');
-                echo html_writer::start_tag('div', array("class" => "availabilityinfo"));
+                echo html_writer::start_tag('div', array('class' => 'availabilityinfo'));
                 if (!empty($thissection->information)) {
                     echo $thissection->information;
                 } else {
@@ -243,7 +243,7 @@ defined('MOODLE_INTERNAL') || die();
                 }
                 if (!empty($thissection->information))
                 {
-                    echo html_writer::start_tag('div', array("class" => "availabilityinfo"));
+                    echo html_writer::start_tag('div', array('class' => 'availabilityinfo'));
                     echo $thissection->information;
                     echo html_writer::end_tag('div');
                 }

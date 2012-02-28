@@ -141,7 +141,7 @@ while ($section <= $course->numsections) {
         $thissection->is_available = $si->is_available($thissection->information, true, $USER->id); //if not available 'information' will tell why
     } else {
         // Make sure it really doesn't exist, as now we cache sections in course secinfo field.
-        $trysection = $DB->get_record("course_sections", array("course" => $course->id, "section" => $section));
+        $trysection = $DB->get_record('course_sections', array('course' => $course->id, 'section' => $section));
         if ($trysection) {
             $thissection = $sections[$section] = $trysection;
             rebuild_course_secinfo($course->id);
@@ -225,7 +225,7 @@ while ($section <= $course->numsections) {
 
         echo '<div class="content">';
         if (!has_capability('moodle/course:viewhiddensections', $context) && (!$thissection->visible || (!$thissection->is_available && $thissection->showavailability == 1)) ) {   // Hidden for students
-            echo html_writer::start_tag('div', array("class" => "availabilityinfo"));
+            echo html_writer::start_tag('div', array('class' => 'availabilityinfo'));
             if (!empty($thissection->information)) {
                 echo $thissection->information;
             } else {
@@ -238,7 +238,7 @@ while ($section <= $course->numsections) {
             }
             if (!empty($thissection->information))
             {
-                echo html_writer::start_tag('div', array("class" => "availabilityinfo"));
+                echo html_writer::start_tag('div', array('class' => 'availabilityinfo'));
                 echo $thissection->information;
                 echo html_writer::end_tag('div');
             }

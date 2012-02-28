@@ -82,4 +82,4 @@ $string['showavailabilitysection_hide'] = 'Hide section entirely';
 $string['showavailabilitysection_show'] = 'Show section greyed-out, with restriction information';
 $string['userrestriction_hidden'] = 'Restricted (completely hidden, no message): &lsquo;{$a}&rsquo;';
 $string['userrestriction_visible'] = 'Restricted: &lsquo;{$a}&rsquo;';
-$string['groupingnoaccess'] = 'You have to become a member of the group which has access to this section. ';
+$string['groupingnoaccess'] = 'You do not currently belong to a group which has access to this section. ';

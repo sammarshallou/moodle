@@ -1266,8 +1266,8 @@ function get_all_mods($courseid, &$mods, &$modnames, &$modnamesplural, &$modname
  */
 function get_all_sections($courseid) {
     global $DB;
-    $sections = $DB->get_records("course_sections", array("course" => "$courseid"), "section",
-        "section, id, course, name, summary, summaryformat, sequence, visible, availablefrom, availableuntil, showavailability, groupingid");
+    $sections = $DB->get_records('course_sections', array('course' => $courseid), 'section',
+        'section, id, course, name, summary, summaryformat, sequence, visible, availablefrom, availableuntil, showavailability, groupingid');
     return $sections;
 }
 
