@@ -50,7 +50,7 @@ $section->usedefaultname = (is_null($section->name));
 // let's preload availability conditions
 if (!empty($CFG->enableavailability)) {
     // get section availability conditions from secinfo
-    $sections = get_all_sections_secinfo($course->id);
+    $sections = get_all_sections_secinfo($course);
     $sectionno = $section->section;
     $section->conditionsgrade = $sections[$sectionno]->conditionsgrade;
     $section->conditionscompletion = $sections[$sectionno]->conditionscompletion;
