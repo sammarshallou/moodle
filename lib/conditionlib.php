@@ -104,7 +104,7 @@ class condition_info {
         $this->availtable = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? 'course_modules_availability' : 'course_sections_availability';
 
         // name of module/section ID field in DB
-        $idfieldname = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? 'coursemoduleid' : 'coursesectionid';
+        $this->idfieldname = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? "coursemoduleid" : "coursesectionid";
 
         // If not loading data, don't do anything else
         if (!$loaddata) {
@@ -259,7 +259,7 @@ WHERE
     public function add_completion_condition($cmid, $requiredcompletion) {
         // Add to DB
         global $DB;
-        $tablename = ($cmors->objtype == CONDITION_OBJECT_MODULE) ? 'course_modules_availability' : 'course_sections_availability';
+        $tablename = ($this->cmors->objtype == CONDITION_OBJECT_MODULE) ? "course_modules_availability" : "course_sections_availability";
         $DB->insert_record($tablename,
             (object)array('coursemoduleid' => $this->cmors->id,
             'sourcecmid' => $cmid, 'requiredcompletion' => $requiredcompletion),
@@ -762,7 +762,7 @@ WHERE
      */
     public static function update_cm_from_form($cm, $fromform, $wipefirst=true) {
         $cm->objtype = CONDITION_OBJECT_MODULE;
-        $ci=new condition_info($cm, CONDITION_MISSING_EVERYTHING, false);
+        $ci=new condition_info($cm, CONDITION_MISSING_EVERYTHING);
         if ($wipefirst) {
             $ci->wipe_conditions();
         }
