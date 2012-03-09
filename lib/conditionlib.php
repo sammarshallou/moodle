@@ -605,7 +605,7 @@ FROM
     LEFT JOIN {groupings_groups} gg ON g.id = gg.groupingid
     LEFT JOIN {groups_members} gm ON gg.groupid = gm.groupid
 WHERE
-    g.courseid = ? AND gm.userid = ?', array($COURSE->id, $userid));
+    g.courseid = ? AND gm.userid = ?", array($this->cmors->course, $userid));
                 if (!empty($groupings)) {
                     foreach($groupings as $grouping) {
                         $this->usergroupings[] = $grouping->gid;
