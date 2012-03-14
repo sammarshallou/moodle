@@ -1285,7 +1285,7 @@ function get_all_sections_secinfo($course) {
     global $DB;
     if (!empty($course->secinfo)) {
         $sections = unserialize($course->secinfo);
-        if (!is_array($sections)) {
+        if (!is_array($sections) || empty($sections)) {
             // hmm, something is wrong - let's fix it
             $sections = rebuild_course_secinfo($course->id);
         }

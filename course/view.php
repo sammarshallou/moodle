@@ -236,6 +236,7 @@
     }
 
     if (! $sections = get_all_sections_secinfo($course)) {   // No sections found
+        $section = new stdClass;
         $section->course = $course->id;   // Create a default section.
         $section->section = 0;
         $section->visible = 1;
