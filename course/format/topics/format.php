@@ -157,7 +157,7 @@ while ($section <= $course->numsections) {
         }
     }
 
-    $showsection = has_capability('moodle/course:viewhiddensections', $context) || ($thissection->visible && ($thissection->is_available || $thissection->showavailability)) || !$course->hiddensections;
+    $showsection = has_capability('moodle/course:viewhiddensections', $context) || ($thissection->visible && ($thissection->is_available || ($thissection->showavailability && !$course->hiddensections)));
 
     if (!empty($displaysection) and $displaysection != $section) {  // Check this topic is visible
         if ($showsection) {
