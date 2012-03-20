@@ -696,7 +696,12 @@ function process_membership_tag($tagcontents){
                         }
                         // Add the user-to-group association if it doesn't already exist
                         if($member->groupid) {
-                            groups_add_member($member->groupid, $memberstoreobj->userid);
+                            // Note: Including the component here makes 'Added by IMS Enterprise' show
+                            // next to relevant group members. At present, it doesn't prevent users
+                            // from removing these group members; that could be achieved if required
+                            // by defining the relevant API function.
+                            groups_add_member($member->groupid, $memberstoreobj->userid,
+                                    'enrol_imsenterprise', $einstance->id);
                         }
                     } // End of group-enrolment (from member.role.extension.cohort tag)
 

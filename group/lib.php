@@ -33,10 +33,12 @@
  *
  * @param mixed $grouporid  The group id or group object
  * @param mixed $userorid   The user id or user object
+ * @param string $component Optional component name e.g. 'enrol_imsenterprise'
+ * @param int $itemid Optional itemid associated with component
  * @return bool True if user added successfully or the user is already a
  * member of the group, false otherwise.
  */
-function groups_add_member($grouporid, $userorid) {
+function groups_add_member($grouporid, $userorid, $component=null, $itemid=0) {
     global $DB;
 
     if (is_object($userorid)) {
@@ -68,6 +70,8 @@ function groups_add_member($grouporid, $userorid) {
     $member->groupid   = $groupid;
     $member->userid    = $userid;
     $member->timeadded = time();
+    $member->component = $component;
+    $member->itemid    = $itemid;
 
     $DB->insert_record('groups_members', $member);
 
@@ -81,6 +85,55 @@ function groups_add_member($grouporid, $userorid) {
     events_trigger('groups_member_added', $eventdata);
 
     return true;
+}
+
+/**
+ * Checks whether the current user is permitted (using the normal UI) to
+ * remove a specific group member, assuming that they have access to remove
+ * group members in general.
+ *
+ * For automatically-created group member entries, this checks with the
+ * relevant plugin to see whether it is permitted. The default, if the plugin
+ * doesn't provide a function, is true.
+ *
+ * For other entries (and any which have already been deleted/don't exist) it
+ * just returns true.
+ *
+ * @param mixed $grouporid The group id or group object
+ * @param mixed $userorid The user id or user object
+ * @return bool True if permitted, false otherwise
+ */
+function groups_remove_member_allowed($grouporid, $userorid) {
+    global $DB;
+
+    if (is_object($userorid)) {
+        $userid = $userorid->id;
+    } else {
+        $userid = $userorid;
+    }
+    if (is_object($grouporid)) {
+        $groupid = $grouporid->id;
+    } else {
+        $groupid = $grouporid;
+    }
+
+    // Get entry
+    if (!($entry = $DB->get_record('groups_members',
+            array('groupid' => $groupid, 'userid' => $userid), '*', IGNORE_MISSING))) {
+        // If the entry does not exist, they are allowed to remove it (this
+        // is consistent with groups_remove_member below).
+        return true;
+    }
+
+    // If the entry does not have a component value, they can remove it
+    if (empty($entry->component)) {
+        return true;
+    }
+
+    // It has a component value, so we need to call a plugin function (if it
+    // exists); the default is to allow removal
+    return component_callback($entry->component, 'allow_group_member_remove',
+            array($entry->itemid, $entry->groupid, $entry->userid), true);
 }
 
 /**
