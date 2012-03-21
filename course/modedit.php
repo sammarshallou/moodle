@@ -382,6 +382,7 @@ if ($mform->is_cancelled()) {
         if ($completion->is_enabled() && !empty($fromform->completionunlocked)) {
             $completion->reset_all_state($cm);
         }
+        rebuild_course_secinfo($course->id);
 
         $eventname = 'mod_updated';
 
@@ -484,9 +485,11 @@ if ($mform->is_cancelled()) {
         }
 
         // Set up conditions
+        $newcm->id = $fromform->coursemodule;
         if ($CFG->enableavailability) {
-            condition_info::update_cm_from_form((object)array('id'=>$fromform->coursemodule), $fromform, false);
+            condition_info::update_cm_from_form($newcm, $fromform, false);
         }
+        rebuild_course_secinfo($course->id);
 
         $eventname = 'mod_created';
 

@@ -139,19 +139,30 @@ defined('MOODLE_INTERNAL') || die();
 
         if (!empty($sections[$section])) {
             $thissection = $sections[$section];
+            //Checking availability conditions
+            $thissection->objtype = CONDITION_OBJECT_SECTION;
+            $si = new condition_info($thissection);
+            $thissection->is_available = $si->is_available($thissection->information, true, $USER->id); //if not available 'information' will tell why
 
         } else {
-            $thissection = new stdClass();
-            $thissection->course = $course->id;   // Create a new week structure
-            $thissection->section = $section;
-            $thissection->name    = null;
-            $thissection->summary = '';
-            $thissection->summaryformat = FORMAT_HTML;
-            $thissection->visible = 1;
-            $thissection->id = $DB->insert_record('course_sections', $thissection);
+            // Make sure it really doesn't exist, as now we cache sections in course secinfo field.
+            $trysection = $DB->get_record('course_sections', array('course' => $course->id, 'section' => $section));
+            if ($trysection) {
+                $thissection = $sections[$section] = $trysection;
+                rebuild_course_secinfo($course->id);
+            } else {
+                $thissection = new stdClass();
+                $thissection->course = $course->id;   // Create a new week structure
+                $thissection->section = $section;
+                $thissection->name    = null;
+                $thissection->summary = '';
+                $thissection->summaryformat = FORMAT_HTML;
+                $thissection->visible = 1;
+                $thissection->id = $DB->insert_record('course_sections', $thissection);
+            }
         }
 
-        $showsection = (has_capability('moodle/course:viewhiddensections', $context) or $thissection->visible or !$course->hiddensections);
+        $showsection = has_capability('moodle/course:viewhiddensections', $context) || ($thissection->visible && ($thissection->is_available || ($thissection->showavailability && !$course->hiddensections)));
 
         if (!empty($displaysection) and $displaysection != $section) {  // Check this week is visible
             if ($showsection) {
@@ -215,14 +226,26 @@ defined('MOODLE_INTERNAL') || die();
             $weekperiod = $weekday.' - '.$endweekday;
 
             echo '<div class="content">';
-            if (!has_capability('moodle/course:viewhiddensections', $context) and !$thissection->visible) {   // Hidden for students
+            if (!has_capability('moodle/course:viewhiddensections', $context) && (!$thissection->visible || (!$thissection->is_available && $thissection->showavailability == 1)) ) {   // Hidden for students
                 echo $OUTPUT->heading($currenttext.$weekperiod.' ('.get_string('notavailable').')', 3, 'weekdates');
-
+                echo html_writer::start_tag('div', array('class' => 'availabilityinfo'));
+                if (!empty($thissection->information)) {
+                    echo $thissection->information;
+                } else {
+                    echo get_string('notavailable');
+                }
+                echo html_writer::end_tag('div');
             } else {
                 if (isset($thissection->name) && ($thissection->name !== NULL)) {  // empty string is ok
                     echo $OUTPUT->heading(format_string($thissection->name, true, array('context' => $context)), 3, 'weekdates');
                 } else {
                     echo $OUTPUT->heading($currenttext.$weekperiod, 3, 'weekdates');
+                }
+                if (!empty($thissection->information))
+                {
+                    echo html_writer::start_tag('div', array('class' => 'availabilityinfo'));
+                    echo $thissection->information;
+                    echo html_writer::end_tag('div');
                 }
                 echo '<div class="summary">';
                 $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);

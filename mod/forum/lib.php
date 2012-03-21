@@ -2990,6 +2990,7 @@ function forum_get_course_forum($courseid, $type) {
 
     include_once("$CFG->dirroot/course/lib.php");
     rebuild_course_cache($courseid);
+    rebuild_course_secinfo($courseid);
 
     return $DB->get_record("forum", array("id" => "$forum->id"));
 }

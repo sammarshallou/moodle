@@ -113,6 +113,8 @@ if ($newcmid) {
 
 $rc->destroy();
 
+rebuild_course_secinfo($course->id);
+
 if (empty($CFG->keeptempdirectoriesonbackup)) {
     fulldelete($backupbasepath);
 }

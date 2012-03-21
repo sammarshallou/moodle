@@ -965,6 +965,7 @@ class cm_info extends stdClass  {
 
         if (!empty($CFG->enableavailability)) {
             // Get availability information
+            $this->objtype = CONDITION_OBJECT_MODULE;
             $ci = new condition_info($this);
             // Note that the modinfo currently available only includes minimal details (basic data)
             // so passing it to this function is a bit dangerous as it would cause infinite

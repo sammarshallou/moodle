@@ -1253,24 +1253,69 @@ function get_all_mods($courseid, &$mods, &$modnames, &$modnamesplural, &$modname
 }
 
 /**
+ *
  * Returns an array of sections for the requested course id
  *
  * This function stores the sections against the course id within a staticvar encase
  * of subsequent requests. This is used all over + in some standard libs and course
  * format callbacks so subsequent requests are a reality.
  *
- * @staticvar array $coursesections
  * @param int $courseid
  * @return array Array of sections
  */
 function get_all_sections($courseid) {
     global $DB;
-    static $coursesections = array();
-    if (!array_key_exists($courseid, $coursesections)) {
-        $coursesections[$courseid] = $DB->get_records("course_sections", array("course"=>"$courseid"), "section",
-                           "section, id, course, name, summary, summaryformat, sequence, visible");
+    $sections = $DB->get_records('course_sections', array('course' => $courseid), 'section',
+        'section, id, course, name, summary, summaryformat, sequence, visible, availablefrom, availableuntil, showavailability, groupingid');
+    return $sections;
+}
+
+/**
+ * Returns an array of sections for the requested course id
+ *
+ * This function stores the sections against the course with availability info retrieved from course secinfo field - 
+ * an extended version of get_all_sections() for course view and navigation
+ *
+ * @staticvar array $coursesections
+ * @param object $course
+ * @return array Array of sections
+ */
+function get_all_sections_secinfo($course) {
+    global $DB;
+    if (!empty($course->secinfo)) {
+        $sections = unserialize($course->secinfo);
+        if (!is_array($sections) || empty($sections)) {
+            // hmm, something is wrong - let's fix it
+            $sections = rebuild_course_secinfo($course->id);
+        }
+    } else {
+        $sections = rebuild_course_secinfo($course->id);
     }
-    return $coursesections[$courseid];
+    return $sections;
+}
+
+/**
+ *
+ * This function rebuilds secinfo for the given course and updates its DB field
+ * Returns an array of availability conditions for sections for the requested course id
+ *
+ * @param int $courseid
+ * @param array $sections
+ */
+function rebuild_course_secinfo($courseid) {
+    global $CFG, $DB;
+    $sections = get_all_sections($courseid);
+    if ($CFG->enableavailability) {
+        foreach ($sections as &$section) {
+            $section->objtype = CONDITION_OBJECT_SECTION;
+            require_once(dirname(dirname(__FILE__)) . '/lib/conditionlib.php');
+            condition_info::fill_availability_conditions($section);
+            unset($section->objtype); // so as not to store redundant data in DB
+        }
+    }
+    $secinfostr = serialize($sections);
+    $DB->set_field('course', 'secinfo', $secinfostr, array('id' => $courseid));
+    return $sections;
 }
 
 /**
@@ -1775,6 +1820,7 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
             if (!$mod->uservisible) {
                 echo '<div class="availabilityinfo">'.$mod->availableinfo.'</div>';
             } else if ($canviewhidden && !empty($CFG->enableavailability)) {
+                $mod->objtype = CONDITION_OBJECT_MODULE;
                 $ci = new condition_info($mod);
                 $fullinfo = $ci->get_full_information();
                 if($fullinfo) {
