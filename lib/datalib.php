@@ -1624,7 +1624,6 @@ function coursemodule_visible_for_user($cm, $userid=0) {
     }
     if ($CFG->enableavailability) {
         require_once($CFG->libdir.'/conditionlib.php');
-        $cm->objtype = CONDITION_OBJECT_MODULE;
         $ci=new condition_info($cm,CONDITION_MISSING_EXTRATABLE);
         if(!$ci->is_available($cm->availableinfo,false,$userid) and
             !has_capability('moodle/course:viewhiddenactivities',

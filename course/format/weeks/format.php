@@ -140,9 +140,8 @@ defined('MOODLE_INTERNAL') || die();
         if (!empty($sections[$section])) {
             $thissection = $sections[$section];
             //Checking availability conditions
-            $thissection->objtype = CONDITION_OBJECT_SECTION;
-            $si = new condition_info($thissection);
-            $thissection->is_available = $si->is_available($thissection->information, true, $USER->id); //if not available 'information' will tell why
+            $si = new condition_info_section($thissection);
+            $thissection->is_available = $si->is_available($thissection->information, true); //if not available 'information' will tell why
 
         } else {
             // Make sure it really doesn't exist, as now we cache sections in course secinfo field.

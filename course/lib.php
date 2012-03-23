@@ -1264,10 +1264,12 @@ function get_all_mods($courseid, &$mods, &$modnames, &$modnamesplural, &$modname
  * @return array Array of sections
  */
 function get_all_sections($courseid) {
-    global $DB;
-    $sections = $DB->get_records('course_sections', array('course' => $courseid), 'section',
-        'section, id, course, name, summary, summaryformat, sequence, visible, availablefrom, availableuntil, showavailability, groupingid');
-    return $sections;
+    global $DB, $CFG;
+    // Special case for old versions before section table is updated - this
+    // needs to work before upgrade completes
+    return $DB->get_records('course_sections', array('course' => $courseid), 'section',
+            'section, id, course, name, summary, summaryformat, sequence, visible, ' .
+            'availablefrom, availableuntil, showavailability, groupingid');
 }
 
 /**
@@ -1281,7 +1283,7 @@ function get_all_sections($courseid) {
  * @return array Array of sections
  */
 function get_all_sections_secinfo($course) {
-    global $DB;
+    global $DB, $CFG;
     if (!empty($course->secinfo)) {
         $sections = unserialize($course->secinfo);
         if (!is_array($sections) || empty($sections)) {
@@ -1307,9 +1309,8 @@ function rebuild_course_secinfo($courseid) {
     $sections = get_all_sections($courseid);
     if ($CFG->enableavailability) {
         foreach ($sections as &$section) {
-            $section->objtype = CONDITION_OBJECT_SECTION;
             require_once(dirname(dirname(__FILE__)) . '/lib/conditionlib.php');
-            condition_info::fill_availability_conditions($section);
+            condition_info_section::fill_availability_conditions($section);
             unset($section->objtype); // so as not to store redundant data in DB
         }
     }
@@ -1820,7 +1821,6 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
             if (!$mod->uservisible) {
                 echo '<div class="availabilityinfo">'.$mod->availableinfo.'</div>';
             } else if ($canviewhidden && !empty($CFG->enableavailability)) {
-                $mod->objtype = CONDITION_OBJECT_MODULE;
                 $ci = new condition_info($mod);
                 $fullinfo = $ci->get_full_information();
                 if($fullinfo) {

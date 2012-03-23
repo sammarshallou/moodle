@@ -80,9 +80,8 @@ class editsection_form extends moodleform {
             // Get version with condition info and store it so we don't ask
             // twice
             if(!empty($this->_customdata['cs'])) {
-                $this->_customdata['cs']->objtype = CONDITION_OBJECT_SECTION;
-                $ci = new condition_info($this->_customdata['cs']);
-                $fullcs = $ci->get_full_course_mors();
+                $ci = new condition_info_section($this->_customdata['cs']);
+                $fullcs = $ci->get_full_section();
                 $count = count($fullcs->conditionsgrade)+1;
             } else {
                 $count = 1;

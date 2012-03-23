@@ -1768,8 +1768,7 @@ class global_navigation extends navigation_node {
             } else {
                 if ($CFG->enableavailability) {
                     //Checking availability conditions
-                    $section->objtype = CONDITION_OBJECT_SECTION;
-                    $si = new condition_info($section);
+                    $si = new condition_info_section($section);
                     $section->is_available = $si->is_available($information, true, $USER->id); //if not available 'information' will tell why
                     if (!$section->is_available && $section->showavailability) {
                         $section->greyout = true;

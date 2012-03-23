@@ -212,7 +212,7 @@ function xmldb_main_upgrade($oldversion) {
         upgrade_main_savepoint(true, 2012030900.01);
     }
 
-    if ($oldversion < 2012031500.01) {
+    if ($oldversion < 2012031500.02) {
         // Amend course_sections to add date, time& groupingid availability conditions and a
         // setting about whether to show them
         $table = new xmldb_table('course_sections');
@@ -261,7 +261,7 @@ function xmldb_main_upgrade($oldversion) {
         }
 
         /// Main savepoint reached
-        upgrade_main_savepoint(true, 2012031500.01);
+        upgrade_main_savepoint(true, 2012031500.02);
     }
 
     return true;
