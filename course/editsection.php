@@ -92,6 +92,13 @@ if ($mform->is_cancelled()){
                     $datacg->gradeitemid = $groupvalue['conditiongradeitemid'];
                     $datacg->grademin = $groupvalue['conditiongrademin'];
                     $datacg->grademax = $groupvalue['conditiongrademax'];
+                    // Empty string corresponds to null (=no restriction), not zero!
+                    if ($datacg->grademin === '') {
+                        $datacg->grademin = null;
+                    }
+                    if ($datacg->grademax === '') {
+                        $datacg->grademax = null;
+                    }
                     $DB->insert_record('course_sections_availability', $datacg);
                 }
             }
