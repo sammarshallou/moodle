@@ -1679,7 +1679,7 @@ class global_navigation extends navigation_node {
 
         if (!$this->cache->cached('course_sections_'.$course->id) || !$this->cache->cached('course_activites_'.$course->id)) {
             $modinfo = get_fast_modinfo($course);
-            $sections = array_slice(get_all_sections_secinfo($course), 0, $course->numsections+1, true);
+            $sections = array_slice($modinfo->get_section_info_all(), 0, $course->numsections+1, true);
 
             $activities = array();
 

@@ -95,7 +95,6 @@ switch($requestmethod) {
                         break;
                 }
                 rebuild_course_cache($course->id);
-                rebuild_course_secinfo($course->id);
                 break;
 
             case 'resource':
@@ -152,7 +151,6 @@ switch($requestmethod) {
                         break;
                 }
                 rebuild_course_cache($course->id);
-                rebuild_course_secinfo($course->id);
                 break;
 
             case 'course':
@@ -219,7 +217,6 @@ switch($requestmethod) {
                 events_trigger('mod_deleted', $eventdata);
 
                 rebuild_course_cache($course->id);
-                rebuild_course_secinfo($course->id);
 
                 add_to_log($courseid, "course", "delete mod",
                            "view.php?id=$courseid",

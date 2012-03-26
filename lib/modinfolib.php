@@ -43,6 +43,8 @@ if (!defined('MAX_MODINFO_CACHE_SIZE')) {
 class course_modinfo extends stdClass {
     // For convenience we store the course object here as it is needed in other parts of code
     private $course;
+    // Array of section data from cache
+    private $sectioninfo;
 
     // Existing data fields
     ///////////////////////
@@ -190,6 +192,23 @@ class course_modinfo extends stdClass {
     }
 
     /**
+     * Gets all sections as array from section number => data about section.
+     * @return array Array of section_info objects organised by section number
+     */
+    public function get_section_info_all() {
+        return $this->sectioninfo;
+    }
+
+    /**
+    * Gets data about specific numbered section.
+    * @param int $sectionnumber Number (not id) of section
+    * @return section_info Information for numbered section
+    */
+    public function get_section_info($sectionnumber) {
+        return $this->sectioninfo[$sectionnumber];
+    }
+
+    /**
      * Constructs based on course.
      * Note: This constructor should not usually be called directly.
      * Use get_fast_modinfo($course) instead as this maintains a cache.
@@ -199,6 +218,12 @@ class course_modinfo extends stdClass {
     public function __construct($course, $userid) {
         global $CFG, $DB;
 
+        // Check modinfo field is set. If not, build and load it.
+        if (empty($course->modinfo) || empty($course->secinfo)) {
+            rebuild_course_cache($course->id);
+            $course = $DB->get_record('course', array('id'=>$course->id), '*', MUST_EXIST);
+        }
+
         // Set initial values
         $this->courseid = $course->id;
         $this->userid = $userid;
@@ -207,12 +232,6 @@ class course_modinfo extends stdClass {
         $this->instances = array();
         $this->groups = null;
         $this->course = $course;
-
-        // Check modinfo field is set. If not, build and load it.
-        if (empty($course->modinfo)) {
-            rebuild_course_cache($course->id);
-            $course->modinfo = $DB->get_field('course', 'modinfo', array('id'=>$course->id));
-        }
 
         // Load modinfo field into memory as PHP object and check it's valid
         $info = unserialize($course->modinfo);
@@ -224,6 +243,20 @@ class course_modinfo extends stdClass {
             if (!is_array($info)) {
                 // If it still fails, abort
                 debugging('Problem with "modinfo" data for this course');
+                return;
+            }
+        }
+
+        // Load secinfo field into memory as PHP object and check it's valid
+        $secinfo = unserialize($course->secinfo);
+        if (!is_array($secinfo) || empty($secinfo)) {
+            // hmm, something is wrong - let's fix it
+            rebuild_course_cache($course->id);
+            $course->secinfo = $DB->get_field('course', 'secinfo', array('id'=>$course->id));
+            $secinfo = unserialize($course->secinfo);
+            if (!is_array($secinfo)) {
+                // If it still fails, abort
+                debugging('Problem with "secinfo" data for this course');
                 return;
             }
         }
@@ -264,6 +297,19 @@ class course_modinfo extends stdClass {
             $this->sections[$cm->sectionnum][] = $cm->id;
         }
 
+        // Expand section objects
+        $this->sectioninfo = array();
+        foreach ($secinfo as $number => $data) {
+            // Calculate sequence
+            if (isset($this->sections[$number])) {
+                $sequence = implode(',', $this->sections[$number]);
+            } else {
+                $sequence = '';
+            }
+            // Expand
+            $this->sectioninfo[$number] = new section_info($data, $number, $course->id, $sequence);
+        }
+
         // We need at least 'dynamic' data from each course-module (this is basically the remaining
         // data which was always present in previous version of get_fast_modinfo, so it's required
         // for BC). Creating it in a second pass is necessary because obtain_dynamic_data sometimes
@@ -271,6 +317,34 @@ class course_modinfo extends stdClass {
         foreach ($this->cms as $cm) {
             $cm->obtain_dynamic_data();
         }
+    }
+
+    /**
+     * Builds a list of information about sections on a course to be stored in
+     * the course cache. (Does not include information that is already cached
+     * in some other way.)
+     *
+     * Used internally by rebuild_course_cache function; do not use otherwise.
+     * @param int $courseid Course ID
+     * @return array Information about sections, indexed by section number (not id)
+     */
+    public function build_secinfo($courseid) {
+        global $DB;
+
+        // Get section data
+        $sections = $DB->get_records('course_sections', array('course' => $courseid), 'section',
+                'section, id, course, name, summary, summaryformat, sequence, visible, ' .
+                'availablefrom, availableuntil, showavailability, groupingid');
+        $compressedsections = array();
+
+        // Remove unnecessary data and add availability
+        foreach ($sections as $number => $section) {
+            // Clone just in case it is reused elsewhere (get_all_sections cache)
+            $compressedsections[$number] = clone($section);
+            section_info::convert_for_secinfo($compressedsections[$number]);
+        }
+
+        return $compressedsections;
     }
 }
 
@@ -283,7 +357,7 @@ class course_modinfo extends stdClass {
  * data only using the supplied set functions. Setting the fields directly is not supported
  * and may cause problems later.
  */
-class cm_info extends stdClass  {
+class cm_info extends stdClass {
     /**
      * State: Only basic data from modinfo cache is available.
      */
@@ -1127,14 +1201,17 @@ function rebuild_course_cache($courseid=0, $clearonly=false) {
 
     if ($clearonly) {
         if (empty($courseid)) {
-            $courseselect = array();
+            $DB->set_field('course', 'modinfo', null);
+            $DB->set_field('course', 'secinfo', null);
         } else {
-            $courseselect = array('id'=>$courseid);
+            // Clear both fields in one update
+            $resetobj = (object)array('id' => $courseid, 'modinfo' => null, 'secinfo' => null);
+            $DB->update_record('course', $resetobj);
         }
-        $DB->set_field('course', 'modinfo', null, $courseselect);
         // update cached global COURSE too ;-)
         if ($courseid == $COURSE->id or empty($courseid)) {
             $COURSE->modinfo = null;
+            $COURSE->secinfo = null;
         }
         // reset the fast modinfo cache
         $reset = 'reset';
@@ -1154,10 +1231,14 @@ function rebuild_course_cache($courseid=0, $clearonly=false) {
     $rs = $DB->get_recordset("course", $select,'','id,fullname');
     foreach ($rs as $course) {
         $modinfo = serialize(get_array_of_activities($course->id));
-        $DB->set_field("course", "modinfo", $modinfo, array("id"=>$course->id));
+        $secinfo = serialize(course_modinfo::build_secinfo($course->id));
+        $updateobj = (object)array('id' => $course->id,
+                'modinfo' => $modinfo, 'secinfo' => $secinfo);
+        $DB->update_record("course", $updateobj);
         // update cached global COURSE too ;-)
         if ($course->id == $COURSE->id) {
             $COURSE->modinfo = $modinfo;
+            $COURSE->secinfo = $secinfo;
         }
     }
     $rs->close();
@@ -1234,4 +1315,186 @@ class cached_cm_info {
      * @var string
      */
     public $onclick;
+}
+
+
+/**
+ * Data about a single section on a course. This contains the fields from the
+ * course_sections table, plus additional data when required.
+ */
+class section_info extends stdClass {
+    /**
+     * Section ID - from course_sections table
+     * @var int
+     */
+    public $id;
+
+    /**
+     * Course ID - from course_sections table
+     * @var int
+     */
+    public $course;
+
+    /**
+     * Section number - from course_sections table
+     * @var int
+     */
+    public $section;
+
+    /**
+     * Section name if specified - from course_sections table
+     * @var string
+     */
+    public $name;
+
+    /**
+     * Section visibility (1 = visible) - from course_sections table
+     * @var int
+     */
+    public $visible;
+
+    /**
+     * Section summary text if specified - from course_sections table
+     * @var string
+     */
+    public $summary;
+
+    /**
+     * Section summary text format (FORMAT_xx constant) - from course_sections table
+     * @var int
+     */
+    public $summaryformat;
+
+    /**
+     * When section is unavailable, this field controls whether it is shown to students (0 =
+     * hide completely, 1 = show greyed out with information about when it will be available) -
+     * from course_sections table
+     * @var int
+     */
+    public $showavailability;
+
+    /**
+     * Available date for this section (0 if not set, or set to seconds since epoch; before this
+     * date, section does not display to students) - from course_sections table
+     * @var int
+     */
+    public $availablefrom;
+
+    /**
+     * Available until date for this section  (0 if not set, or set to seconds since epoch; from
+     * this date, section does not display to students) - from course_sections table
+     * @var int
+     */
+    public $availableuntil;
+
+    /**
+     * If section is restricted to users of a particular grouping, this is its id
+     * (0 if not set) - from course_sections table
+     * @var int
+     */
+    public $groupingid;
+
+    /**
+     * Availability conditions for this section based on the completion of
+     * course-modules (array from course-module id to required completion state
+     * for that module) - from cached data in secinfo field
+     * @var array
+     */
+    public $conditionscompletion;
+
+    /**
+     * Availability conditions for this section based on course grades (array from
+     * grade item id to object with ->min, ->max fields) - from cached data in
+     * secinfo field
+     * @var array
+     */
+    public $conditionsgrade;
+
+    /**
+     * Default values for secinfo fields; if a field has this value, it won't
+     * be stored in the secinfo cache, to save space. Checks are done by ===
+     * which means values must all be strings.
+     * @var array
+     */
+    private static $secinfodefaults = array(
+        'name' => null,
+        'summary' => '',
+        'summaryformat' => '1', // FORMAT_HTML, but must be a string
+        'visible' => '1',
+        'showavailability' => '0',
+        'availablefrom' => '0',
+        'availableuntil' => '0',
+        'groupingid' => '0',
+    );
+
+    /**
+     * Constructs object from database information plus extra required data.
+     * @param object $data Array entry from cached secinfo
+     * @param int $number Section number (array key)
+     * @param int $courseid Course ID
+     * @param int $sequence Sequence of course-module ids contained within
+     */
+    public function __construct($data, $number, $courseid, $sequence) {
+        // Data that is always present
+        $this->id = $data->id;
+
+        // Data that may use default values to save cache size
+        foreach (self::$secinfodefaults as $field => $value) {
+            if (isset($data->{$field})) {
+                $this->{$field} = $data->{$field};
+            } else {
+                $this->{$field} = $value;
+            }
+        }
+
+        // Data with array defaults
+        $this->conditionscompletion = isset($data->conditionscompletion)
+                ? $data->conditionscompletion : array();
+        $this->conditionsgrade = isset($data->conditionsgrade)
+                ? $data->conditionsgrade : array();
+
+        // Other data from other places
+        $this->course = $courseid;
+        $this->section = $number;
+        $this->sequence = $sequence;
+    }
+
+    /**
+     * Prepares section data for inclusion in secinfo cache, removing items
+     * that are set to defaults, and adding availability data if required.
+     *
+     * Called by build_secinfo in course_modinfo only; do not use otherwise.
+     * @param object $section Raw section data object
+     */
+    public static function convert_for_secinfo($section) {
+        global $CFG;
+
+        // Course id stored in course table
+        unset($section->course);
+        // Section number stored in array key
+        unset($section->section);
+        // Sequence stored implicity in modinfo $sections array
+        unset($section->sequence);
+
+        // Add availability data if turned on
+        if ($CFG->enableavailability) {
+            require_once($CFG->dirroot . '/lib/conditionlib.php');
+            condition_info_section::fill_availability_conditions($section);
+            if (count($section->conditionscompletion) == 0) {
+                unset($section->conditionscompletion);
+            }
+            if (count($section->conditionsgrade) == 0) {
+                unset($section->conditionsgrade);
+            }
+        }
+
+        // Remove default data
+        foreach(self::$secinfodefaults as $field => $value) {
+            // Exact compare as strings to avoid problems if some strings are set
+            // to "0" etc.
+            if (isset($section->{$field}) && $section->{$field} === $value) {
+                unset($section->{$field});
+            }
+        }
+    }
 }

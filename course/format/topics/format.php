@@ -143,7 +143,7 @@ while ($section <= $course->numsections) {
         $trysection = $DB->get_record('course_sections', array('course' => $course->id, 'section' => $section));
         if ($trysection) {
             $thissection = $sections[$section] = $trysection;
-            rebuild_course_secinfo($course->id);
+            rebuild_course_cache($course->id);
         } else {
             $thissection = new stdClass;
             $thissection->course  = $course->id;   // Create a new section structure

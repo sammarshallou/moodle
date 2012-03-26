@@ -50,10 +50,10 @@ $section->usedefaultname = (is_null($section->name));
 // let's preload availability conditions
 if (!empty($CFG->enableavailability)) {
     // get section availability conditions from secinfo
-    $sections = get_all_sections_secinfo($course);
-    $sectionno = $section->section;
-    $section->conditionsgrade = $sections[$sectionno]->conditionsgrade;
-    $section->conditionscompletion = $sections[$sectionno]->conditionscompletion;
+    $modinfo = get_fast_modinfo($course);
+    $sectioninfo = $modinfo->get_section_info($section->section);
+    $section->conditionsgrade = $sectioninfo->conditionsgrade;
+    $section->conditionscompletion = $sectioninfo->conditionscompletion;
 }
 
 $mform = new editsection_form(null, array('course'=>$course, 'editoroptions'=>$editoroptions, 'cs'=>$section, 'showavailability'=>isset($section->showavailability) ? $section->showavailability  : null));
@@ -115,7 +115,7 @@ if ($mform->is_cancelled()){
             }
         }
     }
-    rebuild_course_secinfo($course->id);
+    rebuild_course_cache($course->id);
 
     add_to_log($course->id, "course", "editsection", "editsection.php?id=$section->id", "$section->section");
     $PAGE->navigation->clear_cache();

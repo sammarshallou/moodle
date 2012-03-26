@@ -238,14 +238,15 @@
         }
     }
 
-    if (! $sections = get_all_sections_secinfo($course)) {   // No sections found
+    if (! $sections = $modinfo->get_section_info_all()) {   // No sections found
         $section = new stdClass;
         $section->course = $course->id;   // Create a default section.
         $section->section = 0;
         $section->visible = 1;
         $section->summaryformat = FORMAT_HTML;
         $section->id = $DB->insert_record('course_sections', $section);
-        if (! $sections = get_all_sections_secinfo($course) ) {      // Try again
+        rebuild_course_cache($course->id);
+        if (! $sections = $modinfo->get_section_info_all()) {      // Try again
             print_error('cannotcreateorfindstructs', 'error');
         }
     }
