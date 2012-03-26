@@ -307,7 +307,8 @@ class course_modinfo extends stdClass {
                 $sequence = '';
             }
             // Expand
-            $this->sectioninfo[$number] = new section_info($data, $number, $course->id, $sequence);
+            $this->sectioninfo[$number] = new section_info($data, $number, $course->id, $sequence,
+                    $this, $userid);
         }
 
         // We need at least 'dynamic' data from each course-module (this is basically the remaining
@@ -1046,6 +1047,15 @@ class cm_info extends stdClass {
             // uses basic data.
             $this->available = $ci->is_available($this->availableinfo, true,
                     $userid, $this->modinfo);
+
+            // Check parent section
+            $parentsection = $this->modinfo->get_section_info($this->sectionnum);
+            if (!$parentsection->available) {
+                // Do not store info from section here, as that is already
+                // presented from the section (if appropriate) - just change
+                // the flag
+                $this->available = false;
+            }
         } else {
             $this->available = true;
         }
@@ -1411,6 +1421,29 @@ class section_info extends stdClass {
     public $conditionsgrade;
 
     /**
+     * True if this section is available to students i.e. if all availability conditions
+     * are met - obtained dynamically
+     * @var bool
+     */
+    public $available;
+
+    /**
+     * If section is not available to students, this string gives information about
+     * availability which can be displayed to students and/or staff (e.g. 'Available from 3
+     * January 2010') for display on main page - obtained dynamically
+     * @var string
+     */
+    public $availableinfo;
+
+    /**
+     * True if this section is available to the CURRENT user (for example, if current user
+     * has viewhiddensections capability, they can access the section even if it is not
+     * visible or not available, so this would be true in that case)
+     * @var bool
+     */
+    public $uservisible;
+
+    /**
      * Default values for secinfo fields; if a field has this value, it won't
      * be stored in the secinfo cache, to save space. Checks are done by ===
      * which means values must all be strings.
@@ -1433,8 +1466,12 @@ class section_info extends stdClass {
      * @param int $number Section number (array key)
      * @param int $courseid Course ID
      * @param int $sequence Sequence of course-module ids contained within
+     * @param course_modinfo $modinfo Owner (needed for checking availability)
+     * @param int $userid User ID
      */
-    public function __construct($data, $number, $courseid, $sequence) {
+    public function __construct($data, $number, $courseid, $sequence, $modinfo, $userid) {
+        global $CFG;
+
         // Data that is always present
         $this->id = $data->id;
 
@@ -1457,6 +1494,35 @@ class section_info extends stdClass {
         $this->course = $courseid;
         $this->section = $number;
         $this->sequence = $sequence;
+
+        // Availability data
+        if (!empty($CFG->enableavailability)) {
+            // Get availability information
+            $ci = new condition_info_section($this);
+            $this->available = $ci->is_available($this->availableinfo, true,
+                    $userid, $modinfo);
+        } else {
+            $this->available = true;
+        }
+
+        // Update visibility for current user
+        $this->update_user_visible($userid);
+    }
+
+    /**
+     * Works out whether activity is visible *for current user* - if this is false, they
+     * aren't allowed to access it.
+     * @param int $userid User ID
+     * @return void
+     */
+    private function update_user_visible($userid) {
+        global $CFG;
+        $coursecontext = context_course::instance($this->course);
+        $this->uservisible = true;
+        if ((!$this->visible || !$this->available) &&
+                !has_capability('moodle/course:viewhiddensections', $coursecontext, $userid)) {
+            $this->uservisible = false;
+        }
     }
 
     /**

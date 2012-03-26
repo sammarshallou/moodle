@@ -139,10 +139,6 @@ defined('MOODLE_INTERNAL') || die();
 
         if (!empty($sections[$section])) {
             $thissection = $sections[$section];
-            //Checking availability conditions
-            $si = new condition_info_section($thissection);
-            $thissection->is_available = $si->is_available($thissection->information, true); //if not available 'information' will tell why
-
         } else {
             // Make sure it really doesn't exist, as now we cache sections in course secinfo field.
             $trysection = $DB->get_record('course_sections', array('course' => $course->id, 'section' => $section));
@@ -161,7 +157,10 @@ defined('MOODLE_INTERNAL') || die();
             }
         }
 
-        $showsection = has_capability('moodle/course:viewhiddensections', $context) || ($thissection->visible && ($thissection->is_available || ($thissection->showavailability && !$course->hiddensections)));
+        // Show the section if the user is permitted to access it, OR if it's not available
+        // but showavailability is turned on
+        $showsection = $thissection->uservisible ||
+            ($thissection->visible && !$thissection->available && $thissection->showavailability);
 
         if (!empty($displaysection) and $displaysection != $section) {  // Check this week is visible
             if ($showsection) {
@@ -225,11 +224,11 @@ defined('MOODLE_INTERNAL') || die();
             $weekperiod = $weekday.' - '.$endweekday;
 
             echo '<div class="content">';
-            if (!has_capability('moodle/course:viewhiddensections', $context) && (!$thissection->visible || (!$thissection->is_available && $thissection->showavailability == 1)) ) {   // Hidden for students
+            if (!$thissection->uservisible) {
                 echo $OUTPUT->heading($currenttext.$weekperiod.' ('.get_string('notavailable').')', 3, 'weekdates');
                 echo html_writer::start_tag('div', array('class' => 'availabilityinfo'));
-                if (!empty($thissection->information)) {
-                    echo $thissection->information;
+                if (!empty($thissection->availableinfo)) {
+                    echo $thissection->availableinfo;
                 } else {
                     echo get_string('notavailable');
                 }
@@ -240,10 +239,10 @@ defined('MOODLE_INTERNAL') || die();
                 } else {
                     echo $OUTPUT->heading($currenttext.$weekperiod, 3, 'weekdates');
                 }
-                if (!empty($thissection->information))
+                if (!empty($thissection->availableinfo))
                 {
                     echo html_writer::start_tag('div', array('class' => 'availabilityinfo'));
-                    echo $thissection->information;
+                    echo $thissection->availableinfo;
                     echo html_writer::end_tag('div');
                 }
                 echo '<div class="summary">';
