@@ -139,22 +139,16 @@ defined('MOODLE_INTERNAL') || die();
 
         if (!empty($sections[$section])) {
             $thissection = $sections[$section];
+
         } else {
-            // Make sure it really doesn't exist, as now we cache sections in course secinfo field.
-            $trysection = $DB->get_record('course_sections', array('course' => $course->id, 'section' => $section));
-            if ($trysection) {
-                $thissection = $sections[$section] = $trysection;
-                rebuild_course_cache($course->id);
-            } else {
-                $thissection = new stdClass();
-                $thissection->course = $course->id;   // Create a new week structure
-                $thissection->section = $section;
-                $thissection->name    = null;
-                $thissection->summary = '';
-                $thissection->summaryformat = FORMAT_HTML;
-                $thissection->visible = 1;
-                $thissection->id = $DB->insert_record('course_sections', $thissection);
-            }
+            $thissection = new stdClass();
+            $thissection->course = $course->id;   // Create a new week structure
+            $thissection->section = $section;
+            $thissection->name    = null;
+            $thissection->summary = '';
+            $thissection->summaryformat = FORMAT_HTML;
+            $thissection->visible = 1;
+            $thissection->id = $DB->insert_record('course_sections', $thissection);
         }
 
         // Show the section if the user is permitted to access it, OR if it's not available
@@ -239,11 +233,9 @@ defined('MOODLE_INTERNAL') || die();
                 } else {
                     echo $OUTPUT->heading($currenttext.$weekperiod, 3, 'weekdates');
                 }
-                if (!empty($thissection->availableinfo))
-                {
-                    echo html_writer::start_tag('div', array('class' => 'availabilityinfo'));
-                    echo $thissection->availableinfo;
-                    echo html_writer::end_tag('div');
+                if (!empty($thissection->availableinfo)) {
+                    echo html_writer::tag('div', $thissection->availableinfo,
+                            array('class' => 'availabilityinfo'));
                 }
                 echo '<div class="summary">';
                 $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);

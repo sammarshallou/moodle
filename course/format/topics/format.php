@@ -135,22 +135,16 @@ while ($section <= $course->numsections) {
 
     if (!empty($sections[$section])) {
         $thissection = $sections[$section];
+
     } else {
-        // Make sure it really doesn't exist, as now we cache sections in course secinfo field.
-        $trysection = $DB->get_record('course_sections', array('course' => $course->id, 'section' => $section));
-        if ($trysection) {
-            $thissection = $sections[$section] = $trysection;
-            rebuild_course_cache($course->id);
-        } else {
-            $thissection = new stdClass;
-            $thissection->course  = $course->id;   // Create a new section structure
-            $thissection->section = $section;
-            $thissection->name    = null;
-            $thissection->summary  = '';
-            $thissection->summaryformat = FORMAT_HTML;
-            $thissection->visible  = 1;
-            $thissection->id = $DB->insert_record('course_sections', $thissection);
-        }
+        $thissection = new stdClass;
+        $thissection->course  = $course->id;   // Create a new section structure
+        $thissection->section = $section;
+        $thissection->name    = null;
+        $thissection->summary  = '';
+        $thissection->summaryformat = FORMAT_HTML;
+        $thissection->visible  = 1;
+        $thissection->id = $DB->insert_record('course_sections', $thissection);
     }
 
     // Show the section if the user is permitted to access it, OR if it's not available
@@ -235,11 +229,9 @@ while ($section <= $course->numsections) {
             if (!is_null($thissection->name)) {
                 echo $OUTPUT->heading(format_string($thissection->name, true, array('context' => $context)), 3, 'sectionname');
             }
-            if (!empty($thissection->availableinfo))
-            {
-                echo html_writer::start_tag('div', array('class' => 'availabilityinfo'));
-                echo $thissection->availableinfo;
-                echo html_writer::end_tag('div');
+            if (!empty($thissection->availableinfo)) {
+                echo html_writer::tag('div', $thissection->availableinfo,
+                        array('class' => 'availabilityinfo'));
             }
             echo '<div class="summary">';
             if ($thissection->summary) {

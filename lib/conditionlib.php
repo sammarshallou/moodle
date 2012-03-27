@@ -41,12 +41,12 @@ define('CONDITION_STUDENTVIEW_SHOW', 1);
  */
 define('CONDITION_MISSING_NOTHING', 0);
 /**
- * CONDITION_MISSING_EXTRATABLE - The $item variable is expected to contain the fields from course_modules
- * but not the course_modules_availability data
+ * CONDITION_MISSING_EXTRATABLE - The $item variable is expected to contain the fields from
+ * the relevant table (course_modules or course_sections) but not the _availability data
  */
 define('CONDITION_MISSING_EXTRATABLE', 1);
 /**
- * CONDITION_MISSING_EVERYTHING - The $cm variable is expected to contain nothing except the ID
+ * CONDITION_MISSING_EVERYTHING - The $item variable is expected to contain nothing except the ID
  */
 define('CONDITION_MISSING_EVERYTHING', 2);
 
@@ -115,6 +115,54 @@ class condition_info extends condition_info_base {
     */
     public function get_full_course_module() {
         return $this->get_full_item();
+    }
+
+    /**
+     * Utility function called by modedit.php; updates the
+     * course_modules_availability table based on the module form data.
+     *
+     * @param object $cm Course-module with as much data as necessary, min id
+     * @param object $fromform Data from form
+     * @param bool $wipefirst If true, wipes existing conditions
+     */
+    public static function update_cm_from_form($cm, $fromform, $wipefirst=true) {
+        $ci = new condition_info($cm, CONDITION_MISSING_EVERYTHING, false);
+        parent::update_from_form($ci, $fromform, $wipefirst);
+    }
+
+   /**
+     * Used in course/lib.php because we need to disable the completion JS if
+     * a completion value affects a conditional activity.
+     *
+     * @global stdClass $CONDITIONLIB_PRIVATE
+     * @param object $course Moodle course object
+     * @param object $item Moodle course-module
+     * @return bool True if this is used in a condition, false otherwise
+     */
+    public static function completion_value_used_as_condition($course, $cm) {
+        // Have we already worked out a list of required completion values
+        // for this course? If so just use that
+        global $CONDITIONLIB_PRIVATE, $DB;
+        if (!array_key_exists($course->id, $CONDITIONLIB_PRIVATE->usedincondition)) {
+            // We don't have data for this course, build it
+            $modinfo = get_fast_modinfo($course);
+            $CONDITIONLIB_PRIVATE->usedincondition[$course->id] = array();
+
+            // Activities
+            foreach ($modinfo->cms as $othercm) {
+                foreach ($othercm->conditionscompletion as $cmid=>$expectedcompletion) {
+                    $CONDITIONLIB_PRIVATE->usedincondition[$course->id][$cmid] = true;
+                }
+            }
+
+            // Sections
+            foreach ($modinfo->get_section_info_all() as $section) {
+                foreach ($section->conditionscompletion as $cmid => $expectedcompletion) {
+                    $CONDITIONLIB_PRIVATE->usedincondition[$course->id][$cmid] = true;
+                }
+            }
+        }
+        return array_key_exists($cm->id, $CONDITIONLIB_PRIVATE->usedincondition[$course->id]);
     }
 }
 
@@ -269,6 +317,19 @@ WHERE
         $information = trim($information);
         return $available;
     }
+
+    /**
+    * Utility function called by modedit.php; updates the
+    * course_modules_availability table based on the module form data.
+    *
+    * @param object $section Section object, must at minimum contain id
+    * @param object $fromform Data from form
+    * @param bool $wipefirst If true, wipes existing conditions
+    */
+    public static function update_section_from_form($section, $fromform, $wipefirst=true) {
+        $ci = new condition_info_section($section, CONDITION_MISSING_EVERYTHING);
+        parent::update_from_form($ci, $fromform, $wipefirst);
+    }
 }
 
 
@@ -399,7 +460,7 @@ FROM
     {' . $tableprefix . '_availability} a
     LEFT JOIN {grade_items} gi ON gi.id = a.gradeitemid
 WHERE
-    '.$idfield.' = ?', array($item->id));
+    ' . $idfield . ' = ?', array($item->id));
             foreach ($conditions as $condition) {
                 if (!is_null($condition->sourcecmid)) {
                     $item->conditionscompletion[$condition->sourcecmid] =
@@ -927,15 +988,14 @@ WHERE
     }
 
     /**
-     * Utility function called by modedit.php; updates the
-     * course_modules_availability table based on the module form data.
+     * Utility function that resets grade/completion conditions in table based
+     * in data from editing form.
      *
-     * @param object $cm Course-module with as much data as necessary, min id
-     * @param object $fromform
-     * @param bool $wipefirst Defaults to true
+     * @param condition_info_base $ci Condition info
+     * @param object $fromform Data from form
+     * @param bool $wipefirst If true, wipes existing conditions
      */
-    public static function update_cm_from_form($cm, $fromform, $wipefirst=true) {
-        $ci=new condition_info($cm, CONDITION_MISSING_EVERYTHING);
+    protected static function update_from_form(condition_info_base $ci, $fromform, $wipefirst) {
         if ($wipefirst) {
             $ci->wipe_conditions();
         }
@@ -953,38 +1013,5 @@ WHERE
                 }
             }
         }
-    }
-
-   /**
-     * Used in course/lib.php because we need to disable the completion JS if
-     * a completion value affects a conditional activity.
-     *
-     * @global stdClass $CONDITIONLIB_PRIVATE
-     * @param object $course Moodle course object
-     * @param object $item Moodle course-module
-     * @return bool True if this is used in a condition, false otherwise
-     */
-    public static function completion_value_used_as_condition($course, $cm) {
-        // Have we already worked out a list of required completion values
-        // for this course? If so just use that
-        global $CONDITIONLIB_PRIVATE, $DB;
-        if (!array_key_exists($course->id, $CONDITIONLIB_PRIVATE->usedincondition)) {
-            // We don't have data for this course, build it
-            $modinfo = get_fast_modinfo($course);
-            $CONDITIONLIB_PRIVATE->usedincondition[$course->id] = array();
-            foreach ($modinfo->cms as $othercm) {
-                foreach ($othercm->conditionscompletion as $cmid=>$expectedcompletion) {
-                    $CONDITIONLIB_PRIVATE->usedincondition[$course->id][$cmid] = true;
-                }
-            }
-        }
-        $founddependant = array_key_exists($cm->id, $CONDITIONLIB_PRIVATE->usedincondition[$course->id]);
-        // Check for dependant sections too
-        if (!$founddependant) {
-            if ($DB->record_exists('course_sections_availability', array('sourcecmid' => $cm->id)) > 0 ) {
-                $founddependant = true;
-            }
-        }
-        return $founddependant;
     }
 }

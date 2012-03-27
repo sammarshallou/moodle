@@ -484,9 +484,8 @@ if ($mform->is_cancelled()) {
         }
 
         // Set up conditions
-        $newcm->id = $fromform->coursemodule;
         if ($CFG->enableavailability) {
-            condition_info::update_cm_from_form($newcm, $fromform, false);
+            condition_info::update_cm_from_form((object)array('id'=>$fromform->coursemodule), $fromform, false);
         }
 
         $eventname = 'mod_created';

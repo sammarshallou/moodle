@@ -246,7 +246,7 @@ abstract class moodleform_mod extends moodleform {
         // Availability conditions
         if (!empty($CFG->enableavailability) && $this->_cm) {
             $ci = new condition_info($this->_cm);
-            $fullcm = $ci->get_full_course_module();
+            $fullcm=$ci->get_full_course_module();
 
             $num=0;
             foreach($fullcm->conditionsgrade as $gradeitemid=>$minmax) {

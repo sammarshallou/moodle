@@ -246,6 +246,7 @@
         $section->summaryformat = FORMAT_HTML;
         $section->id = $DB->insert_record('course_sections', $section);
         rebuild_course_cache($course->id);
+        $modinfo = get_fast_modinfo($COURSE);
         if (! $sections = $modinfo->get_section_info_all()) {      // Try again
             print_error('cannotcreateorfindstructs', 'error');
         }

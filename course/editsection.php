@@ -26,9 +26,9 @@
 require_once("../config.php");
 require_once("lib.php");
 require_once($CFG->libdir.'/filelib.php');
-require_once($CFG->libdir.'/gradelib.php');
-require_once($CFG->libdir.'/completionlib.php');
-require_once($CFG->libdir.'/conditionlib.php');
+require_once($CFG->libdir . '/gradelib.php');
+require_once($CFG->libdir . '/completionlib.php');
+require_once($CFG->libdir . '/conditionlib.php');
 
 require_once('editsection_form.php');
 
@@ -56,7 +56,8 @@ if (!empty($CFG->enableavailability)) {
     $section->conditionscompletion = $sectioninfo->conditionscompletion;
 }
 
-$mform = new editsection_form(null, array('course'=>$course, 'editoroptions'=>$editoroptions, 'cs'=>$section, 'showavailability'=>isset($section->showavailability) ? $section->showavailability  : null));
+$mform = new editsection_form(null, array('course' => $course, 'editoroptions' => $editoroptions,
+        'cs' => $section, 'showavailability' => $section->showavailability));
 $mform->set_data($section); // set current value
 
 /// If data submitted, then process and store.
@@ -73,47 +74,17 @@ if ($mform->is_cancelled()){
     $section->summary = $data->summary;
     $section->summaryformat = $data->summaryformat;
     if (!empty($CFG->enableavailability)) {
-        $section->availablefrom      = $data->availablefrom;
-        $section->availableuntil     = $data->availableuntil;
-        $section->groupingid         = $data->groupingid;
-        $section->showavailability   = $data->showavailability;
+        $section->availablefrom = $data->availablefrom;
+        $section->availableuntil = $data->availableuntil;
+        if (!empty($data->groupingid)) {
+            $section->groupingid = $data->groupingid;
+        }
+        $section->showavailability = $data->showavailability;
     }
     $DB->update_record('course_sections', $section);
     if (!empty($CFG->enableavailability)) {
-        //updating grade & completion conditions table
-        //first let's delete existing conditions for this section from db
-        $DB->delete_records('course_sections_availability', array('coursesectionid' => $section->id));
-        //now insert new conditions received from user
-        if (!empty($data->conditiongradegroup)) {
-            foreach ($data->conditiongradegroup as $groupvalue) {
-                if ($groupvalue['conditiongradeitemid'] > 0) {
-                    $datacg = new stdClass;
-                    $datacg->coursesectionid = $section->id;
-                    $datacg->gradeitemid = $groupvalue['conditiongradeitemid'];
-                    $datacg->grademin = $groupvalue['conditiongrademin'];
-                    $datacg->grademax = $groupvalue['conditiongrademax'];
-                    // Empty string corresponds to null (=no restriction), not zero!
-                    if ($datacg->grademin === '') {
-                        $datacg->grademin = null;
-                    }
-                    if ($datacg->grademax === '') {
-                        $datacg->grademax = null;
-                    }
-                    $DB->insert_record('course_sections_availability', $datacg);
-                }
-            }
-        }
-        if (!empty($data->conditioncompletiongroup)) {
-            foreach ($data->conditioncompletiongroup as $groupvalue) {
-                if ($groupvalue['conditionsourcecmid'] > 0) {
-                    $datacg = new stdClass;
-                    $datacg->coursesectionid = $section->id;
-                    $datacg->sourcecmid = $groupvalue['conditionsourcecmid'];
-                    $datacg->requiredcompletion = $groupvalue['conditionrequiredcompletion'];
-                    $DB->insert_record('course_sections_availability', $datacg);
-                }
-            }
-        }
+        // Update grade and completion conditions
+        condition_info_section::update_section_from_form($section, $data);
     }
     rebuild_course_cache($course->id);
 
