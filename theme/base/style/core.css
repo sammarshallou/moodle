@@ -152,6 +152,25 @@ a.skip:active {position: static;display: block;}
 .arrow_button input {font-family: Arial,Helvetica,Courier,sans-serif;}
 
 /**
+ * print_object pretty output
+ */
+.print-object {border: 1px solid #555; background: #eee; color: black; padding: 10px; border-radius: 5px; font-size: 0.8em; overflow-x: auto; margin: 1em 0;}
+.print-object .print-object {border: none; padding: 0; font-size: 1em; overflow-x: visible; margin: 0;}
+.print-object h4 {font-size: 1em; margin: 0; font-weight: normal;}
+.print-object .print-object h4 {padding-top: 1px;}
+.print-object .array {color: #80a;}
+.print-object .object {color: #c07;}
+.print-object.null {color: #888;}
+.print-object dt {position: absolute; left: 0; width: 7em; overflow:hidden; white-space: nowrap; padding-top: 1px; border-bottom: 1px dotted #bbb;}
+.print-object dt.private {color: #a10;}
+.print-object dt.protected {color: #850;}
+.print-object dt.public {color: #360;}
+.print-object dl {margin: 0; position: relative;}
+.print-object dd {margin-left: 8em; padding-top: 1px;}
+.print-object.int {color: #129;}
+.print-object.float {color: #129;}
+
+/**
  * Header
  */
 .headermain {float:left;margin:15px;font-size:2.3em;}

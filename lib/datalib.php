@@ -1962,25 +1962,222 @@ function count_login_failures($mode, $username, $lastlogin) {
 /// GENERAL HELPFUL THINGS  ///////////////////////////////////
 
 /**
- * Dumps a given object's information for debugging purposes
+ * Dumps a given object's information for debugging purposes. (You can actually
+ * use this function to print any type of value such as arrays or simple strings,
+ * not just objects.)
  *
  * When used in a CLI script, the object's information is written to the standard
- * error output stream. When used in a web script, the object is dumped to a
- * pre-formatted block with the "notifytiny" CSS class.
+ * error output stream. When used in a web script, the object is dumped in a
+ * fancy-formatted div.
  *
- * @param mixed $object The data to be printed
- * @return void output is echo'd
+ * In text mode, private fields are shown with * and protected with +. These
+ * states are shown with red and orange colour in web view. (You can also
+ * mouse over the field name to see 'private' text in brackets in a popup.)
+ *
+ * By default, this will recurse to child objects. To change that, set
+ * $expandclasses to an empty array (= do not recurse) or to a list of the
+ * class names that you would like to expand. You can also set values in this
+ * array to a regular expression beginning with / if you want to match a range
+ * of classes.
+ *
+ * @param mixed $object Object, array, or other item to display
+ * @param int $depth Optional depth limit for recursion (0 = no limit)
+ * @param array $expandclasses Optional list of class patterns to recurse to
+ * @param bool $return If true, returns value instead of echoing it
+ * @param array $done For internal use - array listing already-printed objects
+ * @return mixed HTML code (or text if CLI) to display, if $return is true, otherwise nowt
  */
-function print_object($object) {
-
-    // we may need a lot of memory here
-    raise_memory_limit(MEMORY_EXTRA);
-
+function print_object($object, $depth = 0, $expandclasses = array('/./'),
+        $return = false, $done = array()) {
     if (CLI_SCRIPT) {
-        fwrite(STDERR, print_r($object, true));
-        fwrite(STDERR, PHP_EOL);
+        $out = '';
     } else {
-        echo html_writer::tag('pre', s(print_r($object, true)), array('class' => 'notifytiny'));
+        $extraclass = '';
+        if (is_null($object)) {
+            $extraclass = ' null';
+        } else if(is_int($object)) {
+            $extraclass = ' int';
+        } else if(is_float($object)) {
+            $extraclass = ' float';
+        }
+        $out = html_writer::start_tag('div', array('class' => 'print-object' . $extraclass));
+    }
+    // Main code handles work for objects and arrays.
+    if (is_array($object) || is_object($object)) {
+        if (is_object($object)) {
+            // Object header: class name.
+            if (CLI_SCRIPT) {
+                $out .= '[' . get_class($object) . ']';
+            } else {
+                $typeclass = array('class' => 'object');
+                $out .= html_writer::tag('h4', get_class($object), $typeclass);
+                $out .= html_writer::start_tag('dl');
+            }
+            $done[] = $object;
+            // Cast to array so we can loop through all properties.
+            $object = (array)$object;
+        } else {
+            $arrayinfo = 'array (' . count($object) . ')';
+            if (CLI_SCRIPT) {
+                $out .= $arrayinfo;
+            } else {
+                // Array header: count
+                $typeclass = array('class' => 'array');
+                $out .= html_writer::tag('h4', $arrayinfo, $typeclass);
+                $out .= html_writer::start_tag('dl');
+            }
+        }
+
+        // Properties.
+        foreach ($object as $key => $value) {
+            // Detect private and protected variables.
+            $matches = array();
+            $key = (string)$key;
+            if (preg_match('~^\x00(.*)\x00(.*)$~', $key, $matches)) {
+                $shortkey = $matches[2];
+                $type = $matches[1] == '*' ? 'protected' : 'private';
+            } else {
+                $shortkey = $key;
+                $type = 'public';
+            }
+            if (CLI_SCRIPT) {
+                switch($type) {
+                    case 'protected' :
+                        $shortkey = '+' . $shortkey;
+                        break;
+                    case 'private' :
+                        $shortkey = '*' . $shortkey;
+                        break;
+                }
+                $out .= PHP_EOL . '  ' . $shortkey . ' = ';
+            } else {
+                $attributes = array('title' => s($shortkey . ' (' . $type . ')'), 'class' => $type);
+                $out .= html_writer::tag('dt', s($shortkey), $attributes);
+                $extraclass = array();
+            }
+            switch (gettype($value)) {
+                case 'object' :
+                    $objclass = get_class($value);
+
+                    // See if we printed it further up the tree in which case
+                    // it will definitely not be printed (infinite recursion).
+                    if (in_array($value, $done)) {
+                        if (CLI_SCRIPT) {
+                            $display = '[circular reference: ' . $objclass . ']';
+                        } else {
+                            $display = '[circular reference: ' . s($objclass) . ']';
+                            $extraclass['class'] = 'object';
+                        }
+                        break;
+                    }
+
+                    // Recurse only to specified types.
+                    $recurse = false;
+                    foreach ($expandclasses as $pattern) {
+                        if (substr($pattern, 0, 1) === '/') {
+                            if (preg_match($pattern, $objclass)) {
+                                $recurse = true;
+                                break;
+                            }
+                        } else {
+                            if ($objclass === $pattern) {
+                                $recurse = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Apply depth limit.
+                    if ($depth == 1) {
+                        $recurse = false;
+                    }
+
+                    if ($recurse) {
+                        $display = print_object($value, $depth ? $depth-1 : 0, $expandclasses, true, $done);
+                        if (CLI_SCRIPT) {
+                            $display = str_replace(PHP_EOL, PHP_EOL . '  ', $display);
+                        }
+                    } else {
+                        if (CLI_SCRIPT) {
+                            $display = '[object: ' . $objclass . ']';
+                        } else {
+                            $display = '[object: ' . s($objclass) . ']';
+                            $extraclass['class'] = 'object';
+                        }
+                    }
+                    break;
+                case 'array' :
+                    // Recurse to array, if depth limit permits.
+                    if ($depth != 1) {
+                        $display = print_object($value, $depth ? $depth-1 : 0, $expandclasses, true, $done);
+                        if (CLI_SCRIPT) {
+                            $display = str_replace(PHP_EOL, PHP_EOL . '  ', $display);
+                        }
+                    } else {
+                        $display = 'array (' . count($value) . ')';
+                        if (!CLI_SCRIPT) {
+                            $extraclass['class'] = 'array';
+                        }
+                    }
+                    break;
+                default:
+                    // Plain value - recurse to display.
+                    $display = print_object($value, 0, array(), true);
+                    break;
+            }
+            if (CLI_SCRIPT) {
+                $out .= $display;
+            } else {
+                $out .= html_writer::tag('dd', $display, $extraclass);
+            }
+        }
+        if (!CLI_SCRIPT) {
+            $out .= html_writer::end_tag('dl');
+        }
+    } else {
+        // For things which are not objects or arrays, just output.
+        if (is_null($object)) {
+            if (CLI_SCRIPT) {
+                $out .= "null";
+            } else {
+                $out .= 'null';
+            }
+        } else {
+            $objectstr = $object . '';
+            // Quotes around strings.
+            if (is_string($object)) {
+                $objectstr = "'$objectstr'";
+            }
+            // Show true or false for bools.
+            if (is_bool($object)) {
+                $objectstr = $object ? 'true' : 'false';
+            }
+            // Add 'f' for floats
+            if (is_float($object)) {
+                $objectstr = $object . 'f';
+            }
+            if (CLI_SCRIPT) {
+                $out .= $objectstr;
+            } else {
+                $out .= s($objectstr) . '&nbsp;';
+            }
+        }
+    }
+
+    if (!CLI_SCRIPT) {
+        $out .= html_writer::end_tag('div');
+    }
+
+    // Display or return result.
+    if ($return) {
+        return $out;
+    } else {
+        if (CLI_SCRIPT) {
+            fwrite(STDERR, $out);
+            fwrite(STDERR, PHP_EOL);
+        } else {
+            echo $out . "\n";
+        }
     }
 }
 
