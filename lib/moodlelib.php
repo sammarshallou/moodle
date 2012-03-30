@@ -4606,6 +4606,9 @@ function remove_course_contents($courseid, $showfeedback = true, array $options 
     $DB->update_record('course', $oldcourse);
 
     // Delete course sections and user selections
+    $DB->delete_records_select('course_sections_availability',
+           'coursesectionid IN (SELECT id from {course_sections} WHERE course=?)',
+           array($course->id));
     $DB->delete_records('course_sections', array('course'=>$course->id));
     $DB->delete_records('course_display', array('course'=>$course->id));
 
