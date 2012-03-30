@@ -1501,6 +1501,17 @@ class section_info extends stdClass {
             $ci = new condition_info_section($this);
             $this->available = $ci->is_available($this->availableinfo, true,
                     $userid, $modinfo);
+            // Display grouping info if available & not already displaying
+            // (it would already display if current user doesn't have access)
+            // for people with managegroups - same logic/class as grouping label
+            // on individual activities.
+            if ($this->availableinfo === '' && $this->groupingid &&
+                    has_capability('moodle/course:managegroups', get_context_instance(CONTEXT_COURSE, $courseid))) {
+                $groupings = groups_get_all_groupings($courseid);
+                $this->availableinfo = html_writer::tag('span',
+                        '(' . format_string($groupings[$this->groupingid]->name) . ')',
+                        array('class' => 'groupinglabel'));
+            }
         } else {
             $this->available = true;
         }
