@@ -1039,8 +1039,6 @@ class restore_section_structure_step extends restore_structure_step {
             }
 
             $DB->update_record('course_sections_availability', $data);
-            print_object($data);
-            print_object($sectionid);
             rebuild_course_cache($this->get_task()->get_courseid(), true);
         }
     }
