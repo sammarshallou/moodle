@@ -3000,23 +3000,23 @@ class core_media_renderer extends plugin_renderer_base {
      * URL by including ?d=100x100 at the end. If specified in the URL, this
      * will override the $width and $height parameters.
      *
-     * @param moodle_url $url Full URL of media file
+     * @param string|moodle_url $url Full URL of media file
      * @param string $name Optional user-readable name to display in download link
      * @param int $width Width in pixels (optional)
      * @param int $height Height in pixels (optional)
      * @param array $options Array of key/value pairs
      * @return string HTML content of embed
      */
-    public function embed_url(moodle_url $url, $name = '', $width = 0, $height = 0,
+    public function embed_url($url, $name = '', $width = 0, $height = 0,
             $options = array()) {
+        $url = self::convert_moodle_url($url);
 
         // Get width and height from URL if specified (overrides parameters in
         // function call).
-        $rawurl = $url->out(false);
-        if (preg_match('/[?#]d=([\d]{1,4}%?)x([\d]{1,4}%?)/', $rawurl, $matches)) {
+        if (preg_match('/[?#]d=([\d]{1,4}%?)x([\d]{1,4}%?)/', $url, $matches)) {
             $width = $matches[1];
             $height = $matches[2];
-            $url = new moodle_url(str_replace($matches[0], '', $rawurl));
+            $url = str_replace($matches[0], '', $url);
         }
 
         // Defer to array version of function.
@@ -3046,7 +3046,7 @@ class core_media_renderer extends plugin_renderer_base {
      * that render the object tag. The keys can contain values from
      * core_media::OPTION_xx.
      *
-     * @param array $alternatives Array of moodle_url to media files
+     * @param array $alternatives Array of string URL or moodle_url to media files
      * @param string $name Optional user-readable name to display in download link
      * @param int $width Width in pixels (optional)
      * @param int $height Height in pixels (optional)
@@ -3055,6 +3055,8 @@ class core_media_renderer extends plugin_renderer_base {
      */
     public function embed_alternatives($alternatives, $name = '', $width = 0, $height = 0,
             $options = array()) {
+        // Ensure input array is strings
+        $alternatives = self::convert_moodle_urls_array($alternatives);
 
         // Get list of player plugins (will also require the library).
         $players = $this->get_players();
@@ -3090,17 +3092,46 @@ class core_media_renderer extends plugin_renderer_base {
     }
 
     /**
+     * Converts a parameter, which may be a string or moodle_url, into a string.
+     *
+     * @param string|moodle_url $url Input URL as string or moodle_url
+     * @return string Unescaped string/
+     */
+    private static function convert_moodle_url($url) {
+        if (is_string($url)) {
+            return $url;
+        } else {
+            return $url->out(false);
+        }
+    }
+
+    /**
+     * Converts an array, which may be of moodle_urls or strings or a mixture,
+     * so that it is definitely only strings.
+     *
+     * @param array $arr Array of moodle_urls/strings
+     * @return array Array of strings (unescaped)
+     */
+    private static function convert_moodle_urls_array($arr) {
+        $newarr = array();
+        foreach ($arr as $url) {
+            $newarr[] = self::convert_moodle_url($url);
+        }
+        return $newarr;
+    }
+
+    /**
      * Checks whether a file can be embedded. If this returns true you will get
      * an embedded player; if this returns false, you will just get a download
      * link.
      *
      * This is a wrapper for can_embed_urls.
      *
-     * @param moodle_url $url URL of media file
+     * @param string $url URL of media file
      * @param array $options Options (same as when embedding)
      * @return bool True if file can be embedded
      */
-    public function can_embed_url(moodle_url $url, $options = array()) {
+    public function can_embed_url($url, $options = array()) {
         return $this->can_embed_urls(array($url), $options);
     }
 
@@ -3109,11 +3140,14 @@ class core_media_renderer extends plugin_renderer_base {
      * an embedded player; if this returns false, you will just get a download
      * link.
      *
-     * @param array $urls URL of media file and any alternatives (moodle_url)
+     * @param array $urls URL of media file and any alternatives (strings)
      * @param array $options Options (same as when embedding)
      * @return bool True if file can be embedded
      */
     public function can_embed_urls(array $urls, $options = array()) {
+        // Ensure input array is strings
+        $urls = self::convert_moodle_urls_array($urls);
+
         // Check all players to see if any of them support it.
         foreach ($this->get_players() as $player) {
             // Link player (always last on list) doesn't count!

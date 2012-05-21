@@ -224,7 +224,7 @@ function qualified_me() {
 }
 
 /**
- * Class for creating and manipulating urls.
+ * Class for creating and manipulating URLs within Moodle.
  *
  * It can be used in moodle pages where config.php has been included without any further includes.
  *
@@ -236,6 +236,11 @@ function qualified_me() {
  * params and can also be used to
  *     - output the url without any get params
  *     - and output the params as hidden fields to be output within a form
+ *
+ * Note that moodle_url is not a general class for representing all URLs within
+ * Moodle. It can be used for constructing new URLs in code, but should not be
+ * used for handling general URLs entered by the user. These should be stored
+ * as PHP strings instead.
  *
  * @link http://docs.moodle.org/dev/lib/weblib.php_moodle_url See short write up here
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -291,6 +296,11 @@ class moodle_url {
     /**
      * Create new instance of moodle_url.
      *
+     * Do not use the string parameter for user-entered URLs as it cannot
+     * necessarily handle all general URLs correctly. moodle_url is not
+     * suitable for use with user-entered strings, only for URLs created in
+     * program code.
+     *
      * @param moodle_url|string $url - moodle_url means make a copy of another
      *      moodle_url and change parameters, string means full url or shortened
      *      form (ex.: '/course/view.php'). It is strongly encouraged to not include
@@ -298,6 +308,7 @@ class moodle_url {
      *      $params instead. For admin URLs, just use /admin/script.php, this
      *      class takes care of the $CFG->admin issue.
      * @param array $params these params override current params or add new
+     * @throws moodle_exception If the URL is seriously malformed in some way
      */
     public function __construct($url, array $params = null) {
         global $CFG;

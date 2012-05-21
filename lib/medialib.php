@@ -22,7 +22,7 @@
  * To embed media from Moodle code, do something like the following:
  *
  * $mediarenderer = $PAGE->get_renderer('core', 'media');
- * echo $mediarenderer->embed_url(new moodle_url('http://example.org/a.mp3'));
+ * echo $mediarenderer->embed_url('http://example.org/a.mp3');
  *
  * You do not need to require this library file manually. Getting the renderer
  * (the first line above) requires this library file automatically.
@@ -100,7 +100,7 @@ abstract class core_media {
 
     /**
      * Given a string containing multiple URLs separated by #, this will split
-     * it into an array of moodle_url objects suitable for using when calling
+     * it into an array of strings suitable for using when calling
      * embed_alternatives.
      *
      * Note that the input string should NOT be html-escaped (i.e. if it comes
@@ -109,7 +109,7 @@ abstract class core_media {
      * @param string $combinedurl String of 1 or more alternatives separated by #
      * @param int $width Output variable: width (will be set to 0 if not specified)
      * @param int $height Output variable: height (0 if not specified)
-     * @return array Array of 1 or more moodle_url objects
+     * @return array Array of 1 or more strings
      */
     public static function split_alternatives($combinedurl, &$width, &$height) {
         $urls = explode('#', $combinedurl);
@@ -144,8 +144,8 @@ abstract class core_media {
                 continue;
             }
 
-            // Turn it into moodle_url object.
-            $returnurls[] = new moodle_url($url);
+            // Add to list.
+            $returnurls[] = $url;
         }
 
         return $returnurls;
@@ -153,9 +153,9 @@ abstract class core_media {
 
     /**
      * Returns the file extension for a URL.
-     * @param moodle_url $url URL
+     * @param string $url URL
      */
-    public static function get_extension(moodle_url $url) {
+    public static function get_extension($url) {
         // Note: Does not use textlib (. is UTF8-safe).
         $filename = self::get_filename($url);
         $dot = strrpos($filename, '.');
@@ -167,34 +167,27 @@ abstract class core_media {
     }
 
     /**
-     * Obtains the filename from the moodle_url.
-     * @param moodle_url $url URL
+     * Obtains the filename from the URL string.
+     * @param string $url URL
      * @return string Filename only (not escaped)
      */
-    public static function get_filename(moodle_url $url) {
+    public static function get_filename($url) {
         global $CFG;
 
-        // Use the 'file' parameter if provided (for links created when
-        // slasharguments was off). If not present, just use URL path.
-        $path = $url->get_param('file');
-        if (!$path) {
-            $path = $url->get_path();
-        }
-
         // Remove everything before last / if present. Does not use textlib as / is UTF8-safe.
-        $slash = strrpos($path, '/');
+        $slash = strrpos($url, '/');
         if ($slash !== false) {
-            $path = substr($path, $slash + 1);
+            $path = substr($url, $slash + 1);
         }
         return $path;
     }
 
     /**
-     * Guesses MIME type for a moodle_url based on file extension.
-     * @param moodle_url $url URL
+     * Guesses MIME type for a URL string based on file extension.
+     * @param string $url URL
      * @return string MIME type
      */
-    public static function get_mimetype(moodle_url $url) {
+    public static function get_mimetype($url) {
         return mimeinfo('type', self::get_filename($url));
     }
 }
@@ -327,9 +320,9 @@ abstract class core_media_player {
     /**
      * Given a list of URLs, returns a reduced array containing only those URLs
      * which are supported by this player. (Empty if none.)
-     * @param array $urls Array of moodle_url
+     * @param array $urls Array of string
      * @param array $options Options (same as will be passed to embed)
-     * @return array Array of supported moodle_url
+     * @return array Array of supported string
      */
     public function list_supported_urls(array $urls, array $options = array()) {
         $extensions = $this->get_supported_extensions();
@@ -346,7 +339,7 @@ abstract class core_media_player {
      * Obtains suitable name for media. Uses specified name if there is one,
      * otherwise makes one up.
      * @param string $name User-specified name ('' if none)
-     * @param array $urls Array of moodle_url used to make up name
+     * @param array $urls Array of string used to make up name
      * @return string Name
      */
     protected function get_name($name, $urls) {
@@ -428,14 +421,14 @@ abstract class core_media_player_external extends core_media_player {
 
     /**
      * Obtains HTML code to embed the link.
-     * @param moodle_url $url Single URL to embed
+     * @param string $url Single URL to embed
      * @param string $name Display name; '' to use default
      * @param int $width Optional width; 0 to use default
      * @param int $height Optional height; 0 to use default
      * @param array $options Options array
      * @return string HTML code for embed
      */
-    protected abstract function embed_external(moodle_url $url, $name, $width, $height, $options);
+    protected abstract function embed_external($url, $name, $width, $height, $options);
 
     public function list_supported_urls(array $urls, array $options = array()) {
         // These only work with a SINGLE url (there is no fallback).
@@ -445,7 +438,7 @@ abstract class core_media_player_external extends core_media_player {
         $url = reset($urls);
 
         // Check against regex.
-        if (preg_match($this->get_regex(), $url->out(false), $this->matches)) {
+        if (preg_match($this->get_regex(), $url, $this->matches)) {
             return array($url);
         }
 
@@ -482,7 +475,7 @@ abstract class core_media_player_external extends core_media_player {
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class core_media_player_vimeo extends core_media_player_external {
-    protected function embed_external(moodle_url $url, $name, $width, $height, $options) {
+    protected function embed_external($url, $name, $width, $height, $options) {
         $videoid = $this->matches[1];
         $info = s($name);
 
@@ -525,7 +518,7 @@ OET;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class core_media_player_youtube extends core_media_player_external {
-    protected function embed_external(moodle_url $url, $name, $width, $height, $options) {
+    protected function embed_external($url, $name, $width, $height, $options) {
         global $CFG;
 
         $site = $this->matches[1];
@@ -595,7 +588,7 @@ class core_media_player_youtube_playlist extends core_media_player_external {
         return $CFG->core_media_enable_youtube;
     }
 
-    protected function embed_external(moodle_url $url, $name, $width, $height, $options) {
+    protected function embed_external($url, $name, $width, $height, $options) {
         $site = $this->matches[1];
         $playlist = $this->matches[3];
 
@@ -670,7 +663,7 @@ class core_media_player_mp3 extends core_media_player {
         // We can not use standard JS init because this may be cached
         // note: use 'small' size unless embedding in block mode.
         $output .= html_writer::script(js_writer::function_call(
-                'M.util.add_audio_player', array($id, $url->out(false),
+                'M.util.add_audio_player', array($id, $url,
                 empty($options[core_media::OPTION_BLOCK]))));
 
         return $output;
@@ -715,7 +708,7 @@ class core_media_player_flv extends core_media_player {
                 array('id'=>$id, 'class'=>'mediaplugin mediaplugin_flv'));
         // We can not use standard JS init because this may be cached.
         $output .= html_writer::script(js_writer::function_call(
-                'M.util.add_video_player', array($id, addslashes_js($url->out(false)),
+                'M.util.add_video_player', array($id, addslashes_js($url),
                 $width, $height, $autosize)));
         return $output;
     }
@@ -739,8 +732,8 @@ class core_media_player_flv extends core_media_player {
 class core_media_player_wmp extends core_media_player {
     public function embed($urls, $name, $width, $height, $options) {
         // Get URL (we just use first, probably there is only one).
-        $firsturl = reset($urls);
-        $url = $firsturl->out(false);
+        // Get first URL, escaped for use in HTML.
+        $url = s(reset($urls));
 
         // Work out width.
         if (!$width || !$height) {
@@ -756,7 +749,7 @@ class core_media_player_wmp extends core_media_player {
         }
 
         // MIME type for object tag.
-        $mimetype = core_media::get_mimetype($firsturl);
+        $mimetype = core_media::get_mimetype($url);
 
         $fallback = core_media_player::PLACEHOLDER;
 
@@ -814,9 +807,8 @@ OET;
  */
 class core_media_player_qt extends core_media_player {
     public function embed($urls, $name, $width, $height, $options) {
-        // Show first URL.
-        $firsturl = reset($urls);
-        $url = $firsturl->out(true);
+        // Get first URL, escaped for use in HTML.
+        $url = s(reset($urls));
 
         // Work out size.
         if (!$width || !$height) {
@@ -827,7 +819,7 @@ class core_media_player_qt extends core_media_player {
         }
 
         // MIME type for object tag.
-        $mimetype = core_media::get_mimetype($firsturl);
+        $mimetype = core_media::get_mimetype($url);
 
         $fallback = core_media_player::PLACEHOLDER;
 
@@ -882,9 +874,8 @@ OET;
  */
 class core_media_player_rm extends core_media_player {
     public function embed($urls, $name, $width, $height, $options) {
-        // Show first URL.
-        $firsturl = reset($urls);
-        $url = $firsturl->out(true);
+        // Get first URL, escaped for use in HTML.
+        $url = s(reset($urls));
 
         // Get name to use as title.
         $info = s($this->get_name($name, $urls));
@@ -943,8 +934,8 @@ class core_media_player_swf extends core_media_player {
     public function embed($urls, $name, $width, $height, $options) {
         self::pick_video_size($width, $height);
 
-        $firsturl = reset($urls);
-        $url = $firsturl->out(true);
+        // Get first URL, escaped for use in HTML.
+        $url = s(reset($urls));
 
         $fallback = core_media_player::PLACEHOLDER;
         $output = <<<OET
