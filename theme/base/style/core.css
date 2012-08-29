@@ -139,6 +139,8 @@ form.popupform div {display: inline;}
 span.hide,
 div.hide {display:none;}
 .invisiblefieldset {display:inline;border-width:0;padding:0;margin:0;}
+/* Extra class for when accesshide text needs to be visible after all. */
+.showaccesshide .accesshide {position:static;font-weight:inherit;font-size:inherit;}
 /*Accessibility: Skip block link, for keyboard-only users. */
 a.skip-block,
 a.skip {position: absolute;top: -1000em;font-size: 0.85em;text-decoration:none;}

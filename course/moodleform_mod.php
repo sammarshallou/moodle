@@ -508,13 +508,19 @@ abstract class moodleform_mod extends moodleform {
 
             $grouparray = array();
             $grouparray[] =& $mform->createElement('select','conditiongradeitemid','',$gradeoptions);
-            $grouparray[] =& $mform->createElement('static', '', '',' '.get_string('grade_atleast','condition').' ');
-            $grouparray[] =& $mform->createElement('text', 'conditiongrademin','',array('size'=>3));
-            $grouparray[] =& $mform->createElement('static', '', '','% '.get_string('grade_upto','condition').' ');
-            $grouparray[] =& $mform->createElement('text', 'conditiongrademax','',array('size'=>3));
-            $grouparray[] =& $mform->createElement('static', '', '','%');
-            $group = $mform->createElement('group','conditiongradegroup',
-                get_string('gradecondition', 'condition'),$grouparray);
+            // The 'showaccesshide' here is necessary so that we can have labels
+            // for the text fields which are visible. (Omitting the label text
+            // altogether, or duplicating it, would both cause accessibility
+            // problems.)
+            $grouparray[] = $mform->createElement('static', '', '', '<span class="showaccesshide">');
+            $grouparray[] = $mform->createElement('text', 'conditiongrademin',
+                    get_string('grade_atleast', 'condition') . ' ', array('size' => 3));
+            $grouparray[] = $mform->createElement('static', '', '', '% ');
+            $grouparray[] = $mform->createElement('text', 'conditiongrademax',
+                    get_string('grade_upto', 'condition') . ' ', array('size' => 3));
+            $grouparray[] = $mform->createElement('static', '', '', '%</span>');
+            $group = $mform->createElement('group', 'conditiongradegroup',
+                    get_string('gradecondition', 'condition'), $grouparray);
 
             // Get version with condition info and store it so we don't ask
             // twice
