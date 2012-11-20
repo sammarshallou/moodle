@@ -484,7 +484,7 @@ class conditionlib_testcase extends advanced_testcase {
         condition_info::wipe_session_cache();
 
         $this->assertFalse($ci->is_available($text,false));
-        $this->assertEquals(get_string('requires_completion_1','condition','xxx'),$text);
+        $this->assertEquals(html_writer::tag('span',get_string('requires_completion_1','condition','xxx').' ',array('class'=>'conditionalrule requires_completion')),$text);
         completion_info::wipe_session_cache();
         $completion=new completion_info($DB->get_record('course',array('id'=>$courseid)));
         $completion->update_state($oldcm,COMPLETION_COMPLETE);
@@ -516,7 +516,7 @@ class conditionlib_testcase extends advanced_testcase {
         // Add a condition on a value existing...
         $ci->add_grade_condition($gradeitemid,null,null,true);
         $this->assertFalse($ci->is_available($text));
-        $this->assertEquals(get_string('requires_grade_any','condition','frog'),$text);
+        $this->assertEquals(html_writer::tag('span',get_string('requires_grade_any','condition','frog').' ',array('class'=>'conditionalrule requires_grade')),$text);
 
         // Fake it existing
         $DB->insert_record('grade_grades',(object)array(
@@ -532,7 +532,7 @@ class conditionlib_testcase extends advanced_testcase {
         $ci->add_grade_condition($gradeitemid,3.78001,null,true);
         condition_info::wipe_session_cache();
         $this->assertFalse($ci->is_available($text));
-        $this->assertEquals(get_string('requires_grade_min','condition','frog'),$text);
+        $this->assertEquals(html_writer::tag('span',get_string('requires_grade_min','condition','frog').' ',array('class'=>'conditionalrule requires_grade')),$text);
 
         // ...just on 3.78...
         $ci->wipe_conditions();
@@ -545,7 +545,7 @@ class conditionlib_testcase extends advanced_testcase {
         $ci->add_grade_condition($gradeitemid,null,3.78,true);
         condition_info::wipe_session_cache();
         $this->assertFalse($ci->is_available($text));
-        $this->assertEquals(get_string('requires_grade_max','condition','frog'),$text);
+        $this->assertEquals(html_writer::tag('span',get_string('requires_grade_max','condition','frog').' ',array('class'=>'conditionalrule requires_grade')),$text);
 
         // ...less than 3.78001
         $ci->wipe_conditions();
@@ -564,7 +564,7 @@ class conditionlib_testcase extends advanced_testcase {
         $ci->add_grade_condition($gradeitemid,4,5,true);
         condition_info::wipe_session_cache();
         $this->assertFalse($ci->is_available($text));
-        $this->assertEquals(get_string('requires_grade_range','condition','frog'),$text);
+        $this->assertEquals(html_writer::tag('span',get_string('requires_grade_range','condition','frog').' ',array('class'=>'conditionalrule requires_grade')),$text);
     }
 
     public function test_section_is_available() {
@@ -637,7 +637,7 @@ class conditionlib_testcase extends advanced_testcase {
 
         // Completion: Check
         $this->assertFalse($ci->is_available($text, false));
-        $this->assertEquals(get_string('requires_completion_1', 'condition', 'xxx'), $text);
+        $this->assertEquals(html_writer::tag('span',get_string('requires_completion_1', 'condition', 'xxx').' ',array('class'=>'conditionalrule requires_completion')), $text);
         completion_info::wipe_session_cache();
         $completion = new completion_info($DB->get_record('course', array('id' => $courseid)));
         $completion->update_state($cm, COMPLETION_COMPLETE);
@@ -670,7 +670,7 @@ class conditionlib_testcase extends advanced_testcase {
         $ci->wipe_conditions();
         $ci->add_grade_condition($gradeitemid, null, null, true);
         $this->assertFalse($ci->is_available($text));
-        $this->assertEquals(get_string('requires_grade_any', 'condition', 'frog'), $text);
+        $this->assertEquals(html_writer::tag('span',get_string('requires_grade_any', 'condition', 'frog').' ',array('class'=>'conditionalrule requires_grade')), $text);
 
         // Grade: Fake it existing
         $DB->insert_record('grade_grades', (object)array(
@@ -685,7 +685,7 @@ class conditionlib_testcase extends advanced_testcase {
         $ci->add_grade_condition($gradeitemid, 3.78001, null, true);
         condition_info_section::wipe_session_cache();
         $this->assertFalse($ci->is_available($text));
-        $this->assertEquals(get_string('requires_grade_min', 'condition', 'frog'), $text);
+        $this->assertEquals(html_writer::tag('span',get_string('requires_grade_min', 'condition', 'frog').' ',array('class'=>'conditionalrule requires_grade')), $text);
 
         // Grade: ...just on 3.78...
         $ci->wipe_conditions();
@@ -698,7 +698,7 @@ class conditionlib_testcase extends advanced_testcase {
         $ci->add_grade_condition($gradeitemid, null, 3.78, true);
         condition_info_section::wipe_session_cache();
         $this->assertFalse($ci->is_available($text));
-        $this->assertEquals(get_string('requires_grade_max', 'condition', 'frog'), $text);
+        $this->assertEquals(html_writer::tag('span',get_string('requires_grade_max', 'condition', 'frog').' ',array('class'=>'conditionalrule requires_grade')), $text);
 
         // Grade: ...less than 3.78001
         $ci->wipe_conditions();
@@ -717,7 +717,7 @@ class conditionlib_testcase extends advanced_testcase {
         $ci->add_grade_condition($gradeitemid, 4, 5, true);
         condition_info_section::wipe_session_cache();
         $this->assertFalse($ci->is_available($text));
-        $this->assertEquals(get_string('requires_grade_range', 'condition', 'frog'), $text);
+        $this->assertEquals(html_writer::tag('span',get_string('requires_grade_range', 'condition', 'frog').' ',array('class'=>'conditionalrule requires_grade')), $text);
 
         // Grouping: Not member
         $groupingid = $this->make_grouping($courseid, 'Grouping');
@@ -726,7 +726,7 @@ class conditionlib_testcase extends advanced_testcase {
         $ci = new condition_info_section((object)array('id' => $sectionid),
                 CONDITION_MISSING_EVERYTHING);
         $this->assertFalse($ci->is_available($text));
-        $this->assertEquals(trim(get_string('groupingnoaccess', 'condition')), $text);
+        $this->assertEquals(html_writer::tag('span',get_string('groupingnoaccess', 'condition'),array('class'=>'conditionalrule groupingnoaccess')), $text);
 
         // Grouping: Member
         $this->assertTrue(groups_add_member($groupid, $USER->id));
