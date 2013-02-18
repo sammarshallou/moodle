@@ -928,7 +928,7 @@ abstract class condition_info_base {
                     // Get all grades for the current course
                     $rs = $DB->get_recordset_sql('
                             SELECT
-                                gi.id,gg.finalgrade,gg.rawgrademin,gg.rawgrademax
+                                gi.id, gg.finalgrade, gi.grademin, gi.grademax
                             FROM
                                 {grade_items} gi
                                 LEFT JOIN {grade_grades} gg ON gi.id=gg.itemid AND gg.userid=?
@@ -940,8 +940,8 @@ abstract class condition_info_base {
                                 // No grade = false
                                 ? false
                                 // Otherwise convert grade to percentage
-                                : (($record->finalgrade - $record->rawgrademin) * 100) /
-                                    ($record->rawgrademax - $record->rawgrademin);
+                                : (($record->finalgrade - $record->grademin) * 100) /
+                                    ($record->grademax - $record->grademin);
 
                     }
                     $rs->close();
@@ -952,35 +952,46 @@ abstract class condition_info_base {
                         $SESSION->gradescorecache[$gradeitemid] = false;
                     }
                 } else {
-                    // Just get current grade
-                    $record = $DB->get_record('grade_grades', array(
-                        'userid'=>$USER->id, 'itemid'=>$gradeitemid));
-                    if ($record && !is_null($record->finalgrade)) {
-                        $score = (($record->finalgrade - $record->rawgrademin) * 100) /
-                            ($record->rawgrademax - $record->rawgrademin);
-                    } else {
-                        // Treat the case where row exists but is null, same as
-                        // case where row doesn't exist
-                        $score = false;
-                    }
-                    $SESSION->gradescorecache[$gradeitemid]=$score;
+                    // Just get single grade.
+                    $SESSION->gradescorecache[$gradeitemid] =
+                            self::get_percentage_grade($USER->id, $gradeitemid);
                 }
             }
             return $SESSION->gradescorecache[$gradeitemid];
         } else {
-            // Not the current user, so request the score individually
-            $record = $DB->get_record('grade_grades', array(
-                'userid'=>$userid, 'itemid'=>$gradeitemid));
-            if ($record && !is_null($record->finalgrade)) {
-                $score = (($record->finalgrade - $record->rawgrademin) * 100) /
-                    ($record->rawgrademax - $record->rawgrademin);
-            } else {
-                // Treat the case where row exists but is null, same as
-                // case where row doesn't exist
-                $score = false;
-            }
-            return $score;
+            // Not the current user, so request the score individually.
+            return self::get_percentage_grade($userid, $gradeitemid);
         }
+    }
+
+    /**
+     * Obtains a grade for the specified user as a percentage. (Note: There
+     * is also a 'bulk' equivalent to this code within get_cached_grade_score.)
+     *
+     * @param int $userid ID of required user
+     * @param int $gradeitemid ID of grade item
+     * @return mixed Percentage grade or false if no grade exists
+     */
+    private static function get_percentage_grade($userid, $gradeitemid) {
+        global $DB;
+        $record = $DB->get_record_sql('
+                SELECT
+                    gi.id, gg.finalgrade, gi.grademin, gi.grademax
+                FROM
+                    {grade_items} gi
+                    LEFT JOIN {grade_grades} gg ON gi.id = gg.itemid
+                WHERE
+                    gg.userid = ? AND gi.id = ?', array($userid, $gradeitemid),
+               IGNORE_MISSING);
+        if ($record && !is_null($record->finalgrade)) {
+            $score = (($record->finalgrade - $record->grademin) * 100) /
+                ($record->grademax - $record->grademin);
+        } else {
+            // Treat the case where row exists but is null, same as
+            // case where row doesn't exist.
+            $score = false;
+        }
+        return $score;
     }
 
     /**

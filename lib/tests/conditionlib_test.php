@@ -565,6 +565,25 @@ class conditionlib_testcase extends advanced_testcase {
         condition_info::wipe_session_cache();
         $this->assertFalse($ci->is_available($text));
         $this->assertEquals(get_string('requires_grade_range','condition','frog'),$text);
+
+        // Grade with scale other than 0-100. User has 4 on a 2-6 scale
+        // (equivalent to 50%).
+        $gradeitem2id = $DB->insert_record('grade_items', (object)array(
+                'courseid' => $courseid, 'itemname' => 'zombie', 'grademin' => 2,
+                'grademax' => 6));
+        $gradeid = $DB->insert_record('grade_grades', (object)array(
+                'itemid' => $gradeitem2id, 'userid' => $USER->id, 'finalgrade' => 4));
+        $ci->wipe_conditions();
+        $ci->add_grade_condition($gradeitem2id, 50, null, true);
+
+        // They have 50%, so it's available.
+        $this->assertTrue($ci->is_available($text));
+        condition_info_section::wipe_session_cache();
+
+        // It should not be available if the requirement was 50.00001%.
+        $ci->wipe_conditions();
+        $ci->add_grade_condition($gradeitem2id, 50.00001, null, true);
+        $this->assertFalse($ci->is_available($text));
     }
 
     public function test_section_is_available() {
