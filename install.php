@@ -168,6 +168,7 @@ $CFG->langlocalroot        = $CFG->dataroot.'/lang';
 $CFG->directorypermissions = isset($distro->directorypermissions) ? $distro->directorypermissions : 00777; // let distros set dir permissions
 $CFG->running_installer    = true;
 $CFG->early_install_lang   = true;
+$CFG->developerdebug       = true;
 
 // Require all needed libs
 require_once($CFG->libdir.'/setuplib.php');
