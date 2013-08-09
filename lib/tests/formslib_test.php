@@ -463,6 +463,42 @@ class core_formslib_testcase extends advanced_testcase {
         $data = $mform->get_data();
         $this->assertSame($expectedvalues, (array) $data);
     }
+
+    /**
+     * Test that the 'last field' check (intended to ensure that the entire
+     * content of the form is received by PHP) works.
+     */
+    public function test_last_field_checks() {
+        // First generate the form without a submission.
+        $form = new formslib_short_test_form();
+        $html = $form->render();
+
+        // Check the last field marker exists and is immediately before the
+        // closing tags for the form.
+        $this->assertEquals(1, preg_match('~<input[^>]+' . moodleform::LAST_FIELD_MARKER .
+                '[^>]+>\s*</div>\s*</form>~', $html));
+
+        // Now pretend there is a submission with the last field marker.
+        $_POST = array(
+                'sesskey' => sesskey(),
+                '_qf__formslib_short_test_form' => 1,
+                'test' => 'value',
+                moodleform::LAST_FIELD_MARKER => 1
+                );
+        $form = new formslib_short_test_form();
+        $data = $form->get_data();
+        $this->assertNotNull($data);
+
+        // Check the marker is not included in returned data.
+        $this->assertFalse(isset($data->{moodleform::LAST_FIELD_MARKER}));
+        $this->assertEquals('value', $data->test);
+
+        // Pretend there is a new submission with the last field marker missing.
+        unset($_POST[moodleform::LAST_FIELD_MARKER]);
+        $this->setExpectedException('moodle_exception', 'Form data is incomplete');
+        $form = new formslib_short_test_form();
+    }
+
 }
 
 
@@ -494,6 +530,18 @@ class formslib_test_form extends moodleform {
             $this->_form->createElement('radio', 'repeatradio', 'Choose {no}', 'Two', 2),
         );
         $this->repeat_elements($repeatels, 3, array(), 'numradios', 'addradios');
+    }
+}
+
+/**
+ * Short test form used for the 'last field' test.
+ */
+class formslib_short_test_form extends moodleform {
+    public function definition() {
+        $mform = $this->_form;
+
+        $mform->addElement('text', 'test', 'label');
+        $mform->setType('test', PARAM_TEXT);
     }
 }
 
