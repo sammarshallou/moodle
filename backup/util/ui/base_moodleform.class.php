@@ -73,6 +73,7 @@ abstract class base_moodleform extends moodleform {
      */
     function __construct(base_ui_stage $uistage, $action=null, $customdata=null, $method='post', $target='', $attributes=null, $editable=true) {
         $this->uistage = $uistage;
+        self::expand_combined_fields();
         parent::__construct($action, $customdata, $method, $target, $attributes, $editable);
     }
     /**
@@ -89,7 +90,34 @@ abstract class base_moodleform extends moodleform {
                 $stage = $mform->addElement('hidden', $name, $value);
             }
         }
+        // Add a hidden field, to be used by JavaScript code that combines multiple field
+        // information into this single field if necessary.
+        $mform->addElement('hidden', 'combinedfields', '');
+        $mform->setType('combinedfields', PARAM_RAW);
     }
+
+    /**
+     * Where fields have been combined to make the POST data smaller, modifies
+     * POST data to remove the combined value and replace it with specific
+     * individual values. This happens prior to form validation, so should not
+     * defeat any security checks.
+     */
+    private static function expand_combined_fields() {
+        if (!empty($_POST['combinedfields'])) {
+            $matches = array();
+            preg_match_all('~([^,=]+)=([^,=]+)~',
+                    $_POST['combinedfields'], $matches, PREG_SET_ORDER);
+            foreach ($matches as $match) {
+                $name = urldecode($match[1]);
+                $value = urldecode($match[2]);
+                if (!array_key_exists($name, $_POST)) {
+                    $_POST[$name] = $value;
+                }
+            }
+            $_POST['combinedfields'] = '';
+        }
+    }
+
     /**
      * Definition applied after the data is organised.. why's it here? because I want
      * to add elements on the fly.
@@ -327,6 +355,13 @@ abstract class base_moodleform extends moodleform {
 
         $PAGE->requires->yui_module('moodle-backup-backupselectall', 'M.core_backup.select_all_init',
                 array(array('select' => get_string('select'), 'all' => get_string('all'), 'none' => get_string('none'))));
+
+        // PHP version 5.3.9+ has the max_input_vars restriction.
+        $maxinputvars = (int)ini_get('max_input_vars');
+        if ($maxinputvars) {
+            $PAGE->requires->yui_module('moodle-backup-handlebigforms',
+                    'M.core_backup.handle_big_forms', array($maxinputvars));
+        }
 
         parent::display();
     }
