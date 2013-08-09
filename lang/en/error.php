@@ -423,6 +423,7 @@ $string['onlyeditingteachers'] = 'Only editing teachers can do that';
 $string['onlyeditown'] = 'You can only edit your own information';
 $string['orderidnotfound'] = 'Order ID {$a} not found';
 $string['pagenotexist'] = 'An unusual error occurred (tried to reach a page that does not exist)';
+$string['partialsubmission'] = 'Form data is incomplete and cannot be processed. (The administrator of this server should consider increasing the PHP max_input_vars setting.)';
 $string['pathdoesnotstartslash'] = 'No valid arguments supplied, path does not start with slash!';
 $string['pleasereport'] = 'If you have time, please let us know what you were trying to do when the error occurred:';
 $string['pluginrequirementsnotmet'] = 'Plugin "{$a->pluginname}" ({$a->pluginversion}) could not be installed.  It requires a newer version of Moodle (currently you are using {$a->currentmoodle}, you need {$a->requiremoodle}).';

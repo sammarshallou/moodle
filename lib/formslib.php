@@ -134,6 +134,11 @@ abstract class moodleform {
     protected $_definition_finalized = false;
 
     /**
+     * @var string Hidden field name indicates that form is completely received
+     */
+    const LAST_FIELD_MARKER = '_qf__lastfield';
+
+    /**
      * The constructor function calls the abstract function definition() and it will then
      * process and clean and attempt to validate incoming data.
      *
@@ -274,6 +279,10 @@ abstract class moodleform {
                 print_error('invalidsesskey');
             }
             $files = $_FILES;
+            // Check that the last field is present.
+            if (!array_key_exists(self::LAST_FIELD_MARKER, $submission)) {
+                print_error('partialsubmission');
+            }
         } else {
             $submission = array();
             $files = array();
@@ -591,6 +600,8 @@ abstract class moodleform {
             $data = $mform->exportValues();
             unset($data['sesskey']); // we do not need to return sesskey
             unset($data['_qf__'.$this->_formname]);   // we do not need the submission marker too
+            // We also do not need the last field marker.
+            unset($data[self::LAST_FIELD_MARKER]);
             if (empty($data)) {
                 return NULL;
             } else {
@@ -614,6 +625,8 @@ abstract class moodleform {
             $data = $mform->exportValues();
             unset($data['sesskey']); // we do not need to return sesskey
             unset($data['_qf__'.$this->_formname]);   // we do not need the submission marker too
+            // We also do not need the last field marker.
+            unset($data[self::LAST_FIELD_MARKER]);
             if (empty($data)) {
                 return NULL;
             } else {
@@ -1251,6 +1264,7 @@ abstract class moodleform {
             $formidentifier = get_called_class();
         }
         $simulatedsubmitteddata['_qf__'.$formidentifier] = 1;
+        $simulatedsubmitteddata[self::LAST_FIELD_MARKER] = 1;
         $simulatedsubmitteddata['sesskey'] = sesskey();
         if (strtolower($method) === 'get') {
             $_GET = $simulatedsubmitteddata;
@@ -2528,6 +2542,10 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
             $this->_hiddenHtml = '';
         }
         parent::finishForm($form);
+        // Add a last field at very end of form to detect PHP max_input_vars problems.
+        $this->_html = str_replace('</form>',
+                '<div><input type="hidden" name="' . moodleform::LAST_FIELD_MARKER .
+                '" value="1" /></div></form>', $this->_html);
         if (!$form->isFrozen()) {
             $args = $form->getLockOptionObject();
             if (count($args[1]) > 0) {
