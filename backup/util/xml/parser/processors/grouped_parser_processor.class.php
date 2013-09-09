@@ -55,6 +55,16 @@ abstract class grouped_parser_processor extends simplified_parser_processor {
      */
     protected $parentcacheavailablesize = 2048;
 
+    /**
+     * @var array Cache for grouped_parent_exists
+     */
+    protected $existscache = array();
+
+    /**
+     * @var integer Remaining space for exists cache.
+     */
+    protected $existscacheavailablesize = 2048;
+
     public function __construct(array $paths = array()) {
         $this->groupedpaths = array();
         $this->currentdata = null;
@@ -162,15 +172,27 @@ abstract class grouped_parser_processor extends simplified_parser_processor {
      * false if not
      */
     protected function grouped_parent_exists($path) {
-        $parentpath = $this->get_parent_path($path);
+        if (!isset($this->existscache[$path])) {
+            $parentpath = $this->get_parent_path($path);
+            $result = false;
 
-        while ($parentpath != '/') {
-            if ($this->path_is_grouped($parentpath)) {
-                return $parentpath;
+            while ($parentpath != '/') {
+                if ($this->path_is_grouped($parentpath)) {
+                    $result = $parentpath;
+                    break;
+                }
+                $parentpath = $this->get_parent_path($parentpath);
             }
-            $parentpath = $this->get_parent_path($parentpath);
+
+            $this->existscache[$path] = $result;
+            $this->existscacheavailablesize--;
+            if ($this->existscacheavailablesize < 0) {
+                // Same cache logic as parentcache, see below.
+                $this->existscache = array_slice($this->existscache, 200, null, true);
+                $this->existscacheavailablesize += 200;
+            }
         }
-        return false;
+        return $this->existscache[$path];
     }
 
     /**
