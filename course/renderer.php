@@ -665,7 +665,8 @@ class core_course_renderer extends plugin_renderer_base {
                 // off the JS.
                 $extraclass = '';
                 if (!empty($CFG->enableavailability) &&
-                        condition_info::completion_value_used_as_condition($course, $mod)) {
+                        class_exists('availability_completion\condition') &&
+                        availability_completion\condition::completion_value_used($course, $mod->id)) {
                     $extraclass = ' preventjs';
                 }
                 $output .= html_writer::start_tag('form', array('method' => 'post',
@@ -892,13 +893,10 @@ class core_course_renderer extends plugin_renderer_base {
                 if (!$mod->visible) {
                     $hidinfoclass = 'hide';
                 }
-                $ci = new condition_info($mod);
+                $ci = new \core_availability\info_module($mod);
                 $fullinfo = $ci->get_full_information();
-                if($fullinfo) {
-                    return '<div class="availabilityinfo '.$hidinfoclass.'">'.get_string($mod->showavailability
-                        ? 'userrestriction_visible'
-                        : 'userrestriction_hidden','condition',
-                        $fullinfo).'</div>';
+                if ($fullinfo) {
+                    return html_writer::div($fullinfo, 'availabilityinfo ' . $hidinfoclass);
                 }
             }
         }

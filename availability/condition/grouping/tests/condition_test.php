@@ -38,6 +38,9 @@ class availability_grouping_condition_testcase extends advanced_testcase {
         $this->resetAfterTest();
         $CFG->enableavailability = true;
 
+        // Erase static cache before test.
+        condition::wipe_static_cache();
+
         // Make a test course and user.
         $generator = $this->getDataGenerator();
         $course = $generator->create_course();

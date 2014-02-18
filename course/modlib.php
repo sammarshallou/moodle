@@ -78,7 +78,7 @@ function add_moduleinfo($moduleinfo, $course, $mform = null) {
         $newcm->availablefrom             = $moduleinfo->availablefrom;
         $newcm->availableuntil            = $moduleinfo->availableuntil;
         $newcm->showavailability          = $moduleinfo->showavailability;
-        $newcm->availability              = $moduleinfo->availability;
+        $newcm->availability = !empty($moduleinfo->availability) ? $moduleinfo->availability : null;
     }
     if (isset($moduleinfo->showdescription)) {
         $newcm->showdescription = $moduleinfo->showdescription;
@@ -477,7 +477,7 @@ function update_moduleinfo($cm, $moduleinfo, $course, $mform = null) {
         $cm->availablefrom             = $moduleinfo->availablefrom;
         $cm->availableuntil            = $moduleinfo->availableuntil;
         $cm->showavailability          = $moduleinfo->showavailability;
-        if ($moduleinfo->availability === '') {
+        if (!property_exists($moduleinfo, 'availability') || $moduleinfo->availability === '') {
             $cm->availability = null;
         } else {
             $cm->availability = $moduleinfo->availability;

@@ -434,14 +434,10 @@ abstract class format_section_renderer_base extends plugin_renderer_base {
             $o .= $section->availableinfo;
             $o .= html_writer::end_tag('div');
         } else if ($canviewhidden && !empty($CFG->enableavailability) && $section->visible) {
-            $ci = new condition_info_section($section);
+            $ci = new \core_availability\info_section($section);
             $fullinfo = $ci->get_full_information();
             if ($fullinfo) {
-                $o .= html_writer::start_tag('div', array('class' => 'availabilityinfo'));
-                $o .= get_string(
-                        ($section->showavailability ? 'userrestriction_visible' : 'userrestriction_hidden'),
-                        'condition', $fullinfo);
-                $o .= html_writer::end_tag('div');
+                $o .= html_writer::div($fullinfo, 'availabilityinfo');
             }
         }
         return $o;
