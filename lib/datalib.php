@@ -1548,13 +1548,18 @@ function instance_is_visible($moduletype, $module) {
  * @global object
  * @uses DEBUG_DEVELOPER
  * @uses CONTEXT_MODULE
- * @uses CONDITION_MISSING_EXTRATABLE
  * @param object $cm object
  * @param int $userid empty means current user
  * @return bool Success
  */
 function coursemodule_visible_for_user($cm, $userid=0) {
     global $USER,$CFG;
+
+    // NOTE (sam): I modified this function to use the new conditional
+    // availability API. However, it blatantly doesn't work correctly. Is it
+    // used any more? Maybe we could deprecate it? If it is still required,
+    // we should replace it with just calling get_fast_modinfo, finding the $cm,
+    // and returning $cm->uservisible.
 
     if (empty($cm->id)) {
         debugging("Incorrect course module parameter!", DEBUG_DEVELOPER);
@@ -1567,8 +1572,7 @@ function coursemodule_visible_for_user($cm, $userid=0) {
         return false;
     }
     if ($CFG->enableavailability) {
-        require_once($CFG->libdir.'/conditionlib.php');
-        $ci=new condition_info($cm,CONDITION_MISSING_EXTRATABLE);
+        $ci = new \core_availability\info_module($cm);
         if(!$ci->is_available($cm->availableinfo,false,$userid) and
             !has_capability('moodle/course:viewhiddenactivities',
                 context_module::instance($cm->id), $userid)) {

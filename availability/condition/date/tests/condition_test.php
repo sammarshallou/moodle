@@ -38,6 +38,10 @@ class availability_date_condition_testcase extends advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
+        // Set server timezone for test. (Important as otherwise the timezone
+        // could be anything - this is modified by other unit tests, too.)
+        date_default_timezone_set('UTC');
+
         // SEt user to GMT+5.
         $USER->timezone = 5;
 
