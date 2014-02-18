@@ -78,7 +78,7 @@ function add_moduleinfo($moduleinfo, $course, $mform = null) {
         $newcm->availablefrom             = $moduleinfo->availablefrom;
         $newcm->availableuntil            = $moduleinfo->availableuntil;
         $newcm->showavailability          = $moduleinfo->showavailability;
-        $newcm->availability              = $moduleinfo->availability;
+        $newcm->availability = !empty($moduleinfo->availability) ? $moduleinfo->availability : null;
     }
     if (isset($moduleinfo->showdescription)) {
         $newcm->showdescription = $moduleinfo->showdescription;

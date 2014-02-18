@@ -1751,8 +1751,9 @@ class cm_info implements IteratorAggregate {
 
         if (!empty($CFG->enableavailability)) {
             require_once($CFG->libdir. '/conditionlib.php');
-            // Get availability information
-            $ci = new condition_info($this);
+            // Get availability information.
+            $ci = new \core_availability\info_module($this);
+
             // Note that the modinfo currently available only includes minimal details (basic data)
             // but we know that this function does not need anything more than basic data.
             $this->available = $ci->is_available($this->availableinfo, true,
@@ -1895,12 +1896,23 @@ class cm_info implements IteratorAggregate {
     }
 
     /**
-     * Checks whether the module's conditional access settings mean that the user cannot see the activity at all
+     * Checks whether the module's conditional access settings mean that the
+     * user cannot see the activity at all
+     *
+     * This is deprecated because it is confusing (name sounds like it's about
+     * access restriction but it is actually about display), is not used
+     * anywhere, and is not necessary. Nobody (outside conditional libraries)
+     * should care what it is that restricted something.
      *
      * @return bool True if the user cannot see the module. False if the activity is either available or should be greyed out.
+     * @deprecated since 2.7
      */
     public function is_user_access_restricted_by_conditional_access() {
         global $CFG;
+        debugging('cm_info::is_user_access_restricted_by_conditional_access() ' .
+                'is deprecated; this function is not needed (use $cm->uservisible ' .
+                'and $cm->availableinfo) to decide whether it should be available ' .
+                'or appear)', DEBUG_DEVELOPER);
 
         if (empty($CFG->enableavailability)) {
             return false;
@@ -1911,22 +1923,9 @@ class cm_info implements IteratorAggregate {
             return null;
         }
 
-        // If module will always be visible anyway (but greyed out), don't bother checking anything else
-        if ($this->get_show_availability() == CONDITION_STUDENTVIEW_SHOW) {
-            return false;
-        }
-
-        // Can the user see hidden modules?
-        if (has_capability('moodle/course:viewhiddenactivities', $this->get_context(), $userid)) {
-            return false;
-        }
-
-        // Is the module hidden due to unmet conditions?
-        if (!$this->get_available()) {
-            return true;
-        }
-
-        return false;
+        // Return false if user can access the activity, or if its availability
+        // info is set (= should be displayed even though not accessible).
+        return !$this->get_user_visible() && !$this->get_available_info();
     }
 
     /**
@@ -2504,8 +2503,8 @@ class section_info implements IteratorAggregate {
         }
         if (!empty($CFG->enableavailability)) {
             require_once($CFG->libdir. '/conditionlib.php');
-            // Get availability information
-            $ci = new condition_info_section($this);
+            // Get availability information.
+            $ci = new \core_availability\info_section($this);
             $this->_available = $ci->is_available($this->_availableinfo, true,
                     $userid, $this->modinfo);
             if ($this->_availableinfo === '' && $this->_groupingid) {
@@ -2631,18 +2630,6 @@ class section_info implements IteratorAggregate {
         unset($section->section);
         // Sequence stored implicity in modinfo $sections array
         unset($section->sequence);
-
-        // Add availability data if turned on
-        if ($CFG->enableavailability) {
-            require_once($CFG->dirroot . '/lib/conditionlib.php');
-            condition_info_section::fill_availability_conditions($section);
-            if (count($section->conditionscompletion) == 0) {
-                unset($section->conditionscompletion);
-            }
-            if (count($section->conditionsgrade) == 0) {
-                unset($section->conditionsgrade);
-            }
-        }
 
         // Remove default data
         foreach (self::$sectioncachedefaults as $field => $value) {

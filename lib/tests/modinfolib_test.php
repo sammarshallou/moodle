@@ -58,27 +58,17 @@ class core_modinfolib_testcase extends advanced_testcase {
                 array('course' => $course->id),
                 array('completion' => 1));
 
-        // Generate the module and add availability conditions.
-        $conditionscompletion = array($prereqforum->cmid => COMPLETION_COMPLETE);
-        $conditionsgrade = array(666 => (object)array('min' => 0.4, 'max' => null, 'name' => '!missing'));
-        $conditionsfield = array('email' => (object)array(
-            'fieldname' => 'email',
-            'operator' => 'contains',
-            'value' => 'test'
-        ));
-        $sectiondb = $DB->get_record('course_sections', array('course' => $course->id, 'section' => 2));
-        $ci = new condition_info_section((object)array('id' => $sectiondb->id), CONDITION_MISSING_EVERYTHING);
-        foreach ($conditionscompletion as $cmid => $requiredcompletion) {
-            $ci->add_completion_condition($cmid, $requiredcompletion);
-        }
-        foreach ($conditionsgrade as $gradeid => $conditiongrade) {
-            $ci->add_grade_condition($gradeid, $conditiongrade->min, $conditiongrade->max, true);
-        }
-        foreach ($conditionsfield as $conditionfield) {
-            $ci->add_user_field_condition($conditionfield->fieldname, $conditionfield->operator, $conditionfield->value);
-        }
-        // Direct calls to condition_info_section methods do not reset the course cache. Do it manually.
+        // Add availability conditions.
+        $availability = '{"op":"&","showc":[true,true,true],"c":[' .
+                '{"type":"completion","cm":' . $prereqforum->cmid . ',"e":"' .
+                    COMPLETION_COMPLETE . '"},' .
+                '{"type":"grade","id":666,"min":0.4},' .
+                '{"type":"profile","op":"contains","sf":"email","v":"test"}' .
+                ']}';
+        $DB->set_field('course_sections', 'availability', $availability,
+                array('course' => $course->id, 'section' => 2));
         rebuild_course_cache($course->id, true);
+        $sectiondb = $DB->get_record('course_sections', array('course' => $course->id, 'section' => 2));
 
         // Create and enrol a student.
         $studentrole = $DB->get_record('role', array('shortname' => 'student'), '*', MUST_EXIST);
@@ -105,9 +95,7 @@ class core_modinfolib_testcase extends advanced_testcase {
         $this->assertEquals($sectiondb->availableuntil, $si->availableuntil);
         $this->assertEquals($sectiondb->groupingid, $si->groupingid);
         $this->assertEquals($sectiondb->sequence, $si->sequence); // Since this section does not contain invalid modules.
-        $this->assertEquals($conditionscompletion, $si->conditionscompletion);
-        $this->assertEquals($conditionsgrade, $si->conditionsgrade);
-        $this->assertEquals($conditionsfield, $si->conditionsfield);
+        $this->assertEquals($availability, $si->availability);
 
         // Dynamic fields, just test that they can be retrieved (must be carefully tested in each activity type).
         $this->assertEquals(0, $si->available);
@@ -142,31 +130,20 @@ class core_modinfolib_testcase extends advanced_testcase {
                 array('course' => $course->id),
                 array('completion' => 1));
 
-        // Generate the module and add availability conditions.
-        $conditionscompletion = array($prereqforum->cmid => COMPLETION_COMPLETE);
-        $conditionsgrade = array(666 => (object)array('min' => 0.4, 'max' => null, 'name' => '!missing'));
-        $conditionsfield = array('email' => (object)array(
-            'fieldname' => 'email',
-            'operator' => 'contains',
-            'value' => 'test'
-        ));
+        // Generate module and add availability conditions.
+        $availability = '{"op":"&","showc":[true,true,true],"c":[' .
+                '{"type":"completion","cm":' . $prereqforum->cmid . ',"e":"' .
+                    COMPLETION_COMPLETE . '"},' .
+                '{"type":"grade","id":666,"min":0.4},' .
+                '{"type":"profile","op":"contains","sf":"email","v":"test"}' .
+                ']}';
         $assign = $this->getDataGenerator()->create_module('assign',
                 array('course' => $course->id),
                 array('idnumber' => 123,
                     'groupmode' => VISIBLEGROUPS,
                     'availablefrom' => time() + 3600,
-                    'availableuntil' => time() + 5*3600));
-        $ci = new condition_info((object)array('id' => $assign->cmid), CONDITION_MISSING_EVERYTHING);
-        foreach ($conditionscompletion as $cmid => $requiredcompletion) {
-            $ci->add_completion_condition($cmid, $requiredcompletion);
-        }
-        foreach ($conditionsgrade as $gradeid => $conditiongrade) {
-            $ci->add_grade_condition($gradeid, $conditiongrade->min, $conditiongrade->max, true);
-        }
-        foreach ($conditionsfield as $conditionfield) {
-            $ci->add_user_field_condition($conditionfield->fieldname, $conditionfield->operator, $conditionfield->value);
-        }
-        // Direct access to condition_info functions does not reset course cache, do it manually.
+                    'availableuntil' => time() + 5*3600,
+                    'availability' => $availability));
         rebuild_course_cache($course->id, true);
 
         // Retrieve all related records from DB.
@@ -228,9 +205,7 @@ class core_modinfolib_testcase extends advanced_testcase {
         $this->assertEquals($cachedcminfo->name, $cm->name);
         $this->assertEquals($sectiondb->section, $cm->sectionnum);
         $this->assertEquals($moduledb->section, $cm->section);
-        $this->assertEquals($conditionscompletion, $cm->conditionscompletion);
-        $this->assertEquals($conditionsgrade, $cm->conditionsgrade);
-        $this->assertEquals($conditionsfield, $cm->conditionsfield);
+        $this->assertEquals($availability, $cm->availability);
         $this->assertEquals(context_module::instance($moduledb->id), $cm->context);
         $this->assertEquals($modnamessingular['assign'], $cm->modfullname);
         $this->assertEquals($modnamesplural['assign'], $cm->modplural);
@@ -553,12 +528,14 @@ class core_modinfolib_testcase extends advanced_testcase {
         $course = $this->getDataGenerator()->create_course();
         // 1. Create an activity that is currently unavailable and hidden entirely (for students).
         $assign1 = $this->getDataGenerator()->create_module('assign', array('course'=>$course->id),
-                array('availablefrom' => time() + 10000, 'showavailability' => CONDITION_STUDENTVIEW_HIDE));
+                array('availability' => '{"op":"|","show":false,"c":[' .
+                '{"type":"date","d":">=","t":' . (time() + 10000) . '}]}'));
         // 2. Create an activity that is currently available.
         $assign2 = $this->getDataGenerator()->create_module('assign', array('course'=>$course->id));
         // 3. Create an activity that is currently unavailable and set to be greyed out.
         $assign3 = $this->getDataGenerator()->create_module('assign', array('course'=>$course->id),
-                array('availablefrom' => time() + 10000, 'showavailability' => CONDITION_STUDENTVIEW_SHOW));
+                array('availability' => '{"op":"|","show":true,"c":[' .
+                '{"type":"date","d":">=","t":' . (time() + 10000) . '}]}'));
 
         // Set up a teacher.
         $coursecontext = context_course::instance($course->id);
@@ -569,7 +546,12 @@ class core_modinfolib_testcase extends advanced_testcase {
         // If conditional availability is disabled the activity will always be unrestricted.
         $CFG->enableavailability = false;
         $cm_info = get_fast_modinfo($course)->instances['assign'][$assign1->id];
+        $this->assertTrue($cm_info->uservisible);
+
+        // Test deprecated function.
         $this->assertFalse($cm_info->is_user_access_restricted_by_conditional_access());
+        $this->assertEquals(1, count(phpunit_util::get_debugging_messages()));
+        phpunit_util::reset_debugging();
 
         // Turn on conditional availability and reset the get_fast_modinfo cache.
         $CFG->enableavailability = true;
@@ -577,30 +559,39 @@ class core_modinfolib_testcase extends advanced_testcase {
 
         // The unavailable, hidden entirely activity should now be restricted.
         $cm_info = get_fast_modinfo($course)->instances['assign'][$assign1->id];
+        $this->assertFalse($cm_info->uservisible);
         $this->assertFalse($cm_info->available);
-        $this->assertEquals(CONDITION_STUDENTVIEW_HIDE, $cm_info->showavailability);
+        $this->assertEquals('', $cm_info->availableinfo);
+
+        // Test deprecated function.
         $this->assertTrue($cm_info->is_user_access_restricted_by_conditional_access());
+        $this->assertEquals(1, count(phpunit_util::get_debugging_messages()));
+        phpunit_util::reset_debugging();
 
         // If the activity is available it should not be restricted.
         $cm_info = get_fast_modinfo($course)->instances['assign'][$assign2->id];
+        $this->assertTrue($cm_info->uservisible);
         $this->assertTrue($cm_info->available);
-        $this->assertFalse($cm_info->is_user_access_restricted_by_conditional_access());
 
         // If the activity is unavailable and set to be greyed out it should not be restricted.
         $cm_info = get_fast_modinfo($course)->instances['assign'][$assign3->id];
+        $this->assertFalse($cm_info->uservisible);
         $this->assertFalse($cm_info->available);
-        $this->assertEquals(CONDITION_STUDENTVIEW_SHOW, $cm_info->showavailability);
+        $this->assertNotEquals('', (string)$cm_info->availableinfo);
+
+        // Test deprecated function (weird case, it actually checks visibility).
         $this->assertFalse($cm_info->is_user_access_restricted_by_conditional_access());
+        $this->assertEquals(1, count(phpunit_util::get_debugging_messages()));
+        phpunit_util::reset_debugging();
 
         // If the activity is unavailable and set to be hidden entirely its restricted unless user has 'moodle/course:viewhiddenactivities'.
         // Switch to a teacher and reload the context info.
         $this->setUser($teacher);
+        $this->assertTrue(has_capability('moodle/course:viewhiddenactivities', $coursecontext));
         $cm_info = get_fast_modinfo($course)->instances['assign'][$assign1->id];
+        $this->assertTrue($cm_info->uservisible);
         $this->assertFalse($cm_info->available);
         $this->assertEquals(CONDITION_STUDENTVIEW_HIDE, $cm_info->showavailability);
-
-        $this->assertTrue(has_capability('moodle/course:viewhiddenactivities', $coursecontext));
-        $this->assertFalse($cm_info->is_user_access_restricted_by_conditional_access());
     }
 
     public function test_is_user_access_restricted_by_capability() {
