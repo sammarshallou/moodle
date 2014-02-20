@@ -39,6 +39,7 @@ class core_grade_grade_testcase extends grade_base_testcase {
         $this->sub_test_grade_grade_is_locked();
         $this->sub_test_grade_grade_set_hidden();
         $this->sub_test_grade_grade_is_hidden();
+        $this->sub_test_grade_grade_events();
     }
 
     protected function sub_test_grade_grade_construct() {
@@ -192,5 +193,55 @@ class core_grade_grade_testcase extends grade_base_testcase {
 
         $grade->hidden = time()+666;
         $this->assertTrue($grade->is_hidden());
+    }
+
+    /**
+     * Tests events generated when modifying user grades.
+     */
+    protected function sub_test_grade_grade_events() {
+        $sink = $this->redirectEvents();
+
+        // Insert grade.
+        $grade = new grade_grade();
+        $grade->itemid = $this->grade_items[0]->id;
+        $grade->userid = 14;
+        $grade->rawgrade = 37;
+        $grade->rawgrademax = 100;
+        $grade->rawgrademin = 0;
+        $grade->insert();
+
+        // Check the event was triggered and check important data.
+        $result = $sink->get_events();
+        $sink->clear();
+        $this->assertEquals(1, count($result));
+        $event = reset($result);
+        $this->assertEquals('core\event\grade_created', get_class($event));
+        $this->assertEquals(14, $event->relateduserid);
+        $this->assertEquals($this->course->id, $event->courseid);
+
+        // Update grade.
+        $grade->rawgrade = 42;
+        $grade->update();
+
+        // Check the event was triggered and check important data.
+        $result = $sink->get_events();
+        $sink->clear();
+        $this->assertEquals(1, count($result));
+        $event = reset($result);
+        $this->assertEquals('core\event\grade_updated', get_class($event));
+        $this->assertEquals(14, $event->relateduserid);
+        $this->assertEquals($this->course->id, $event->courseid);
+
+        // Delete grade.
+        $grade->delete();
+
+        // Check the event was triggered and check important data.
+        $result = $sink->get_events();
+        $sink->clear();
+        $this->assertEquals(1, count($result));
+        $event = reset($result);
+        $this->assertEquals('core\event\grade_deleted', get_class($event));
+        $this->assertEquals(14, $event->relateduserid);
+        $this->assertEquals($this->course->id, $event->courseid);
     }
 }

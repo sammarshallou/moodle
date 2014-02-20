@@ -2139,4 +2139,27 @@ class grade_item extends grade_object {
         }
         return parent::can_control_visibility();
     }
+
+    /**
+     * Fires an event when the grade item changes so that any caches can be
+     * cleared, etc.
+     *
+     * @param bool $deleted True if item was actually deleted
+     * @param bool $inserted True if it was actually inserted
+     */
+    protected function notify_changed($deleted, $inserted) {
+        $eventparams = array(
+            'context' => context_course::instance($this->courseid),
+            'courseid' => $this->courseid,
+            'objectid' => $this->id,
+        );
+        if ($deleted) {
+            $event = \core\event\grade_item_deleted::create($eventparams);
+        } else if ($inserted) {
+            $event = \core\event\grade_item_created::create($eventparams);
+        } else {
+            $event = \core\event\grade_item_updated::create($eventparams);
+        }
+        $event->trigger();
+    }
 }

@@ -250,7 +250,7 @@ abstract class grade_object {
             $DB->insert_record($this->table.'_history', $data);
         }
 
-        $this->notify_changed(false);
+        $this->notify_changed(false, false);
         return true;
     }
 
@@ -281,7 +281,7 @@ abstract class grade_object {
                 $data->loggeduser   = $USER->id;
                 $DB->insert_record($this->table.'_history', $data);
             }
-            $this->notify_changed(true);
+            $this->notify_changed(true, false);
             return true;
 
         } else {
@@ -344,7 +344,7 @@ abstract class grade_object {
             $DB->insert_record($this->table.'_history', $data);
         }
 
-        $this->notify_changed(false);
+        $this->notify_changed(false, true);
         return $this->id;
     }
 
@@ -394,9 +394,10 @@ abstract class grade_object {
      * deleted in the database. Default does nothing, can be overridden to
      * hook in special behaviour.
      *
-     * @param bool $deleted
+     * @param bool $deleted True if object was deleted
+     * @param bool $inserted True if object was inserted
      */
-    function notify_changed($deleted) {
+    protected function notify_changed($deleted, $inserted) {
     }
 
     /**

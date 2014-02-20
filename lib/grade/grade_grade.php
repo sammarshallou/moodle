@@ -770,8 +770,9 @@ class grade_grade extends grade_object {
      * has changed, and clear up a possible score cache.
      *
      * @param bool $deleted True if grade was actually deleted
+     * @param bool $inserted True if it was actually inserted
      */
-    function notify_changed($deleted) {
+    protected function notify_changed($deleted, $inserted) {
         global $CFG;
 
         // Ignore during restore
@@ -781,6 +782,25 @@ class grade_grade extends grade_object {
         if (!empty($restore->backup_unique_code)) {
             return;
         }
+
+        // Use event system to inform other parts of the system that
+        // the user's grade changed.
+        $item = $this->load_grade_item();
+        $eventparams = array(
+            'context' => context_course::instance($item->courseid),
+            'courseid' => $item->courseid,
+            'objectid' => $this->id,
+            // I didn't use 'userid' because it might not be them doing the change.
+            'relateduserid' => $this->userid,
+        );
+        if ($deleted) {
+            $event = \core\event\grade_deleted::create($eventparams);
+        } else if ($inserted) {
+            $event = \core\event\grade_created::create($eventparams);
+        } else {
+            $event = \core\event\grade_updated::create($eventparams);
+        }
+        $event->trigger();
 
         // Inform conditionlib since it may cache the grades for conditional availability of modules or sections.
         if (!empty($CFG->enableavailability)) {
