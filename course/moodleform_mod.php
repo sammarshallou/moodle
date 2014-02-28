@@ -534,6 +534,12 @@ abstract class moodleform_mod extends moodleform {
             // From/until controls
             $mform->addElement('header', 'availabilityconditionsheader',
                     get_string('availabilityconditions', 'condition'));
+
+            // Availability field. This is just a textarea; the user interface
+            // interaction is all implemented in JavaScript.
+            $mform->addElement('textarea', 'availability',
+                    get_string('accessrestrictions', 'condition'));
+
             $mform->addElement('date_time_selector', 'availablefrom',
                     get_string('availablefrom', 'condition'),
                     array('optional' => true, 'defaulttime' => $midnight));

@@ -56,6 +56,11 @@ if ($mform->is_cancelled()){
     redirect(course_get_url($course, $section, array('sr' => $sectionreturn)));
 } else if ($data = $mform->get_data()) {
     // Data submitted and validated, update and return to course.
+
+    // For consistency, we set the availability field to 'null' if it is empty.
+    if (!empty($CFG->enableavailability) && $data->availability === '') {
+        $data->availability = null;
+    }
     $DB->update_record('course_sections', $data);
     rebuild_course_cache($course->id, true);
     if (isset($data->section)) {

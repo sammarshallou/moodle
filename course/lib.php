@@ -1066,6 +1066,7 @@ function get_array_of_activities($courseid) {
                        $mod[$seq]->conditionsgrade  = $rawmods[$seq]->conditionsgrade;
                        $mod[$seq]->conditionsfield  = $rawmods[$seq]->conditionsfield;
                    }
+                   $mod[$seq]->availability = $rawmods[$seq]->availability;
 
                    $modname = $mod[$seq]->mod;
                    $functionname = $modname."_get_coursemodule_info";

@@ -562,7 +562,7 @@ class course_modinfo {
         // Get section data
         $sections = $DB->get_records('course_sections', array('course' => $course->id), 'section',
                 'section, id, course, name, summary, summaryformat, sequence, visible, ' .
-                'availablefrom, availableuntil, showavailability, groupingid');
+                'availablefrom, availableuntil, showavailability, groupingid, availability');
         $compressedsections = array();
 
         $formatoptionsdef = course_get_format($course)->section_format_options();
@@ -729,6 +729,8 @@ class course_modinfo {
  *    this date, activity does not display to students) - from course_modules table
  * @property-read int $showavailability When activity is unavailable, this field controls whether it is shown to students (0 =
  *    hide completely, 1 = show greyed out with information about when it will be available) -
+ *    from course_modules table
+ * @property-read string $availability Availability information as JSON string or null if none -
  *    from course_modules table
  * @property-read int $showdescription Controls whether the description of the activity displays on the course main page (in
  *    addition to anywhere it might display within the activity itself). 0 = do not show
@@ -934,6 +936,12 @@ class cm_info implements IteratorAggregate {
     private $showavailability;
 
     /**
+     * Availability information as JSON string or null if none - from course_modules table
+     * @var string
+     */
+    private $availability;
+
+    /**
      * Controls whether the description of the activity displays on the course main page (in
      * addition to anywhere it might display within the activity itself). 0 = do not show
      * on main page, 1 = show on main page.
@@ -1127,6 +1135,7 @@ class cm_info implements IteratorAggregate {
         'section' => false,
         'sectionnum' => false,
         'showavailability' => 'get_show_availability',
+        'availability' => false,
         'showdescription' => false,
         'uservisible' => 'get_user_visible',
         'visible' => false,
@@ -1698,6 +1707,7 @@ class cm_info implements IteratorAggregate {
         $this->completionexpected = isset($mod->completionexpected)
                 ? $mod->completionexpected : 0;
         $this->showavailability = isset($mod->showavailability) ? $mod->showavailability : 0;
+        $this->availability = isset($mod->availability) ? $mod->availability : null;
         $this->availablefrom = isset($mod->availablefrom) ? $mod->availablefrom : 0;
         $this->availableuntil = isset($mod->availableuntil) ? $mod->availableuntil : 0;
         $this->conditionscompletion = isset($mod->conditionscompletion)
@@ -2183,6 +2193,8 @@ class cached_cm_info {
  * @property-read int $showavailability When section is unavailable, this field controls whether it is shown to students (0 =
  *    hide completely, 1 = show greyed out with information about when it will be available) -
  *    from course_sections table
+ * @property-read string $availability Availability information as JSON string -
+ *    from course_sections table
  * @property-read int $availablefrom Available date for this section (0 if not set, or set to seconds since epoch;
  *    before this date, section does not display to students) - from course_sections table
  * @property-read int $availableuntil Available until date for this section  (0 if not set, or set to seconds since epoch;
@@ -2251,6 +2263,12 @@ class section_info implements IteratorAggregate {
      * @var int
      */
     private $_showavailability;
+
+    /**
+     * Availability information as JSON string - from course_sections table
+     * @var string
+     */
+    private $_availability;
 
     /**
      * Available date for this section (0 if not set, or set to seconds since epoch; before this
@@ -2332,6 +2350,7 @@ class section_info implements IteratorAggregate {
         'summaryformat' => '1', // FORMAT_HTML, but must be a string
         'visible' => '1',
         'showavailability' => '0',
+        'availability' => null,
         'availablefrom' => '0',
         'availableuntil' => '0',
         'groupingid' => '0',
