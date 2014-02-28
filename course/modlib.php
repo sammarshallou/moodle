@@ -78,6 +78,7 @@ function add_moduleinfo($moduleinfo, $course, $mform = null) {
         $newcm->availablefrom             = $moduleinfo->availablefrom;
         $newcm->availableuntil            = $moduleinfo->availableuntil;
         $newcm->showavailability          = $moduleinfo->showavailability;
+        $newcm->availability              = $moduleinfo->availability;
     }
     if (isset($moduleinfo->showdescription)) {
         $newcm->showdescription = $moduleinfo->showdescription;
@@ -476,6 +477,12 @@ function update_moduleinfo($cm, $moduleinfo, $course, $mform = null) {
         $cm->availablefrom             = $moduleinfo->availablefrom;
         $cm->availableuntil            = $moduleinfo->availableuntil;
         $cm->showavailability          = $moduleinfo->showavailability;
+        if (!property_exists($moduleinfo, 'availabilityconditionsjson') ||
+                $moduleinfo->availabilityconditionsjson === '') {
+            $cm->availability = null;
+        } else {
+            $cm->availability = $moduleinfo->availabilityconditionsjson;
+        }
         condition_info::update_cm_from_form($cm,$moduleinfo,true);
     }
     if (isset($moduleinfo->showdescription)) {

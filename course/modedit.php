@@ -163,6 +163,7 @@ if (!empty($add)) {
         $data->availablefrom      = $cm->availablefrom;
         $data->availableuntil     = $cm->availableuntil;
         $data->showavailability   = $cm->showavailability;
+        $data->availabilityconditionsjson = $cm->availability;
     }
 
     if (plugin_supports('mod', $data->modulename, FEATURE_MOD_INTRO, true)) {

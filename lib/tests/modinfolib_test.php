@@ -695,4 +695,51 @@ class core_modinfolib_testcase extends advanced_testcase {
         $cm->obtain_dynamic_data();
         $this->assertDebuggingCalled('cm_info::obtain_dynamic_data() is deprecated and should not be used.');
     }
+
+    /**
+     * Tests the availability property that has been added to course modules
+     * and sections (just to see that it is correctly saved and accessed).
+     */
+    public function test_availability_property() {
+        global $DB, $CFG;
+
+        $this->resetAfterTest();
+
+        // Create a course with one module and 3 sections.
+        $course = $this->getDataGenerator()->create_course(
+                array('format' => 'topics', 'numsections' => 3),
+                array('createsections' => true));
+        $forum = $this->getDataGenerator()->create_module('forum',
+                array('course' => $course->id));
+        $forum2 = $this->getDataGenerator()->create_module('forum',
+                array('course' => $course->id));
+
+        // Get modinfo. Check that availability is null for both cm and sections.
+        $modinfo = get_fast_modinfo($course->id);
+        $cm = $modinfo->get_cm($forum->cmid);
+        $this->assertNull($cm->availability);
+        $section = $modinfo->get_section_info(1, MUST_EXIST);
+        $this->assertNull($section->availability);
+
+        // Update availability for cm and section in database.
+        $DB->set_field('course_modules', 'availability', '{}', array('id' => $cm->id));
+        $DB->set_field('course_sections', 'availability', '{}', array('id' => $section->id));
+
+        // Clear cache and get modinfo again.
+        rebuild_course_cache($course->id, true);
+        get_fast_modinfo(0, 0, true);
+        $modinfo = get_fast_modinfo($course->id);
+
+        // Check values that were changed.
+        $cm = $modinfo->get_cm($forum->cmid);
+        $this->assertEquals('{}', $cm->availability);
+        $section = $modinfo->get_section_info(1, MUST_EXIST);
+        $this->assertEquals('{}', $section->availability);
+
+        // Check other values are still null.
+        $cm = $modinfo->get_cm($forum2->cmid);
+        $this->assertNull($cm->availability);
+        $section = $modinfo->get_section_info(2, MUST_EXIST);
+        $this->assertNull($section->availability);
+    }
 }

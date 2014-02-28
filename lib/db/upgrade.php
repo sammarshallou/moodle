@@ -3124,5 +3124,32 @@ function xmldb_main_upgrade($oldversion) {
         upgrade_main_savepoint(true, 2014022600.00);
     }
 
+    if ($oldversion < 2014022000.00) {
+
+        // Define field availability to be added to course_modules.
+        $table = new xmldb_table('course_modules');
+        $field = new xmldb_field('availability', XMLDB_TYPE_TEXT, null, null, null, null, null, 'showdescription');
+
+        // Conditionally launch add field availability.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field availability to be added to course_sections.
+        $table = new xmldb_table('course_sections');
+        $field = new xmldb_field('availability', XMLDB_TYPE_TEXT, null, null, null, null, null, 'groupingid');
+
+        // Conditionally launch add field availability.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Rebuild course cache to include new data.
+        rebuild_course_cache(0, true);
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2014022000.00);
+    }
+
     return true;
 }
