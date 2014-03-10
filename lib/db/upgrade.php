@@ -3299,5 +3299,68 @@ function xmldb_main_upgrade($oldversion) {
         upgrade_main_savepoint(true, 2014022800.05);
     }
 
+    if ($oldversion < 2014030700.02) {
+
+        // Drop tables which are not necessary because they are covered by the
+        // new availability fields.
+        $table = new xmldb_table('course_modules_availability');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $table = new xmldb_table('course_modules_avail_fields');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $table = new xmldb_table('course_sections_availability');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $table = new xmldb_table('course_sections_avail_fields');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Drop unnnecessary fields from course_modules.
+        $table = new xmldb_table('course_modules');
+        $field = new xmldb_field('availablefrom');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+        $field = new xmldb_field('availableuntil');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+        $field = new xmldb_field('showavailability');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+        $field = new xmldb_field('groupmembersonly');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        // Drop unnnecessary fields from course_sections.
+        $table = new xmldb_table('course_sections');
+        $field = new xmldb_field('availablefrom');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+        $field = new xmldb_field('availableuntil');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+        $field = new xmldb_field('showavailability');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+        $field = new xmldb_field('groupingid');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2014030700.02);
+    }
+
     return true;
 }
