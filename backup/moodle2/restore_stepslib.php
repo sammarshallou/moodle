@@ -532,6 +532,74 @@ class restore_review_pending_block_positions extends restore_execution_step {
     }
 }
 
+
+/**
+ * Updates the availability data for course modules and sections after the
+ * restore of all course modules, sections, and grade items has completed.
+ * This is necessary in order to update IDs that have changed during restore.
+ */
+class restore_update_availability extends restore_execution_step {
+
+    protected function define_execution() {
+        global $CFG, $DB;
+
+        // Note: This code runs even if availability is disabled when restoring.
+        // That will ensure that if you later turn availability on for the site,
+        // there will be no incorrect IDs. (It doesn't take long if the restored
+        // data does not contain any availability information.)
+
+        // Get modinfo with all data after resetting cache.
+        rebuild_course_cache($this->get_courseid(), true);
+        $modinfo = get_fast_modinfo($this->get_courseid());
+
+        // Update all sections that were restored.
+        $params = array('backupid' => $this->get_restoreid(), 'itemname' => 'course_section');
+        $rs = $DB->get_recordset('backup_ids_temp', $params, '', 'newitemid');
+        $sectionsbyid = null;
+        foreach ($rs as $rec) {
+            if (is_null($sectionsbyid)) {
+                $sectionsbyid = array();
+                foreach ($modinfo->get_section_info_all() as $section) {
+                    $sectionsbyid[$section->id] = $section;
+                }
+            }
+            if (!array_key_exists($rec->newitemid, $sectionsbyid)) {
+                // If the section was not fully restored for some reason
+                // (e.g. due to an earlier error), skip it.
+                $this->get_logger()->process('Section not fully restored: id ' .
+                        $rec->newitemid, backup::LOG_WARNING);
+                continue;
+            }
+            $section = $sectionsbyid[$rec->newitemid];
+            if (!is_null($section->availability)) {
+                $info = new \core_availability\info_section($section);
+                $info->update_after_restore($this->get_restoreid(), $this->get_logger());
+            }
+        }
+        $rs->close();
+
+        // Update all modules that were restored.
+        $params = array('backupid' => $this->get_restoreid(), 'itemname' => 'course_module');
+        $rs = $DB->get_recordset('backup_ids_temp', $params, '', 'newitemid');
+        foreach ($rs as $rec) {
+            if (!array_key_exists($rec->newitemid, $modinfo->cms)) {
+                // If the module was not fully restored for some reason
+                // (e.g. due to an earlier error), skip it.
+                $this->get_logger()->process('Module not fully restored: id ' .
+                        $rec->newitemid, backup::LOG_WARNING);
+                continue;
+            }
+            $cm = $modinfo->get_cm($rec->newitemid);
+            if (!is_null($cm->availability)) {
+                $info = new \core_availability\info_module($cm);
+                $info->update_after_restore($this->get_restoreid(), $this->get_logger());
+            }
+        }
+        $rs->close();
+    }
+}
+
+
 /**
  * Process all the saved module availability records in backup_ids, matching
  * course modules and grade item id once all them have been already restored.
@@ -1162,10 +1230,12 @@ class restore_section_structure_step extends restore_structure_step {
                 $section->availablefrom = 0;
                 $section->availableuntil = 0;
                 $section->showavailability = 0;
+                $section->availability = null;
             } else {
                 $section->availablefrom = isset($data->availablefrom) ? $this->apply_date_offset($data->availablefrom) : 0;
                 $section->availableuntil = isset($data->availableuntil) ? $this->apply_date_offset($data->availableuntil) : 0;
                 $section->showavailability = isset($data->showavailability) ? $data->showavailability : 0;
+                $section->availability = isset($data->availabilityjson) ? $data->availabilityjson : null;
             }
             if (!empty($CFG->enablegroupmembersonly)) { // Only if enablegroupmembersonly is enabled
                 $section->groupingid = isset($data->groupingid) ? $this->get_mappingid('grouping', $data->groupingid) : 0;
@@ -3047,6 +3117,7 @@ class restore_module_structure_step extends restore_structure_step {
             $data->availablefrom = 0;
             $data->availableuntil = 0;
             $data->showavailability = 0;
+            $data->availability = null;
         } else {
             $data->availablefrom = $this->apply_date_offset($data->availablefrom);
             $data->availableuntil= $this->apply_date_offset($data->availableuntil);

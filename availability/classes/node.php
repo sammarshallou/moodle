@@ -80,6 +80,20 @@ abstract class node {
     public abstract function save();
 
     /**
+     * Updates this node after restore, returning true if anything changed.
+     * The default behaviour is simply to return false. If there is a problem
+     * with the update, $logger can be used to output a warning.
+     *
+     * @param string $restoreid Restore ID
+     * @param \base_logger $logger Logger for any warnings
+     * @param string $name Name of this item (for use in warning messages)
+     * @return bool True if there was any change
+     */
+    public function update_after_restore($restoreid, \base_logger $logger, $name) {
+        return false;
+    }
+
+    /**
      * Updates this node if it contains any references (dependencies) to the
      * given table and id.
      *

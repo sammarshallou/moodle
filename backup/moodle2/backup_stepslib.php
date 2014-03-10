@@ -323,7 +323,8 @@ class backup_module_structure_step extends backup_structure_step {
             'added', 'score', 'indent', 'visible',
             'visibleold', 'groupmode', 'groupingid', 'groupmembersonly',
             'completion', 'completiongradeitemnumber', 'completionview', 'completionexpected',
-            'availablefrom', 'availableuntil', 'showavailability', 'showdescription'));
+            'availablefrom', 'availableuntil', 'showavailability', 'availability',
+            'showdescription'));
 
         $availinfo = new backup_nested_element('availability_info');
         $availability = new backup_nested_element('availability', array('id'), array(
@@ -383,7 +384,8 @@ class backup_section_structure_step extends backup_structure_step {
 
         $section = new backup_nested_element('section', array('id'), array(
                 'number', 'name', 'summary', 'summaryformat', 'sequence', 'visible',
-                'availablefrom', 'availableuntil', 'showavailability', 'groupingid'));
+                'availablefrom', 'availableuntil', 'showavailability',
+                'availabilityjson', 'groupingid'));
 
         // attach format plugin structure to $section element, only one allowed
         $this->add_plugin_structure('format', $section, false);
@@ -395,7 +397,7 @@ class backup_section_structure_step extends backup_structure_step {
         $avail = new backup_nested_element('availability', array('id'), array(
                 'sourcecmid', 'requiredcompletion', 'gradeitemid', 'grademin', 'grademax'));
         $availfield = new backup_nested_element('availability_field', array('id'), array(
-            'userfield', 'operator', 'value', 'customfield', 'customfieldtype'));
+                'userfield', 'operator', 'value', 'customfield', 'customfieldtype'));
         $section->add_child($avail);
         $section->add_child($availfield);
 
@@ -404,8 +406,13 @@ class backup_section_structure_step extends backup_structure_step {
             'format', 'name', 'value'));
         $section->add_child($formatoptions);
 
-        // Define sources
-        $section->set_source_table('course_sections', array('id' => backup::VAR_SECTIONID));
+        // Define sources.
+        // The 'availability' field needs to be renamed because it clashes with
+        // the old nested element structure for availability data.
+        $section->set_source_sql("
+                SELECT *, availability AS availabilityjson
+                  FROM {course_sections} WHERE id = ?",
+                array('id' => backup::VAR_SECTIONID));
         $avail->set_source_table('course_sections_availability', array('coursesectionid' => backup::VAR_SECTIONID));
         $availfield->set_source_sql('
             SELECT csaf.*, uif.shortname AS customfield, uif.datatype AS customfieldtype

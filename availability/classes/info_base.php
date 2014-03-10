@@ -239,6 +239,24 @@ abstract class info_base {
     }
 
     /**
+     * Called during restore (near end of restore). Updates any necessary ids
+     * and writes the updated tree to the database. May output warnings if
+     * necessary (e.g. if a course-module cannot be found after restore).
+     *
+     * @param string $restoreid Restore identifier
+     * @param base_logger $logger Logger for any warnings
+     */
+    public function update_after_restore($restoreid, \base_logger $logger) {
+        $tree = $this->get_availability_tree();
+        $changed = $tree->update_after_restore($restoreid, $logger, $this->get_thing_name());
+        if ($changed) {
+            // Save modified data.
+            $structure = $tree->save();
+            $this->set_in_database(json_encode($structure));
+        }
+    }
+
+    /**
      * Obtains the name of the item (cm_info or section_info, at present) that
      * this is controlling availability of. Name should be formatted ready
      * for on-screen display.

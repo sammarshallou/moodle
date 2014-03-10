@@ -536,6 +536,15 @@ class tree extends node {
         }
     }
 
+    public function update_after_restore($restoreid, \base_logger $logger, $name) {
+        $changed = false;
+        foreach ($this->children as $child) {
+            $thischanged = $child->update_after_restore($restoreid, $logger, $name);
+            $changed = $changed || $thischanged;
+        }
+        return $changed;
+    }
+
     public function update_dependency_id($table, $oldid, $newid) {
         $changed = false;
         foreach ($this->children as $child) {
