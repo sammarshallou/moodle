@@ -109,11 +109,8 @@ class condition_info extends condition_info_base {
      *
      * @global moodle_database $DB
      * @uses CONDITION_MISSING_NOTHING
-     * @param object $cm Moodle course-module object. May have extra fields
-     *   ->conditionsgrade, ->conditionscompletion which should come from
-     *   get_fast_modinfo. Should have ->availablefrom, ->availableuntil,
-     *   and ->showavailability, ->course, ->visible; but the only required
-     *   thing is ->id.
+     * @param object $cm Moodle course-module object. Required ->id, ->course
+     *   will save time, using a full cm_info will save more time
      * @param int $expectingmissing Used to control whether or not a developer
      *   debugging message (performance warning) will be displayed if some of
      *   the above data is missing and needs to be retrieved; a
@@ -230,10 +227,8 @@ class condition_info_section extends condition_info_base {
      *
      * @global moodle_database $DB
      * @uses CONDITION_MISSING_NOTHING
-     * @param object $section Moodle section object. May have extra fields
-     *   ->conditionsgrade, ->conditionscompletion. Should have ->availablefrom,
-     *   ->availableuntil, and ->showavailability, ->course; but the only
-     *   required thing is ->id.
+     * @param object $section Moodle section object. Required ->id, ->course
+     *   will save time, using a full section_info will save more time
      * @param int $expectingmissing Used to control whether or not a developer
      *   debugging message (performance warning) will be displayed if some of
      *   the above data is missing and needs to be retrieved; a

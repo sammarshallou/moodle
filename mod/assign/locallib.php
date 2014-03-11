@@ -1323,7 +1323,7 @@ class assign {
 
         $cm = $this->get_course_module();
         foreach ($users as $userid => $user) {
-            if (!groups_course_module_visible($cm, $userid)) {
+            if (!\core_availability\info_module::is_user_visible($cm, $userid, false)) {
                 unset($users[$userid]);
             }
         }

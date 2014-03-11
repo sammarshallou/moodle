@@ -18,11 +18,21 @@
 /**
  * Strings for availability system.
  *
+AMOS BEGIN
+ MOV [accessrestrictions,core_condition],[accessrestrictions,core_availability]
+ MOV [availabilityconditions,core_condition],[restrictaccess,core_availability]
+ MOV [enableavailability,core_condition],[enableavailability,core_availability]
+ MOV [configenableavailability,core_condition],[enableavailability_desc,core_availability]
+AMOS END
  * @package core_availability
  * @copyright 2014 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['accessrestrictions'] = 'Access restrictions';
+$string['availabilityconditions'] = 'Restrict access';
+$string['enableavailability'] = 'Enable conditional access';
+$string['enableavailability_desc'] = 'When enabled, this lets you set conditions (based on date, grade, or completion) that control whether an activity or resource can be accessed.';
 $string['list_and'] = 'All of:';
 $string['list_and_hidden'] = 'All of (hidden otherwise):';
 $string['list_or'] = 'Any of:';

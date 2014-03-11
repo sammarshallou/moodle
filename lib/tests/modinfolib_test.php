@@ -90,10 +90,6 @@ class core_modinfolib_testcase extends advanced_testcase {
         $this->assertEquals($sectiondb->visible, $si->visible);
         $this->assertEquals($sectiondb->summary, $si->summary);
         $this->assertEquals($sectiondb->summaryformat, $si->summaryformat);
-        $this->assertEquals($sectiondb->showavailability, $si->showavailability);
-        $this->assertEquals($sectiondb->availablefrom, $si->availablefrom);
-        $this->assertEquals($sectiondb->availableuntil, $si->availableuntil);
-        $this->assertEquals($sectiondb->groupingid, $si->groupingid);
         $this->assertEquals($sectiondb->sequence, $si->sequence); // Since this section does not contain invalid modules.
         $this->assertEquals($availability, $si->availability);
 
@@ -141,8 +137,6 @@ class core_modinfolib_testcase extends advanced_testcase {
                 array('course' => $course->id),
                 array('idnumber' => 123,
                     'groupmode' => VISIBLEGROUPS,
-                    'availablefrom' => time() + 3600,
-                    'availableuntil' => time() + 5*3600,
                     'availability' => $availability));
         rebuild_course_cache($course->id, true);
 
@@ -181,7 +175,6 @@ class core_modinfolib_testcase extends advanced_testcase {
         $this->assertEquals($moduledb->groupmode, $cm->groupmode);
         $this->assertEquals(VISIBLEGROUPS, $cm->groupmode);
         $this->assertEquals($moduledb->groupingid, $cm->groupingid);
-        $this->assertEquals($moduledb->groupmembersonly, $cm->groupmembersonly);
         $this->assertEquals($course->groupmodeforce, $cm->coursegroupmodeforce);
         $this->assertEquals($course->groupmode, $cm->coursegroupmode);
         $this->assertEquals(SEPARATEGROUPS, $cm->coursegroupmode);
@@ -193,9 +186,6 @@ class core_modinfolib_testcase extends advanced_testcase {
         $this->assertEquals($moduledb->completiongradeitemnumber, $cm->completiongradeitemnumber);
         $this->assertEquals($moduledb->completionview, $cm->completionview);
         $this->assertEquals($moduledb->completionexpected, $cm->completionexpected);
-        $this->assertEquals($moduledb->availablefrom, $cm->availablefrom);
-        $this->assertEquals($moduledb->availableuntil, $cm->availableuntil);
-        $this->assertEquals($moduledb->showavailability, $cm->showavailability);
         $this->assertEquals($moduledb->showdescription, $cm->showdescription);
         $this->assertEquals(null, $cm->extra); // Deprecated field. Used in module types that don't return cached_cm_info.
         $this->assertEquals($cachedcminfo->icon, $cm->icon);
@@ -604,7 +594,6 @@ class core_modinfolib_testcase extends advanced_testcase {
         $cm_info = get_fast_modinfo($course)->instances['assign'][$assign1->id];
         $this->assertTrue($cm_info->uservisible);
         $this->assertFalse($cm_info->available);
-        $this->assertEquals(CONDITION_STUDENTVIEW_HIDE, $cm_info->showavailability);
     }
 
     public function test_is_user_access_restricted_by_capability() {

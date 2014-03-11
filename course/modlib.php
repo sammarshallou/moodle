@@ -66,7 +66,6 @@ function add_moduleinfo($moduleinfo, $course, $mform = null) {
     }
     $newcm->groupmode        = $moduleinfo->groupmode;
     $newcm->groupingid       = $moduleinfo->groupingid;
-    $newcm->groupmembersonly = $moduleinfo->groupmembersonly;
     $completion = new completion_info($course);
     if ($completion->is_enabled()) {
         $newcm->completion                = $moduleinfo->completion;
@@ -75,9 +74,6 @@ function add_moduleinfo($moduleinfo, $course, $mform = null) {
         $newcm->completionexpected        = $moduleinfo->completionexpected;
     }
     if(!empty($CFG->enableavailability)) {
-        $newcm->availablefrom             = $moduleinfo->availablefrom;
-        $newcm->availableuntil            = $moduleinfo->availableuntil;
-        $newcm->showavailability          = $moduleinfo->showavailability;
         $newcm->availability = !empty($moduleinfo->availability) ? $moduleinfo->availability : null;
     }
     if (isset($moduleinfo->showdescription)) {
@@ -139,11 +135,6 @@ function add_moduleinfo($moduleinfo, $course, $mform = null) {
     // Course_modules and course_sections each contain a reference to each other.
     // So we have to update one of them twice.
     $sectionid = course_add_cm_to_section($course, $moduleinfo->coursemodule, $moduleinfo->section);
-
-    // Set up conditions.
-    if ($CFG->enableavailability) {
-        condition_info::update_cm_from_form((object)array('id'=>$moduleinfo->coursemodule), $moduleinfo, false);
-    }
 
     // Trigger event based on the action we did.
     $event = \core\event\course_module_created::create(array(
@@ -341,10 +332,6 @@ function set_moduleinfo_defaults($moduleinfo) {
         $moduleinfo->groupingid = 0;
     }
 
-    if (!isset($moduleinfo->groupmembersonly)) {
-        $moduleinfo->groupmembersonly = 0;
-    }
-
     if (!isset($moduleinfo->name)) { // Label.
         $moduleinfo->name = $moduleinfo->modulename;
     }
@@ -460,9 +447,6 @@ function update_moduleinfo($cm, $moduleinfo, $course, $mform = null) {
     if (isset($moduleinfo->groupingid)) {
         $cm->groupingid = $moduleinfo->groupingid;
     }
-    if (isset($moduleinfo->groupmembersonly)) {
-        $cm->groupmembersonly = $moduleinfo->groupmembersonly;
-    }
 
     $completion = new completion_info($course);
     if ($completion->is_enabled() && !empty($moduleinfo->completionunlocked)) {
@@ -473,15 +457,11 @@ function update_moduleinfo($cm, $moduleinfo, $course, $mform = null) {
         $cm->completionexpected        = $moduleinfo->completionexpected;
     }
     if (!empty($CFG->enableavailability)) {
-        $cm->availablefrom             = $moduleinfo->availablefrom;
-        $cm->availableuntil            = $moduleinfo->availableuntil;
-        $cm->showavailability          = $moduleinfo->showavailability;
         if (!property_exists($moduleinfo, 'availability') || $moduleinfo->availability === '') {
             $cm->availability = null;
         } else {
             $cm->availability = $moduleinfo->availability;
         }
-        condition_info::update_cm_from_form($cm,$moduleinfo,true);
     }
     if (isset($moduleinfo->showdescription)) {
         $cm->showdescription = $moduleinfo->showdescription;

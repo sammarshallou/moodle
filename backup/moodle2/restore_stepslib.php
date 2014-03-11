@@ -1227,18 +1227,9 @@ class restore_section_structure_step extends restore_structure_step {
             $section->sequence = '';
             $section->visible = $data->visible;
             if (empty($CFG->enableavailability)) { // Process availability information only if enabled.
-                $section->availablefrom = 0;
-                $section->availableuntil = 0;
-                $section->showavailability = 0;
                 $section->availability = null;
             } else {
-                $section->availablefrom = isset($data->availablefrom) ? $this->apply_date_offset($data->availablefrom) : 0;
-                $section->availableuntil = isset($data->availableuntil) ? $this->apply_date_offset($data->availableuntil) : 0;
-                $section->showavailability = isset($data->showavailability) ? $data->showavailability : 0;
                 $section->availability = isset($data->availabilityjson) ? $data->availabilityjson : null;
-            }
-            if (!empty($CFG->enablegroupmembersonly)) { // Only if enablegroupmembersonly is enabled
-                $section->groupingid = isset($data->groupingid) ? $this->get_mappingid('grouping', $data->groupingid) : 0;
             }
             $newitemid = $DB->insert_record('course_sections', $section);
             $restorefiles = true;
@@ -1253,11 +1244,6 @@ class restore_section_structure_step extends restore_structure_step {
                 $section->summary = $data->summary;
                 $section->summaryformat = $data->summaryformat;
                 $restorefiles = true;
-            }
-            if (empty($secrec->groupingid)) {
-                if (!empty($CFG->enablegroupmembersonly)) { // Only if enablegroupmembersonly is enabled
-                    $section->groupingid = isset($data->groupingid) ? $this->get_mappingid('grouping', $data->groupingid) : 0;
-                }
             }
 
             // Don't update available from, available until, or show availability
@@ -3099,9 +3085,6 @@ class restore_module_structure_step extends restore_structure_step {
             $data->section = $DB->insert_record('course_sections', $sectionrec); // section 1
         }
         $data->groupingid= $this->get_mappingid('grouping', $data->groupingid);      // grouping
-        if (!$CFG->enablegroupmembersonly) {                                         // observe groupsmemberonly
-            $data->groupmembersonly = 0;
-        }
         if (!grade_verify_idnumber($data->idnumber, $this->get_courseid())) {        // idnumber uniqueness
             $data->idnumber = '';
         }
@@ -3114,13 +3097,7 @@ class restore_module_structure_step extends restore_structure_step {
             $data->completionexpected = $this->apply_date_offset($data->completionexpected);
         }
         if (empty($CFG->enableavailability)) {
-            $data->availablefrom = 0;
-            $data->availableuntil = 0;
-            $data->showavailability = 0;
             $data->availability = null;
-        } else {
-            $data->availablefrom = $this->apply_date_offset($data->availablefrom);
-            $data->availableuntil= $this->apply_date_offset($data->availableuntil);
         }
         // Backups that did not include showdescription, set it to default 0
         // (this is not totally necessary as it has a db default, but just to

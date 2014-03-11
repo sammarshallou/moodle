@@ -3358,6 +3358,9 @@ function xmldb_main_upgrade($oldversion) {
             $dbman->drop_field($table, $field);
         }
 
+        // Remove old config setting for groupmembersonly.
+        unset_config('enablegroupmembersonly');
+
         // Main savepoint reached.
         upgrade_main_savepoint(true, 2014030700.02);
     }
