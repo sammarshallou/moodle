@@ -332,4 +332,161 @@ abstract class info_base {
         }
         return $changed;
     }
+
+    /**
+     * Converts legacy data from fields (if provided) into the new availability
+     * syntax.
+     *
+     * Supported fields: availablefrom, availableuntil, groupmembersonly,
+     * showavailability (and groupingid).
+     *
+     * @param stdClass $rec Object possibly containing legacy fields
+     * @param bool $section True if this is a section
+     * @return string|null New availability value or null if none
+     */
+    public static function convert_legacy_fields($rec, $section) {
+        // Do nothing if the fields are not set.
+        if (empty($rec->availablefrom) && empty($rec->availableuntil) &&
+                empty($rec->groupmembersonly) &&
+                (!$section || empty($rec->groupingid))) {
+            return null;
+        }
+
+        // Handle legacy availability data.
+        $conditions = array();
+        $shows = array();
+
+        // Group members only condition.
+        if (!empty($rec->groupmembersonly) || (!empty($rec->groupingid) && $section)) {
+            if (!empty($rec->groupingid)) {
+                $conditions[] = '{"type":"grouping"' .
+                        ($rec->groupingid ? ',"id":' . $rec->groupingid : '') . '}';
+            } else {
+                // No grouping specified, so allow any group.
+                $conditions[] = '{"type":"group"}';
+            }
+            // Group members only condition was not displayed to students.
+            $shows[] = 'false';
+        }
+
+        // Date conditions.
+        if (!empty($rec->availablefrom)) {
+            $conditions[] = '{"type":"date","d":">=","t":' . $rec->availablefrom . '}';
+            $shows[] = !empty($rec->showavailability) ? 'true' : 'false';
+        }
+        if (!empty($rec->availableuntil)) {
+            $conditions[] = '{"type":"date","d":"<","t":' . $rec->availableuntil . '}';
+            // Until dates never showed to students.
+            $shows[] = 'false';
+        }
+
+        // If there are some conditions, return them.
+        if ($conditions) {
+            return '{"op":"&","showc":[' . implode(',', $shows) . '],' .
+                    '"c":[' . implode(',', $conditions) . ']}';
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Adds a condition from the legacy availability condition.
+     *
+     * (For use during restore only.)
+     *
+     * This function assumes that the activity either has no conditions, or
+     * that it has an AND tree with one or more conditions.
+     *
+     * @param string|null $availability Current availability conditions
+     * @param stdClass $rec Object containing information from old table
+     * @param bool $show True if 'show' option should be enabled
+     * @return string New availability conditions
+     */
+    public static function add_legacy_availability_condition($availability, $rec, $show) {
+        if (!empty($rec->sourcecmid)) {
+            // Completion condition.
+            $condition = '{"type":"completion","cm":' . $rec->sourcecmid .
+                    ',"e":' . $rec->requiredcompletion . '}';
+        } else {
+            // Grade condition.
+            $minmax = '';
+            if (!empty($rec->grademin)) {
+                $minmax .= ',"min":' . sprintf('%.5f', $rec->grademin);
+            }
+            if (!empty($rec->grademax)) {
+                $minmax .= ',"max":' . sprintf('%.5f', $rec->grademax);
+            }
+            $condition = '{"type":"grade","id":' . $rec->gradeitemid . $minmax . '}';
+        }
+
+        return self::add_legacy_condition($availability, $condition, $show);
+    }
+
+    /**
+     * Adds a condition from the legacy availability field condition.
+     *
+     * (For use during restore only.)
+     *
+     * This function assumes that the activity either has no conditions, or
+     * that it has an AND tree with one or more conditions.
+     *
+     * @param string|null $availability Current availability conditions
+     * @param stdClass $rec Object containing information from old table
+     * @param bool $show True if 'show' option should be enabled
+     * @return string New availability conditions
+     */
+    public static function add_legacy_availability_field_condition($availability, $rec, $show) {
+        if (isset($rec->userfield)) {
+            // Standard field.
+            $fieldbit = ',"sf":' . json_encode($rec->userfield);
+        } else {
+            // Custom field.
+            $fieldbit = ',"cf":' . json_encode($rec->shortname);
+        }
+        // Value is not included for certain operators.
+        switch($rec->operator) {
+            case 'isempty':
+            case 'isnotempty':
+                $valuebit = '';
+                break;
+
+            default:
+                $valuebit = ',"v":' . json_encode($rec->value);
+                break;
+        }
+        $condition = '{"type":"profile","op":"' . $rec->operator . '"' .
+                $fieldbit . $valuebit . '}';
+
+        return self::add_legacy_condition($availability, $condition, $show);
+    }
+
+    /**
+     * Adds a condition to an AND group.
+     *
+     * (For use during restore only.)
+     *
+     * This function assumes that the activity either has no conditions, or
+     * that it has only conditions added by this function.
+     *
+     * @param string|null $availability Current availability conditions
+     * @param string $condition Condition text '{...}'
+     * @param bool $show True if 'show' option should be enabled
+     * @return string New availability conditions
+     */
+    protected static function add_legacy_condition($availability, $condition, $show) {
+        $showtext = ($show ? 'true' : 'false');
+        if (is_null($availability)) {
+            $availability = '{"op":"&","showc":[' . $showtext .
+                    '],"c":[' . $condition . ']}';
+        } else {
+            $matches = array();
+            if (!preg_match('~^({"op":"&","showc":\[(?:true|false)(?:,(?:true|false))*)' .
+                    '(\],"c":\[.*)(\]})$~', $availability, $matches)) {
+                throw new \coding_exception('Unexpected availability value');
+            }
+            $availability = $matches[1] . ',' . $showtext . $matches[2] .
+                    ',' . $condition . $matches[3];
+        }
+        return $availability;
+    }
 }

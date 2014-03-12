@@ -111,6 +111,159 @@ class core_backup_moodle2_testcase extends advanced_testcase {
     }
 
     /**
+     * The availability data format was changed in Moodle 2.7. This test
+     * ensures that a Moodle 2.6 backup with this data can still be correctly
+     * restored.
+     */
+    public function test_restore_legacy_availability() {
+        global $DB, $USER, $CFG;
+        require_once($CFG->dirroot . '/grade/querylib.php');
+        require_once($CFG->libdir . '/completionlib.php');
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+        $CFG->enableavailability = true;
+        $CFG->enablecompletion = true;
+
+        // Extract backup file.
+        $backupid = 'abc';
+        $backuppath = $CFG->tempdir . '/backup/' . $backupid;
+        check_dir_exists($backuppath);
+        get_file_packer('application/vnd.moodle.backup')->extract_to_pathname(
+                __DIR__ . '/availability_26_format.mbz', $backuppath);
+
+        // Do restore to new course with default settings.
+        $generator = $this->getDataGenerator();
+        $categoryid = $DB->get_field_sql("SELECT MIN(id) FROM {course_categories}");
+        $newcourseid = restore_dbops::create_new_course(
+                'Test fullname', 'Test shortname', $categoryid);
+        $rc = new restore_controller($backupid, $newcourseid,
+                backup::INTERACTIVE_NO, backup::MODE_GENERAL, $USER->id,
+                backup::TARGET_NEW_COURSE);
+        $thrown = null;
+        try {
+            $this->assertTrue($rc->execute_precheck());
+            $rc->execute_plan();
+            $rc->destroy();
+        } catch (Exception $e) {
+            $thrown = $e;
+            // Because of the PHPUnit exception behaviour in this situation, we
+            // will not see this message unless it is explicitly echoed (just
+            // using it in a fail() call or similar will not work).
+            echo "\n\nEXCEPTION: " . $thrown->getMessage() . '[' .
+                    $thrown->getFile() . ':' . $thrown->getLine(). "]\n\n";
+        }
+
+        // Must set restore_controller variable to null so that php
+        // garbage-collects it; otherwise the file will be left open and
+        // attempts to delete it will cause a permission error on Windows
+        // systems, breaking unit tests.
+        $rc = null;
+        $this->assertNull($thrown);
+
+        // Get information about the resulting course and check that it is set
+        // up correctly.
+        $modinfo = get_fast_modinfo($newcourseid);
+        $pages = array_values($modinfo->get_instances_of('page'));
+        $forums = array_values($modinfo->get_instances_of('forum'));
+        $quizzes = array_values($modinfo->get_instances_of('quiz'));
+        $grouping = $DB->get_record('groupings', array('courseid' => $newcourseid));
+
+        // FROM date.
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"date","d":">=","t":1893456000}]}',
+                $pages[1]->availability);
+        // UNTIL date.
+        $this->assertEquals(
+                '{"op":"&","showc":[false],"c":[{"type":"date","d":"<","t":1393977600}]}',
+                $pages[2]->availability);
+        // FROM and UNTIL.
+        $this->assertEquals(
+                '{"op":"&","showc":[true,false],"c":[' .
+                '{"type":"date","d":">=","t":1449705600},' .
+                '{"type":"date","d":"<","t":1893456000}' .
+                ']}',
+                $pages[3]->availability);
+        // Grade >= 75%.
+        $grades = array_values(grade_get_grade_items_for_activity($quizzes[0], true));
+        $gradeid = $grades[0]->id;
+        $coursegrade = grade_item::fetch_course_item($newcourseid);
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"grade","id":' . $gradeid . ',"min":75}]}',
+                $pages[4]->availability);
+        // Grade < 25%.
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"grade","id":' . $gradeid . ',"max":25}]}',
+                $pages[5]->availability);
+        // Grade 90-100%.
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"grade","id":' . $gradeid . ',"min":90,"max":100}]}',
+                $pages[6]->availability);
+        // Email contains frog.
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"profile","op":"contains","sf":"email","v":"frog"}]}',
+                $pages[7]->availability);
+        // Page marked complete..
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"completion","cm":' . $pages[0]->id .
+                ',"e":' . COMPLETION_COMPLETE . '}]}',
+                $pages[8]->availability);
+        // Quiz complete but failed.
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"completion","cm":' . $quizzes[0]->id .
+                ',"e":' . COMPLETION_COMPLETE_FAIL . '}]}',
+                $pages[9]->availability);
+        // Quiz complete and succeeded.
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"completion","cm":' . $quizzes[0]->id .
+                ',"e":' . COMPLETION_COMPLETE_PASS. '}]}',
+                $pages[10]->availability);
+        // Quiz not complete.
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"completion","cm":' . $quizzes[0]->id .
+                ',"e":' . COMPLETION_INCOMPLETE . '}]}',
+                $pages[11]->availability);
+        // Grouping.
+        $this->assertEquals(
+                '{"op":"&","showc":[false],"c":[{"type":"grouping","id":' . $grouping->id . '}]}',
+                $pages[12]->availability);
+
+        // All the options.
+        $this->assertEquals('{"op":"&",' .
+                '"showc":[false,true,false,true,true,true,true,true,true],' .
+                '"c":[' .
+                '{"type":"grouping","id":' . $grouping->id . '},' .
+                '{"type":"date","d":">=","t":1488585600},' .
+                '{"type":"date","d":"<","t":1709510400},' .
+                '{"type":"profile","op":"contains","sf":"email","v":"@"},' .
+                '{"type":"profile","op":"contains","sf":"city","v":"Frogtown"},' .
+                '{"type":"grade","id":' . $gradeid . ',"min":30,"max":35},' .
+                '{"type":"grade","id":' . $coursegrade->id . ',"min":5,"max":10},' .
+                '{"type":"completion","cm":' . $pages[0]->id . ',"e":' . COMPLETION_COMPLETE . '},' .
+                '{"type":"completion","cm":' . $quizzes[0]->id .',"e":' . COMPLETION_INCOMPLETE . '}' .
+                ']}', $pages[13]->availability);
+
+        // Group members only forum.
+        $this->assertEquals(
+                '{"op":"&","showc":[false],"c":[{"type":"group"}]}',
+                $forums[0]->availability);
+
+        // Section with lots of conditions.
+        $this->assertEquals(
+                '{"op":"&","showc":[false,false,false,false],"c":[' .
+                '{"type":"date","d":">=","t":1417737600},' .
+                '{"type":"profile","op":"contains","sf":"email","v":"@"},' .
+                '{"type":"grade","id":' . $gradeid . ',"min":20},' .
+                '{"type":"completion","cm":' . $pages[0]->id . ',"e":' . COMPLETION_COMPLETE . '}]}',
+                $modinfo->get_section_info(3)->availability);
+
+        // Section with grouping.
+        $this->assertEquals(
+                '{"op":"&","showc":[false],"c":[{"type":"grouping","id":' . $grouping->id . '}]}',
+                $modinfo->get_section_info(4)->availability);
+    }
+
+    /**
      * Backs a course up and restores it.
      *
      * @param stdClass $course Course object to backup

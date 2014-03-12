@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+use core_availability\info_base;
 use core_availability\info_module;
 use core_availability\info_section;
 
@@ -236,5 +237,140 @@ class info_testcase extends \advanced_testcase {
         // section's availability
         $this->assertFalse(info_module::is_user_visible($pages[1]->cmid, $student->id, false));
         $this->assertFalse(info_module::is_user_visible($pages[2]->cmid, $student->id, false));
+    }
+
+    /**
+     * Tests the convert_legacy_fields function used in restore.
+     */
+    public function test_convert_legacy_fields() {
+        // Check with no availability conditions first.
+        $rec = (object)array('availablefrom' => 0, 'availableuntil' => 0,
+                'groupmembersonly' => 0, 'groupingid' => 7,
+                'showavailability' => 1);
+        $this->assertNull(info_base::convert_legacy_fields($rec, false));
+
+        // Check same list for a section (groupingid does not require
+        // groupmembersonly for sections).
+        $this->assertEquals(
+                '{"op":"&","showc":[false],"c":[{"type":"grouping","id":7}]}',
+                info_base::convert_legacy_fields($rec, true));
+
+        // Check groupmembersonly with grouping.
+        $rec->groupmembersonly = 1;
+        $this->assertEquals(
+                '{"op":"&","showc":[false],"c":[{"type":"grouping","id":7}]}',
+                info_base::convert_legacy_fields($rec, false));
+
+        // Check groupmembersonly without grouping.
+        $rec->groupingid = 0;
+        $this->assertEquals(
+                '{"op":"&","showc":[false],"c":[{"type":"group"}]}',
+                info_base::convert_legacy_fields($rec, false));
+
+        // Check start date.
+        $rec->groupmembersonly = 0;
+        $rec->availablefrom = 123;
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"date","d":">=","t":123}]}',
+                info_base::convert_legacy_fields($rec, false));
+
+        // Start date with show = false.
+        $rec->showavailability = 0;
+        $this->assertEquals(
+                '{"op":"&","showc":[false],"c":[{"type":"date","d":">=","t":123}]}',
+                info_base::convert_legacy_fields($rec, false));
+
+        // End date.
+        $rec->showavailability = 1;
+        $rec->availablefrom = 0;
+        $rec->availableuntil = 456;
+        $this->assertEquals(
+                '{"op":"&","showc":[false],"c":[{"type":"date","d":"<","t":456}]}',
+                info_base::convert_legacy_fields($rec, false));
+
+        // All together now.
+        $rec->groupingid = 7;
+        $rec->groupmembersonly = 1;
+        $rec->availablefrom = 123;
+        $this->assertEquals(
+                '{"op":"&","showc":[false,true,false],"c":[' .
+                '{"type":"grouping","id":7},' .
+                '{"type":"date","d":">=","t":123},' .
+                '{"type":"date","d":"<","t":456}' .
+                ']}',
+                info_base::convert_legacy_fields($rec, false));
+    }
+
+    /**
+     * Tests the add_legacy_availability_condition function used in restore.
+     */
+    public function test_add_legacy_availability_condition() {
+        // Completion condition tests.
+        $rec = (object)array('sourcecmid' => 7, 'requiredcompletion' => 1);
+        // No previous availability, show = true.
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"completion","cm":7,"e":1}]}',
+                info_base::add_legacy_availability_condition(null, $rec, true));
+        // No previous availability, show = false.
+        $this->assertEquals(
+                '{"op":"&","showc":[false],"c":[{"type":"completion","cm":7,"e":1}]}',
+                info_base::add_legacy_availability_condition(null, $rec, false));
+
+        // Existing availability.
+        $before = '{"op":"&","showc":[true],"c":[{"type":"date","d":">=","t":70}]}';
+        $this->assertEquals(
+                '{"op":"&","showc":[true,true],"c":['.
+                '{"type":"date","d":">=","t":70},' .
+                '{"type":"completion","cm":7,"e":1}' .
+                ']}',
+                info_base::add_legacy_availability_condition($before, $rec, true));
+
+        // Grade condition tests.
+        $rec = (object)array('gradeitemid' => 3, 'grademin' => 7, 'grademax' => null);
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"grade","id":3,"min":7.00000}]}',
+                info_base::add_legacy_availability_condition(null, $rec, true));
+        $rec->grademax = 8;
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"grade","id":3,"min":7.00000,"max":8.00000}]}',
+                info_base::add_legacy_availability_condition(null, $rec, true));
+        unset($rec->grademax);
+        unset($rec->grademin);
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[{"type":"grade","id":3}]}',
+                info_base::add_legacy_availability_condition(null, $rec, true));
+
+        // Note: There is no need to test the grade condition with show
+        // true/false and existing availability, because this uses the same
+        // function.
+    }
+
+    /**
+     * Tests the add_legacy_availability_field_condition function used in restore.
+     */
+    public function test_add_legacy_availability_field_condition() {
+        // User field, normal operator.
+        $rec = (object)array('userfield' => 'email', 'shortname' => null,
+                'operator' => 'contains', 'value' => '@');
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[' .
+                '{"type":"profile","op":"contains","sf":"email","v":"@"}]}',
+                info_base::add_legacy_availability_field_condition(null, $rec, true));
+
+        // User field, non-value operator.
+        $rec = (object)array('userfield' => 'email', 'shortname' => null,
+                'operator' => 'isempty', 'value' => '');
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[' .
+                '{"type":"profile","op":"isempty","sf":"email"}]}',
+                info_base::add_legacy_availability_field_condition(null, $rec, true));
+
+        // Custom field.
+        $rec = (object)array('userfield' => null, 'shortname' => 'frogtype',
+                'operator' => 'isempty', 'value' => '');
+        $this->assertEquals(
+                '{"op":"&","showc":[true],"c":[' .
+                '{"type":"profile","op":"isempty","cf":"frogtype"}]}',
+                info_base::add_legacy_availability_field_condition(null, $rec, true));
     }
 }
