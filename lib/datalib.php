@@ -1422,7 +1422,7 @@ function get_coursemodules_in_course($modulename, $courseid, $extrafields='') {
  * in the course. Returns an empty array on any errors.
  *
  * The returned objects includle the columns cw.section, cm.visible,
- * cm.groupmode and cm.groupingid, cm.groupmembersonly, and are indexed by cm.id.
+ * cm.groupmode and cm.groupingid, and are indexed by cm.id.
  *
  * @global object
  * @global object
@@ -1446,7 +1446,7 @@ function get_all_instances_in_courses($modulename, $courses, $userid=NULL, $incl
     $params['modulename'] = $modulename;
 
     if (!$rawmods = $DB->get_records_sql("SELECT cm.id AS coursemodule, m.*, cw.section, cm.visible AS visible,
-                                                 cm.groupmode, cm.groupingid, cm.groupmembersonly
+                                                 cm.groupmode, cm.groupingid
                                             FROM {course_modules} cm, {course_sections} cw, {modules} md,
                                                  {".$modulename."} m
                                            WHERE cm.course $coursessql AND
@@ -1491,7 +1491,7 @@ function get_all_instances_in_courses($modulename, $courses, $userid=NULL, $incl
  * in the course. Returns an empty array on any errors.
  *
  * The returned objects includle the columns cw.section, cm.visible,
- * cm.groupmode and cm.groupingid, cm.groupmembersonly, and are indexed by cm.id.
+ * cm.groupmode and cm.groupingid, and are indexed by cm.id.
  *
  * Simply calls {@link all_instances_in_courses()} with a single provided course
  *
@@ -1512,7 +1512,14 @@ function get_all_instances_in_course($modulename, $course, $userid=NULL, $includ
  *
  * Given a valid module object with info about the id and course,
  * and the module's type (eg "forum") returns whether the object
- * is visible or not, groupmembersonly visibility not tested
+ * is visible or not.
+ *
+ * NOTE: This does NOT take into account visibility to a particular user.
+ * To get visibility access for a specific user, use get_fast_modinfo, get a
+ * cm_info object from this, and check the ->uservisible property; or use
+ * the availability_info\info_module::is_user_visible() static function.
+ *
+ * TODO: Is there any reason to use this function or should it be deprected?
  *
  * @global object
 
@@ -1525,7 +1532,7 @@ function instance_is_visible($moduletype, $module) {
 
     if (!empty($module->id)) {
         $params = array('courseid'=>$module->course, 'moduletype'=>$moduletype, 'moduleid'=>$module->id);
-        if ($records = $DB->get_records_sql("SELECT cm.instance, cm.visible, cm.groupingid, cm.id, cm.groupmembersonly, cm.course
+        if ($records = $DB->get_records_sql("SELECT cm.instance, cm.visible, cm.groupingid, cm.id, cm.course
                                                FROM {course_modules} cm, {modules} m
                                               WHERE cm.course = :courseid AND
                                                     cm.module = m.id AND
@@ -1551,35 +1558,12 @@ function instance_is_visible($moduletype, $module) {
  * @param object $cm object
  * @param int $userid empty means current user
  * @return bool Success
+ * @deprecated Since Moodle 2.7
  */
 function coursemodule_visible_for_user($cm, $userid=0) {
-    global $USER,$CFG;
-
-    // NOTE (sam): I modified this function to use the new conditional
-    // availability API. However, it blatantly doesn't work correctly. Is it
-    // used any more? Maybe we could deprecate it? If it is still required,
-    // we should replace it with just calling get_fast_modinfo, finding the $cm,
-    // and returning $cm->uservisible.
-
-    if (empty($cm->id)) {
-        debugging("Incorrect course module parameter!", DEBUG_DEVELOPER);
-        return false;
-    }
-    if (empty($userid)) {
-        $userid = $USER->id;
-    }
-    if (!$cm->visible and !has_capability('moodle/course:viewhiddenactivities', context_module::instance($cm->id), $userid)) {
-        return false;
-    }
-    if ($CFG->enableavailability) {
-        $ci = new \core_availability\info_module($cm);
-        if(!$ci->is_available($cm->availableinfo,false,$userid) and
-            !has_capability('moodle/course:viewhiddenactivities',
-                context_module::instance($cm->id), $userid)) {
-            return false;
-        }
-    }
-    return groups_course_module_visible($cm, $userid);
+    debugging('coursemodule_visible_for_user() deprecated since Moodle 2.7. ' .
+            'Replace with \core_availability\info_module::is_user_visible().');
+    return \core_availability\info_module::is_user_visible($cm, $userid, false);
 }
 
 

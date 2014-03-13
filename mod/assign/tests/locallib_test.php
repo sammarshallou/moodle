@@ -847,22 +847,24 @@ class mod_assign_locallib_testcase extends mod_assign_base_testcase {
 
     public function test_group_members_only() {
         global $CFG;
+        $CFG->enableavailability = true;
 
         $this->setAdminUser();
         $this->create_extra_users();
-        $CFG->enablegroupmembersonly = true;
         $grouping = $this->getDataGenerator()->create_grouping(array('courseid' => $this->course->id));
         groups_assign_grouping($grouping->id, $this->groups[0]->id);
 
-        // Force create an assignment with SEPARATEGROUPS.
+        // Force create an assignment with grouping restriction
         $instance = $this->getDataGenerator()->create_module('assign', array('course'=>$this->course->id),
-            array('groupmembersonly' => SEPARATEGROUPS, 'groupingid' => $grouping->id));
+            array('availability' => '{"op":"|","show":false,"c":[{"type":"grouping","id":' .
+                    $grouping->id . '}]}'));
 
         $cm = get_coursemodule_from_instance('assign', $instance->id);
         $context = context_module::instance($cm->id);
         $assign = new testable_assign($context, $cm, $this->course);
 
         $this->setUser($this->teachers[0]);
+        get_fast_modinfo($this->course, 0, true);
         $this->assertCount(5, $assign->list_participants(0, true));
 
     }

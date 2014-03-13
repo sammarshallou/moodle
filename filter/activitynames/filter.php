@@ -60,8 +60,8 @@ class filter_activitynames extends moodle_text_filter {
                 // Create array of visible activities sorted by the name length (we are only interested in properties name and url).
                 $sortedactivities = array();
                 foreach ($modinfo->cms as $cm) {
-                    // Exclude labels, hidden activities and activities for group members only.
-                    if ($cm->visible and empty($cm->groupmembersonly) and $cm->has_view()) {
+                    // Exclude labels, hidden activities and those not visible to current user.
+                    if ($cm->visible && $cm->uservisible && $cm->has_view()) {
                         $sortedactivities[] = (object)array(
                             'name' => $cm->name,
                             'url' => $cm->url,

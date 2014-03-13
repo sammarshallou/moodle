@@ -733,13 +733,14 @@ abstract class format_section_renderer_base extends plugin_renderer_base {
                 continue;
             }
             // Show the section if the user is permitted to access it, OR if it's not available
-            // but showavailability is turned on (and there is some available info text).
+            // but there is some available info text which explains the reason & should display.
             $showsection = $thissection->uservisible ||
-                    ($thissection->visible && !$thissection->available && $thissection->showavailability
-                    && !empty($thissection->availableinfo));
+                    ($thissection->visible && !$thissection->available &&
+                    !empty($thissection->availableinfo));
             if (!$showsection) {
-                // Hidden section message is overridden by 'unavailable' control
-                // (showavailability option).
+                // If the hiddensections option is set to 'show hidden sections in collapsed
+                // form', then display the hidden section message - UNLESS the section is
+                // hidden by the availability system, which is set to hide the reason.
                 if (!$course->hiddensections && $thissection->available) {
                     echo $this->section_hidden($section);
                 }

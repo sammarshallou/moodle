@@ -928,23 +928,12 @@ function groups_filter_users_by_course_module_visible($cm, $users) {
  * @param stdClass $cm The course module
  * @param int $userid The user to check against the group.
  * @return bool True if the user can view the course module, false otherwise.
+ * @deprecated Since Moodle 2.7
  */
 function groups_course_module_visible($cm, $userid=null) {
-    global $CFG, $USER;
-
-    if (empty($userid)) {
-        $userid = $USER->id;
-    }
-    if (empty($CFG->enablegroupmembersonly)) {
-        return true;
-    }
-    if (empty($cm->groupmembersonly)) {
-        return true;
-    }
-    if (has_capability('moodle/site:accessallgroups', context_module::instance($cm->id), $userid) or groups_has_membership($cm, $userid)) {
-        return true;
-    }
-    return false;
+    debugging('groups_course_module_visible() deprecated since Moodle 2.7. ' .
+            'Replace with \core_availability\info_module::is_user_visible().');
+    return \core_availability\info_module::is_user_visible($cm, (int)$userid, false);
 }
 
 /**
