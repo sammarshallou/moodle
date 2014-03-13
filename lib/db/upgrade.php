@@ -3299,7 +3299,7 @@ function xmldb_main_upgrade($oldversion) {
         upgrade_main_savepoint(true, 2014022800.05);
     }
 
-    if ($oldversion < 2014030700.02) {
+    if ($oldversion < 2014030700.00) {
 
         // Drop tables which are not necessary because they are covered by the
         // new availability fields.
@@ -3362,7 +3362,7 @@ function xmldb_main_upgrade($oldversion) {
         unset_config('enablegroupmembersonly');
 
         // Main savepoint reached.
-        upgrade_main_savepoint(true, 2014030700.02);
+        upgrade_main_savepoint(true, 2014030700.00);
     }
 
     return true;
