@@ -595,9 +595,7 @@ class workshop {
     /**
      * Groups the given users by the group membership
      *
-     * This takes the module grouping settings into account. If "Available for group members only"
-     * is set, returns only groups withing the course module grouping. Always returns group [0] with
-     * all the given users.
+     * Always returns group [0] with all the given users.
      *
      * @param array $users array[userid] => stdclass{->id ->lastname ->firstname}
      * @return array array[groupid][userid] => stdclass{->id ->lastname ->firstname}
@@ -610,28 +608,16 @@ class workshop {
         if (empty($users)) {
             return $grouped;
         }
-        if (!empty($CFG->enablegroupmembersonly) and $this->cm->groupmembersonly) {
-            // Available for group members only - the workshop is available only
-            // to users assigned to groups within the selected grouping, or to
-            // any group if no grouping is selected.
-            $groupingid = $this->cm->groupingid;
-            // All users that are members of at least one group will be
-            // added into a virtual group id 0
-            $grouped[0] = array();
-        } else {
-            $groupingid = 0;
-            // there is no need to be member of a group so $grouped[0] will contain
-            // all users
-            $grouped[0] = $users;
-        }
-        $gmemberships = groups_get_all_groups($this->cm->course, array_keys($users), $groupingid,
+        // There is no need to be member of a group so $grouped[0] will contain
+        // all users.
+        $grouped[0] = $users;
+        $gmemberships = groups_get_all_groups($this->cm->course, array_keys($users), 0,
                             'gm.id,gm.groupid,gm.userid');
         foreach ($gmemberships as $gmembership) {
             if (!isset($grouped[$gmembership->groupid])) {
                 $grouped[$gmembership->groupid] = array();
             }
             $grouped[$gmembership->groupid][$gmembership->userid] = $users[$gmembership->userid];
-            $grouped[0][$gmembership->userid] = $users[$gmembership->userid];
         }
         return $grouped;
     }
@@ -2494,8 +2480,7 @@ class workshop {
     /**
      * Returns SQL to fetch all enrolled users with the given capability in the current workshop
      *
-     * The returned array consists of string $sql and the $params array. Note that the $sql can be
-     * empty if groupmembersonly is enabled and the associated grouping is empty.
+     * The returned array consists of string $sql and the $params array.
      *
      * @param string $capability the name of the capability
      * @param bool $musthavesubmission ff true, return only users who have already submitted
@@ -2507,24 +2492,6 @@ class workshop {
         /** @var int static counter used to generate unique parameter holders */
         static $inc = 0;
         $inc++;
-
-        // if the caller requests all groups and we are in groupmembersonly mode, use the
-        // recursive call of itself to get users from all groups in the grouping
-        if (empty($groupid) and !empty($CFG->enablegroupmembersonly) and $this->cm->groupmembersonly) {
-            $groupingid = $this->cm->groupingid;
-            $groupinggroupids = array_keys(groups_get_all_groups($this->cm->course, 0, $this->cm->groupingid, 'g.id'));
-            $sql = array();
-            $params = array();
-            foreach ($groupinggroupids as $groupinggroupid) {
-                if ($groupinggroupid > 0) { // just in case in order not to fall into the endless loop
-                    list($gsql, $gparams) = $this->get_users_with_capability_sql($capability, $musthavesubmission, $groupinggroupid);
-                    $sql[] = $gsql;
-                    $params = array_merge($params, $gparams);
-                }
-            }
-            $sql = implode(PHP_EOL." UNION ".PHP_EOL, $sql);
-            return array($sql, $params);
-        }
 
         list($esql, $params) = get_enrolled_sql($this->context, $capability, $groupid, true);
 
