@@ -29,3 +29,4 @@ $string['requires_2'] = 'The activity <strong>{$a}</strong> is complete and pass
 $string['requires_3'] = 'The activity <strong>{$a}</strong> is complete and failed';
 $string['requires_not2'] = 'The activity <strong>{$a}</strong> is not complete and passed';
 $string['requires_not3'] = 'The activity <strong>{$a}</strong> is not complete and failed';
+$string['title'] = 'Activity completion';

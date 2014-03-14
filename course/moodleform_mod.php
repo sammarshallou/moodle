@@ -329,7 +329,7 @@ abstract class moodleform_mod extends moodleform {
      * Adds all the standard elements to a form to edit the settings for an activity module.
      */
     function standard_coursemodule_elements(){
-        global $COURSE, $CFG, $DB, $PAGE;
+        global $COURSE, $CFG, $DB;
         $mform =& $this->_form;
 
         $this->_outcomesused = false;
@@ -430,11 +430,7 @@ abstract class moodleform_mod extends moodleform {
                     get_string('restrictaccess', 'availability'));
             $mform->addElement('textarea', 'availability',
                     get_string('accessrestrictions', 'availability'));
-
-            // Include JavaScript.
-            $PAGE->requires->yui_module(array('moodle-core_availability-availability',
-                    'base', 'node', 'panel', 'moodle-core-notification'),
-                    'M.core_availability.init', array());
+            \core_availability\frontend::include_all_javascript();
         }
 
         // Conditional activities: completion tracking section

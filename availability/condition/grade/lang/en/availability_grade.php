@@ -32,3 +32,4 @@ $string['requires_notany'] = 'You do not have a grade in <strong>{$a}</strong>';
 $string['requires_notgeneral'] = 'You do not get certain scores in <strong>{$a}</strong>';
 $string['requires_range'] = 'You get a particular score in <strong>{$a}</strong>';
 $string['missing'] = '(missing activity)';
+$string['title'] = 'Grade';

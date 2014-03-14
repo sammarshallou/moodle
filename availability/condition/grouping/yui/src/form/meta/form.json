@@ -1,0 +1,7 @@
+{
+  "moodle-availability_grouping-form": {
+    "requires": [
+        "moodle-core_availability-form"
+    ]
+  }
+}

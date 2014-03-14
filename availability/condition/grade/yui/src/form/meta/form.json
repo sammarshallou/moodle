@@ -1,0 +1,7 @@
+{
+  "moodle-availability_grade-form": {
+    "requires": [
+        "moodle-core_availability-form"
+    ]
+  }
+}

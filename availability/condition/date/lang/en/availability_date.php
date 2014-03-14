@@ -26,8 +26,8 @@ $string['full_from'] = 'It is after <strong>{$a}</strong>';
 $string['full_from_date'] = 'It is on or after <strong>{$a}</strong>';
 $string['full_until'] = 'It is before <strong>{$a}</strong>';
 $string['full_until_date'] = 'It is before end of <strong>{$a}</strong>';
-
 $string['short_from'] = 'Available from <strong>{$a}</strong>';
 $string['short_from_date'] = 'Available from <strong>{$a}</strong>';
 $string['short_until'] = 'Available until <strong>{$a}</strong>';
 $string['short_until_date'] = 'Available until end of <strong>{$a}</strong>';
+$string['title'] = 'Date';

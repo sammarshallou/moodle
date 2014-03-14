@@ -33,3 +33,4 @@ $string['requires_notisequalto'] = 'Your <strong>{$a->field}</strong> is not <st
 $string['requires_notstartswith'] = 'Your <strong>{$a->field}</strong> does not start with <strong>{$a->value}</strong>';
 $string['requires_startswith'] = 'Your <strong>{$a->field}</strong> starts with <strong>{$a->value}</strong>';
 $string['missing'] = '(Missing custom field: {$a})';
+$string['title'] = 'User profile';
