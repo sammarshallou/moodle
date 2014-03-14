@@ -1,0 +1,7 @@
+{
+  "moodle-availability_profile-form": {
+    "requires": [
+        "moodle-core_availability-form"
+    ]
+  }
+}

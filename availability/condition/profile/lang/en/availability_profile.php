@@ -22,6 +22,7 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['description'] = 'Control access based on fields within the student&rsquo;s profile.';
 $string['requires_contains'] = 'Your <strong>{$a->field}</strong> contains <strong>{$a->value}</strong>';
 $string['requires_doesnotcontain'] = 'Your <strong>{$a->field}</strong> does not contain <strong>{$a->value}</strong>';
 $string['requires_endswith'] = 'Your <strong>{$a->field}</strong> ends with <strong>{$a->value}</strong>';
@@ -33,3 +34,4 @@ $string['requires_notisequalto'] = 'Your <strong>{$a->field}</strong> is not <st
 $string['requires_notstartswith'] = 'Your <strong>{$a->field}</strong> does not start with <strong>{$a->value}</strong>';
 $string['requires_startswith'] = 'Your <strong>{$a->field}</strong> starts with <strong>{$a->value}</strong>';
 $string['missing'] = '(Missing custom field: {$a})';
+$string['title'] = 'User profile';

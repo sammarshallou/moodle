@@ -22,6 +22,7 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['description'] = 'Require students to achieve a specified grade.';
 $string['pluginname'] = 'Availability restriction by grades';
 $string['cachedef_items'] = 'Grade items cached for evaluating conditional availability';
 $string['cachedef_scores'] = 'User grades cached for evaluating conditional availability';
@@ -32,3 +33,4 @@ $string['requires_notany'] = 'You do not have a grade in <strong>{$a}</strong>';
 $string['requires_notgeneral'] = 'You do not get certain scores in <strong>{$a}</strong>';
 $string['requires_range'] = 'You get a particular score in <strong>{$a}</strong>';
 $string['missing'] = '(missing activity)';
+$string['title'] = 'Grade';

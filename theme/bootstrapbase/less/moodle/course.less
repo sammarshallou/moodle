@@ -813,6 +813,73 @@ span.editinstructions {
     }
 }
 
+/* Section and module editing forms: restrict availability. */
+#fitem_id_availabilityconditionsjson {
+    *[aria-hidden=true] {
+        display: none;
+    }
+    select {
+        position:relative;
+        top: 4px;
+    }
+    .availability-group {
+        margin-right: 8px;
+    }
+    .availability-item {
+        margin-bottom: 4px;
+    }
+    .availability-plugincontrols {
+        padding: 2px 0px 0px 4px;
+        background: none repeat scroll 0% 0% #F5F5F5;
+        border: 1px solid #E3E3E3;
+        border-radius: 4px;
+        display: inline-block;
+        margin-right: 8px;
+    }
+    .availability-eye {
+        margin-right: 8px;
+    }
+    .availability-eye[aria-hidden=true] {
+        display: inline; 
+        visibility: hidden;
+    }
+}
+.availability-dialogue {
+    .moodle-dialogue .moodle-dialogue-bd {
+        padding-left: 0;
+        padding-right: 0;
+        padding-bottom: 2px;
+    }
+    ul {
+        display: block;
+        margin: 0;
+    }
+    li {
+        display: block;
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        clear: left;
+        border-bottom: 1px solid #e5e5e5;
+        margin-bottom: 4px;
+    }
+    ul button {
+        float: left;
+        margin-left: 1em;
+        min-width: 140px;
+        margin-top: 4px;
+    }
+    label {
+        margin-left: 170px;
+        margin-right: 1em;
+    }
+    .availability-buttons button {
+        margin-left: 1em;
+        margin-top: 4px;                        
+    }
+}
+
+
 /**
  * Course management page
  * Palette

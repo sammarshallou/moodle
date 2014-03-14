@@ -437,6 +437,7 @@ abstract class moodleform_mod extends moodleform {
             // So it uses a long name that will not conflict.
             $mform->addElement('textarea', 'availabilityconditionsjson',
                     get_string('accessrestrictions', 'availability'));
+            \core_availability\frontend::include_all_javascript($COURSE);
         }
 
         // Conditional activities: completion tracking section

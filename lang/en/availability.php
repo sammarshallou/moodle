@@ -24,9 +24,17 @@
  */
 
 $string['accessrestrictions'] = 'Access restrictions';
+$string['addrestriction'] = 'Add restriction...';
 $string['restrictaccess'] = 'Restrict access';
 $string['enableavailability'] = 'Enable conditional access';
 $string['enableavailability_desc'] = 'When enabled, this lets you set conditions (based on date, grade, or completion) that control whether an activity or resource can be accessed.';
+$string['hidden_marker'] = '(hidden otherwise)';
+$string['hidden_individual'] = 'Hidden entirely if user does not meet this condition';
+$string['shown_individual'] = 'Displayed greyed-out if user does not meet this condition';
+$string['hide_verb'] = 'Click to hide';
+$string['show_verb'] = 'Click to show';
+$string['hidden_all'] = 'Hidden entirely if user does not meet conditions';
+$string['shown_all'] = 'Displayed greyed-out if user does not meet conditions';
 $string['list_and'] = 'All of:';
 $string['list_and_hidden'] = 'All of (hidden otherwise):';
 $string['list_or'] = 'Any of:';
@@ -35,4 +43,12 @@ $string['list_root_and'] = 'Not available unless:';
 $string['list_root_and_hidden'] = 'Not available (hidden) unless:';
 $string['list_root_or'] = 'Not available unless any of:';
 $string['list_root_or_hidden'] = 'Not available (hidden) unless any of:';
-$string['hidden_marker'] = '(hidden otherwise)';
+$string['listheader_sign_before'] = 'Student';
+$string['listheader_sign_pos'] = 'must';
+$string['listheader_sign_neg'] = 'must not';
+$string['listheader_single'] = 'match the following';
+$string['listheader_multi_after'] = 'of the following';
+$string['listheader_multi_and'] = 'all';
+$string['listheader_multi_before'] = 'match';
+$string['listheader_multi_or'] = 'any';
+$string['unknowncondition'] = 'Unknown condition (deleted condition plugin)';

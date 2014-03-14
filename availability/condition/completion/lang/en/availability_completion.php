@@ -22,6 +22,7 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['description'] = 'Require students to complete (or not complete) an activity.';
 $string['missing'] = '(Missing activity)';
 $string['requires_0'] = 'The activity <strong>{$a}</strong> is incomplete';
 $string['requires_1'] = 'The activity <strong>{$a}</strong> is marked complete';
@@ -29,3 +30,4 @@ $string['requires_2'] = 'The activity <strong>{$a}</strong> is complete and pass
 $string['requires_3'] = 'The activity <strong>{$a}</strong> is complete and failed';
 $string['requires_not2'] = 'The activity <strong>{$a}</strong> is not complete and passed';
 $string['requires_not3'] = 'The activity <strong>{$a}</strong> is not complete and failed';
+$string['title'] = 'Activity completion';

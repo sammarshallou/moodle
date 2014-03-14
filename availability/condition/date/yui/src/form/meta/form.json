@@ -1,0 +1,8 @@
+{
+  "moodle-availability_date-form": {
+    "requires": [
+        "moodle-core_availability-form",
+        "io"
+    ]
+  }
+}

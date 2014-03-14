@@ -22,9 +22,11 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['description'] = 'Allow only students who belong to a specified group, or all groups.';
 $string['missing'] = '(Missing group)';
 $string['pluginname'] = 'Availability restriction by group';
 $string['requires_anygroup'] = 'You belong to any group';
 $string['requires_group'] = 'You belong to <strong>{$a}</strong>';
 $string['requires_notanygroup'] = 'You do not belong to any group';
 $string['requires_notgroup'] = 'You do not belong to <strong>{$a}</strong>';
+$string['title'] = 'Group';
