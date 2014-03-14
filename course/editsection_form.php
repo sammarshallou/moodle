@@ -53,7 +53,7 @@ class editsection_form extends moodleform {
     }
 
     public function definition_after_data() {
-        global $CFG, $DB;
+        global $CFG, $DB, $PAGE;
 
         $mform  = $this->_form;
         $course = $this->_customdata['course'];
@@ -68,6 +68,11 @@ class editsection_form extends moodleform {
             // interaction is all implemented in JavaScript.
             $mform->addElement('textarea', 'availability',
                     get_string('accessrestrictions', 'availability'));
+
+            // Include JavaScript.
+            $PAGE->requires->yui_module(array('moodle-core_availability-availability',
+                    'base', 'node', 'panel', 'moodle-core-notification'),
+                    'M.core_availability.init', array());
         }
 
         $this->add_action_buttons();

@@ -1,0 +1,10 @@
+{
+  "moodle-core_availability-availability": {
+    "requires": [
+        "base",
+        "node",
+        "panel",
+        "moodle-core-notification"
+    ]
+  }
+}
