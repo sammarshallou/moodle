@@ -22,6 +22,7 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['description'] = 'Require students to complete (or not complete) an activity.';
 $string['missing'] = '(Missing activity)';
 $string['requires_0'] = 'The activity <strong>{$a}</strong> is incomplete';
 $string['requires_1'] = 'The activity <strong>{$a}</strong> is marked complete';

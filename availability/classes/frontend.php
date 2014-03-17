@@ -43,18 +43,30 @@ abstract class frontend {
      * 'moodle-availability_whatever-form' and the 'title' JS string, plus
      * also whatever strings are specified by get_javascript_strings().
      */
-    public function include_javascript() {
+    protected function include_javascript() {
         global $PAGE, $CFG;
         $component = $this->get_component();
         $PAGE->requires->yui_module(array('moodle-' . $component . '-form',
                 'moodle-core_availability-form'),
-                'M.core_availability.form.addPlugin', array($component));
+                'M.' . $component . '.form.init', array_merge(array($component),
+                $this->get_javascript_init_params()));
 
-        $PAGE->requires->string_for_js('title', $component);
         $identifiers = $this->get_javascript_strings();
-        if ($identifiers) {
-            $PAGE->requires->strings_for_js($identifiers, $component);
-        }
+        $identifiers[] = 'title';
+        $identifiers[] = 'description';
+        $PAGE->requires->strings_for_js($identifiers, $component);
+    }
+    
+    /**
+     * Decides whether this plugin should be available in a given course. The
+     * plugin can do this depending on course or system settings.
+     *
+     * Default returns true.
+     *
+     * @param stdClass $course Course object
+     */
+    protected function allow_usage($course) {
+        return true;
     }
 
     /**
@@ -71,6 +83,16 @@ abstract class frontend {
     }
 
     /**
+     * Gets parameters for the plugin's init function. Default returns no
+     * parameters.
+     *
+     * @return array Array of parameters for the JavaScript function
+     */
+    protected function get_javascript_init_params() {
+        return array();
+    }
+
+    /**
      * Gets the Frankenstyle component name for this plugin.
      *
      * @return string The component name for this plugin
@@ -81,8 +103,10 @@ abstract class frontend {
 
     /**
      * Includes JavaScript for the main system and all plugins.
+     * 
+     * @param stdClass $course Moodle course object
      */
-    public static function include_all_javascript() {
+    public static function include_all_javascript($course) {
         global $PAGE;
 
         // Include main JS. This is initialised on DOM ready, i.e. after the
@@ -90,7 +114,7 @@ abstract class frontend {
         $PAGE->requires->yui_module(array('moodle-core_availability-form',
                 'base', 'node', 'panel', 'moodle-core-notification-dialogue'),
                 'M.core_availability.form.init', array(), null, true);
-        $PAGE->requires->string_for_js('none', 'moodle');
+        $PAGE->requires->strings_for_js(array('none', 'cancel'), 'moodle');
         $PAGE->requires->strings_for_js(array('addrestriction',
                 'listheader_sign_before', 'listheader_sign_pos',
                 'listheader_sign_neg', 'listheader_single',
@@ -103,10 +127,16 @@ abstract class frontend {
         $pluginmanager = \core_plugin_manager::instance();
         $enabled = $pluginmanager->get_enabled_plugins('availability');
         foreach ($enabled as $plugin => $info) {
+            // TODO Remove this
+            if ($plugin !== 'date') {
+                continue;
+            }
             // You can use a custom frontend.php if necessary.
             $class = '\availability_' . $plugin . '\frontend';
             $frontend = new $class();
-            $frontend->include_javascript();
+            if ($frontend->allow_usage($course)) {
+                $frontend->include_javascript();
+            }
         }
     }
 }

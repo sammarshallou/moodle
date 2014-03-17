@@ -38,4 +38,13 @@ class frontend extends \core_availability\frontend {
         // TODO Add necessary strings here.
         return array();
     }
+
+    protected function allow_usage($course) {
+        global $CFG;
+
+        // Check if completion is enabled for the course.
+        require_once($CFG->libdir . '/completionlib.php');
+        $info = new \completion_info($course);
+        return $info->is_enabled();
+    }
 }

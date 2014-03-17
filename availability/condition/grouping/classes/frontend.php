@@ -38,4 +38,14 @@ class frontend extends \core_availability\frontend {
         // TODO Add necessary strings here.
         return array();
     }
+
+    protected function allow_usage($course) {
+        global $DB;
+
+        // Check if groupings are in use for the course. (Unlike the 'group'
+        // condition there is no case where you might want to set up the
+        // condition before you set a grouping - there is no 'any grouping'
+        // option.)
+        return $DB->record_exists('groupings', array('courseid' => $course->id));
+    }
 }

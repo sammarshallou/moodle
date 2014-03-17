@@ -68,7 +68,7 @@ class editsection_form extends moodleform {
             // interaction is all implemented in JavaScript.
             $mform->addElement('textarea', 'availability',
                     get_string('accessrestrictions', 'availability'));
-            \core_availability\frontend::include_all_javascript();
+            \core_availability\frontend::include_all_javascript($course);
         }
 
         $this->add_action_buttons();

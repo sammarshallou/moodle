@@ -430,7 +430,7 @@ abstract class moodleform_mod extends moodleform {
                     get_string('restrictaccess', 'availability'));
             $mform->addElement('textarea', 'availability',
                     get_string('accessrestrictions', 'availability'));
-            \core_availability\frontend::include_all_javascript();
+            \core_availability\frontend::include_all_javascript($COURSE);
         }
 
         // Conditional activities: completion tracking section
