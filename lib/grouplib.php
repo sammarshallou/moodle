@@ -853,19 +853,20 @@ function groups_get_activity_allowed_groups($cm,$userid=0) {
  * groups/permissions etc. It is assumed that the users are pre-filtered to those who are enrolled in the course.
  *
  * @category group
+ * @param stdClass $course The course
  * @param stdClass $cm The course module
  * @param array $users An array of users, indexed by userid
  * @return array A filtered list of users that can see the module, indexed by userid.
  */
-function groups_filter_users_by_course_module_visible($cm, $users) {
-    global $CFG, $DB;
+function groups_filter_users_by_group_mode($course, $cm, $users) {
+    global $DB;
 
-    if (empty($CFG->enablegroupmembersonly)) {
+    // Users are only filtered in separate groups mode.
+    $groupmode = groups_get_activity_groupmode($cm, $course);
+    if ($groupmode != SEPARATEGROUPS) {
         return $users;
     }
-    if (empty($cm->groupmembersonly)) {
-        return $users;
-    }
+
     list($usql, $uparams) = $DB->get_in_or_equal(array_keys($users), SQL_PARAMS_NAMED, 'userid', true);
 
     // Group membership sub-query.
