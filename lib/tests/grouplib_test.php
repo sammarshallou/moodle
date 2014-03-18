@@ -767,4 +767,70 @@ class core_grouplib_testcase extends advanced_testcase {
         $this->assertEquals('Group 1', $groups[0]->name);
         $this->assertEquals('Group 2', $groups[1]->name);
     }
+
+    /**
+     * Tests the function groups_filter_users_by_group_mode in all possible
+     * conditions.
+     */
+    public function test_groups_filter_users_by_group_mode() {
+        global $DB;
+
+        $generator = $this->getDataGenerator();
+        $this->resetAfterTest();
+
+        // Create course with grouping and groups.
+        $course = $generator->create_course();
+        $group1 = $generator->create_group(array('courseid' => $course->id));
+        $group2 = $generator->create_group(array('courseid' => $course->id));
+        $grouping = $generator->create_grouping(array('courseid' => $course->id));
+        groups_assign_grouping($grouping->id, $group1->id);
+
+        // Create users.
+        $roleids = $DB->get_records_menu('role', null, '', 'shortname,id');
+        $studentnogroups = $generator->create_user();
+        $generator->enrol_user($studentnogroups->id, $course->id, $roleids['student']);
+        $studentgroup1 = $generator->create_user();
+        $generator->enrol_user($studentgroup1->id, $course->id, $roleids['student']);
+        groups_add_member($group1, $studentgroup1);
+        $studentgroup2 = $generator->create_user();
+        $generator->enrol_user($studentgroup2->id, $course->id, $roleids['student']);
+        groups_add_member($group2, $studentgroup2);
+        $teachernogroups = $generator->create_user();
+        $generator->enrol_user($teachernogroups->id, $course->id, $roleids['teacher']);
+
+        // Create activity.
+        $defaultassign = $generator->get_plugin_generator('mod_assign')->create_instance(
+                array('course' => $course->id));
+        $separategroups = $generator->get_plugin_generator('mod_assign')->create_instance(
+                array('course' => $course->id, 'groupmode' => SEPARATEGROUPS));
+        $withgrouping = $generator->get_plugin_generator('mod_assign')->create_instance(
+                array('course' => $course->id, 'groupingid' => $grouping->id));
+        $modinfo = get_fast_modinfo($course);
+
+        // Create a list of all users on course.
+        $users = array($studentnogroups->id => $studentnogroups,
+                $studentgroup1->id => $studentgroup1, $studentgroup2->id => $studentgroup2,
+                $teachernogroups->id => $teachernogroups);
+
+        // Filter for group members only.
+        $cm = $modinfo->get_cm($defaultassign->cmid);
+        $this->assertEquals(array($studentgroup1->id, $studentgroup2->id, $teachernogroups->id),
+                array_keys(groups_filter_group_members_only($cm, $users)));
+
+        // With grouping set, the list is smaller.
+        $cm = $modinfo->get_cm($withgrouping->cmid);
+        $this->assertEquals(array($studentgroup1->id, $teachernogroups->id),
+                array_keys(groups_filter_group_members_only($cm, $users)));
+
+        // Also check the deprecated function; it should do nothing for this activity
+        // because it doesn't have separate groups mode.
+        $this->assertEquals(array_keys($users),
+                array_keys(groups_filter_users_by_course_module_visible($cm, $users)));
+        $this->assertDebuggingCalled();
+
+        // The separate groups one should give the restricted list though.
+        $cm = $modinfo->get_cm($separategroups->cmid);
+        $this->assertEquals(array($studentgroup1->id, $studentgroup2->id, $teachernogroups->id),
+                array_keys(groups_filter_group_members_only($cm, $users)));
+    }
 }

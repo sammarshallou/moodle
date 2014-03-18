@@ -187,6 +187,11 @@ class mod_assign_mod_form extends moodleform_mod {
         $mform->disabledIf('markingallocation', 'markingworkflow', 'eq', 0);
 
         $this->standard_coursemodule_elements();
+
+        $name = get_string('showonlygroupmembers', 'assign');
+        $mform->addElement('checkbox', 'showonlygroupmembers', $name);
+        $mform->addHelpButton('showonlygroupmembers', 'showonlygroupmembers', 'assign');
+
         $this->apply_admin_defaults();
 
         $this->add_action_buttons();

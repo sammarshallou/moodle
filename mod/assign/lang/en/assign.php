@@ -333,6 +333,8 @@ $string['selectedusers'] = 'Selected users';
 $string['setmarkingworkflowstateforlog'] = 'Set marking workflow state : (id={$a->id}, fullname={$a->fullname}, state={$a->state}). ';
 $string['setmarkerallocationforlog'] = 'Set marking allocation : (id={$a->id}, fullname={$a->fullname}, marker={$a->marker}). ';
 $string['settings'] = 'Assignment settings';
+$string['showonlygroupmembers'] = 'Show group members only';
+$string['showonlygroupmembers_help'] = 'If you select this option, only students who belong to a group (in the grouping, if specified) will be shown on the list of potential users.';
 $string['showrecentsubmissions'] = 'Show recent submissions';
 $string['status'] = 'Status';
 $string['submissioncopiedtext'] = 'You have made a copy of your previous

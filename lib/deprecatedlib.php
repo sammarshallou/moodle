@@ -906,6 +906,38 @@ function groupmode($course, $cm=null) {
 }
 
 /**
+ * Filter a user list and return only the users that can see the course module
+ * based on the group mode and accessallgroups permission.
+ *
+ * It is assumed that the users are pre-filtered to those who are enrolled in
+ * the course.
+ *
+ * This function was renamed to more accurately describe what it does,
+ * and had an extra parameter added. There is also a slight change to behaviour;
+ * it previously used the 'groupmembersonly' option to restrict access, and
+ * now uses 'separate groups'.
+ *
+ * @category group
+ * @param stdClass $cm The course module
+ * @param array $users An array of users, indexed by userid
+ * @return array A filtered list of users that can see the module, indexed by userid.
+ * @deprecated Since Moodle 2.7
+ */
+function groups_filter_users_by_course_module_visible($cm, $users) {
+    debugging('Function groups_filter_users_by_course_module_visible is deprecated. ' .
+            'Please use groups_filter_group_members_only instead.',
+            DEBUG_DEVELOPER);
+    // There will be no groupmembersonly setting, so we use 'separate groups' mode
+    // as a toggle for this behaviour.
+    $course = get_course($cm->course);
+    if (groups_get_activity_groupmode($cm, $course) == SEPARATEGROUPS) {
+        return groups_filter_group_members_only($cm, $users);
+    } else {
+        return $users;
+    }
+}
+
+/**
  * Sets the current group in the session variable
  * When $SESSION->currentgroup[$courseid] is set to 0 it means, show all groups.
  * Sets currentgroup[$courseid] in the session variable appropriately.

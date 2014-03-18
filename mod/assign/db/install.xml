@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/assign/db" VERSION="20131220" COMMENT="XMLDB file for Moodle mod/assign"
+<XMLDB PATH="mod/assign/db" VERSION="20140320" COMMENT="XMLDB file for Moodle mod/assign"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -33,6 +33,7 @@
         <FIELD NAME="markingworkflow" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="If enabled, marking workflow features will be used in this assignment."/>
         <FIELD NAME="markingallocation" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="If enabled, marking allocation features will be used in this assignment"/>
         <FIELD NAME="sendstudentnotifications" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Default for send student notifications checkbox when grading."/>
+        <FIELD NAME="showonlygroupmembers" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="If this option is set to 1, then only users who belong to a group (in the selected grouping, if specified) will be displayed in the list of assignments"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="The unique id for this assignment instance."/>

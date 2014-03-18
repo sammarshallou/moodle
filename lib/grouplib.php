@@ -849,23 +849,25 @@ function groups_get_activity_allowed_groups($cm,$userid=0) {
 }
 
 /**
- * Filter a user list and return only the users that can see the course module based on
- * groups/permissions etc. It is assumed that the users are pre-filtered to those who are enrolled in the course.
+ * Filter a user list and return only the users that meet a 'group members only'
+ * condition. To meet this condition, the user must belong to a group (in the
+ * module's grouping, if it has one) or have the access all groups capability.
+ *
+ * Note that this function does not check that users can access the activity.
+ * There are other ways to restrict access to an activity other than groups
+ * (for example date restrictions, or having to achieve a grade in another
+ * activity, or module custom restrictions, or...) and it is currently not
+ * possible to efficiently do a bulk check of all factors.
  *
  * @category group
  * @param stdClass $cm The course module
  * @param array $users An array of users, indexed by userid
+ * @param bool $filtervisible If true, filter users even in visible groups mode
  * @return array A filtered list of users that can see the module, indexed by userid.
  */
-function groups_filter_users_by_course_module_visible($cm, $users) {
-    global $CFG, $DB;
+function groups_filter_group_members_only($cm, array $users) {
+    global $DB;
 
-    if (empty($CFG->enablegroupmembersonly)) {
-        return $users;
-    }
-    if (empty($cm->groupmembersonly)) {
-        return $users;
-    }
     list($usql, $uparams) = $DB->get_in_or_equal(array_keys($users), SQL_PARAMS_NAMED, 'userid', true);
 
     // Group membership sub-query.

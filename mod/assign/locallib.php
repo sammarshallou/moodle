@@ -1322,7 +1322,9 @@ class assign {
                     $this->show_only_active_users());
 
             $cm = $this->get_course_module();
-            $users = groups_filter_users_by_course_module_visible($cm, $users);
+            if ($this->instance->showonlygroupmembers) {
+                $users = groups_filter_group_members_only($cm, $users);
+            }
 
             $this->participants[$key] = $users;
         }

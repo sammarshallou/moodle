@@ -484,5 +484,33 @@ function xmldb_assign_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2014010801, 'assign');
     }
 
+    if ($oldversion < 2014032000) {
+
+        // Define field showonlygroupmembers to be added to assign.
+        $table = new xmldb_table('assign');
+        $field = new xmldb_field('showonlygroupmembers', XMLDB_TYPE_INTEGER, '2',
+                null, XMLDB_NOTNULL, null, '0', 'sendstudentnotifications');
+
+        // Conditionally launch add field showonlygroupmembers.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Set it based on groupmembersonly.
+        if ($CFG->enablegroupmembersonly) {
+            $DB->execute("
+                    UPDATE {assign}
+                       SET showonlygroupmembers=1
+                     WHERE id IN (
+                           SELECT cm.instance
+                             FROM {course_modules} cm
+                             JOIN {modules} m ON m.id = cm.module
+                            WHERE m.name='assign' AND cm.groupmembersonly=1)");
+        }
+
+        // Assign savepoint reached.
+        upgrade_mod_savepoint(true, 2014032000, 'assign');
+    }
+
     return true;
 }
