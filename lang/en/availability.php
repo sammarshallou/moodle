@@ -25,6 +25,8 @@
 
 $string['accessrestrictions'] = 'Access restrictions';
 $string['addrestriction'] = 'Add restriction...';
+$string['condition_group'] = 'Condition group';
+$string['condition_group_info'] = 'Add a group of nested conditions to apply complex logic.';
 $string['restrictaccess'] = 'Restrict access';
 $string['enableavailability'] = 'Enable conditional access';
 $string['enableavailability_desc'] = 'When enabled, this lets you set conditions (based on date, grade, or completion) that control whether an activity or resource can be accessed.';

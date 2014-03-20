@@ -136,7 +136,8 @@ abstract class frontend {
                 'listheader_multi_after', 'listheader_multi_before',
                 'listheader_multi_or', 'listheader_multi_and',
                 'unknowncondition', 'hide_verb', 'hidden_individual',
-                'show_verb', 'shown_individual', 'hidden_all', 'shown_all'),
+                'show_verb', 'shown_individual', 'hidden_all', 'shown_all',
+                'condition_group', 'condition_group_info'),
                 'availability');
 
         // Include JS for all components.

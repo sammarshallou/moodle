@@ -127,38 +127,53 @@ M.core_availability.plugin = {
  * @constructor
  * @param {Object} json Decoded JSON value
  * @param {Boolean} [false] root True if this is root level list
+ * @param {Boolean} [false] root True if parent is root level list
  */
-M.core_availability.List = function(json, root) {
+M.core_availability.List = function(json, root, parentRoot) {
+    // Set default value for children. (You can't do this in the prototype
+    // definition, or it ends up sharing the same array between all of them.)
+    this.children = [];
+
     if (root !== undefined) {
         this.root = root;
     }
     // Create DIV structure (without kids).
     this.node = Y.Node.create('<div class="availability_list">' +
-        '<div class="availability_header">' +
-        M.str.availability.listheader_sign_before +
-        ' <select class="availability_neg"><option value="">' +
-        M.str.availability.listheader_sign_pos + '</option>' +
-        '<option value="!">' + M.str.availability.listheader_sign_neg + '</option></select> ' +
-        '<span class="availability_single">' + M.str.availability.listheader_single + '</span>' +
-        '<span class="availability_multi">' + M.str.availability.listheader_multi_before +
-        ' <select class="availability_op"><option value="&">' +
-        M.str.availability.listheader_multi_and + '</option>' +
-        '<option value="|">' + M.str.availability.listheader_multi_or + '</option></select> ' +
-        M.str.availability.listheader_multi_after + '</span></div>' +
-        '<div class="availability_children"></div>' +
-        '<div class="availability_none">' + M.str.moodle.none + '</div>' +
-        '<div class="availability_button"></div></div>');
+            '<div class="availability_header">' +
+            M.str.availability.listheader_sign_before +
+            ' <select class="availability_neg"><option value="">' +
+            M.str.availability.listheader_sign_pos + '</option>' +
+            '<option value="!">' + M.str.availability.listheader_sign_neg + '</option></select> ' +
+            '<span class="availability_single">' + M.str.availability.listheader_single + '</span>' +
+            '<span class="availability_multi">' + M.str.availability.listheader_multi_before +
+            ' <select class="availability_op"><option value="&">' +
+            M.str.availability.listheader_multi_and + '</option>' +
+            '<option value="|">' + M.str.availability.listheader_multi_or + '</option></select> ' +
+            M.str.availability.listheader_multi_after + '</span></div>' +
+            '<div class="availability_children"></div>' +
+            '<div class="availability_none">' + M.str.moodle.none + '</div>' +
+            '<div class="availability_button"></div></div>');
+    if (!root) {
+        this.node.addClass('availability_childlist');
+    }
 
-    if (root) {
+    if (root || parentRoot) {
+        console.log('Root or parent root');
         // If it's the root, add an eye icon before the text.
         var shown = true;
         if (json && json.show !== undefined) {
             shown = json.show;
         }
+        if (json && json.showc !== undefined) {
+            // This is for parent root, not root.
+            shown = json.showc;
+        }
         this.eyeIcon = new M.core_availability.EyeIcon(false, shown);
         this.node.one('.availability_header').get('firstChild').insert(
             this.eyeIcon.span, 'before');
-    } else {
+    }
+    
+    if (!root) {
         // If it's not the root, add a delete button to the 'none' option.
         console.log('TODO');
     }
@@ -204,7 +219,7 @@ M.core_availability.List = function(json, root) {
                 newItem = new M.core_availability.Item(child, this.root);
             } else {
                 // List type.
-                newItem = new M.core_availability.List(child);
+                newItem = new M.core_availability.List(child, false, this.root);
             }
             this.children.push(newItem);
             this.node.one('> .availability_children').appendChild(
@@ -312,6 +327,7 @@ M.core_availability.List.prototype.clickAdd = function() {
             '</button></div></div>');
     var cancel = content.one('button');
 
+    // Make a list of all the dialog options.
     var dialogRef = { dialog: null };
     var ul = content.one('ul');
     for (var type in M.core_availability.form.plugins) {
@@ -328,6 +344,17 @@ M.core_availability.List.prototype.clickAdd = function() {
         li.appendChild(label);
         ul.appendChild(li);
     }
+    // Extra entry for lists.
+    var li = Y.Node.create('<li></li>');
+    var id = 'availability_addrestriction_list_';
+    var button = Y.Node.create('<button type="button" class="btn btn-default"' +
+            'id="' + id + '">' + M.str.availability.condition_group + '</button>');
+    button.on('click', this.getAddHandler(null, dialogRef), this);
+    li.appendChild(button);
+    var label = Y.Node.create('<label for="' + id + '">' +
+            M.str.availability.condition_group_info + '</label>');
+    li.appendChild(label);
+    ul.appendChild(li);
 
     var config = {
         headerContent : M.str.availability.addrestriction,
@@ -343,13 +370,20 @@ M.core_availability.List.prototype.clickAdd = function() {
 
 M.core_availability.List.prototype.getAddHandler = function(type, dialogRef) {
     return function() {
-        // Add child to end of this list (default JSON).
-        newItem = new M.core_availability.Item({ type: type, creating: true }, this.root);
+        if (type) {
+            // Create an Item object to represent the child.
+            newItem = new M.core_availability.Item({ type: type, creating: true }, this.root);
+        } else {
+            // Create a new List object to represent the child.
+            newItem = new M.core_availability.List({ c: [], showc: true }, false, this.root);
+        }
+        // Add to list.
         this.children.push(newItem);
-        this.node.one('> .availability_children').appendChild(
-            newItem.node);
+        this.node.one('> .availability_children').appendChild(newItem.node);
+        // Update the form and list HTML.
         M.core_availability.form.update();
         this.updateHtml();
+        // Hide dialog.
         dialogRef.dialog.hide();
     };
 };
@@ -407,7 +441,7 @@ M.core_availability.List.prototype.root = false;
  * @property children
  * @type {mixed[]}
  */
-M.core_availability.List.prototype.children = [];
+M.core_availability.List.prototype.children = null;
 
 /**
  * HTML node for list.

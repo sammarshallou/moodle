@@ -826,7 +826,7 @@ span.editinstructions {
         margin-right: 8px;
     }
     .availability-item {
-        margin-bottom: 4px;
+        margin-bottom: 6px;
     }
     .availability-plugincontrols {
         padding: 2px 0px 0px 4px;
@@ -842,6 +842,23 @@ span.editinstructions {
     .availability-eye[aria-hidden=true] {
         display: inline; 
         visibility: hidden;
+    }
+    .availability_button {
+        margin-left: 15px;
+    }
+    /* Nested section is grey. */
+    .availability_childlist {
+        display: inline-block;
+        background: #f5f5f5;
+        border: 1px solid #E3E3E3;
+        border-radius: 4px;
+        margin-left: 20px;
+        padding: 6px;
+        margin-bottom: 6px;
+    }
+    /* Second (and more) levels of nested sections are white. */
+    .availability_childlist .availability_childlist {
+       background: white;
     }
 }
 .availability-dialogue {
