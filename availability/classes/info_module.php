@@ -44,11 +44,10 @@ class info_module extends info_base {
     }
 
     protected function get_thing_name() {
-        // Unfortunately we cannot get the cm name at this point. That is because
-        // the error in question normally occurs within obtain_dynamic_data when
-        // called from within the getter for the name property! PHP won't let
-        // us access the property at this point.
-        return 'cm ' . $this->cm->id;
+        // We cannot access $cm->name as a property at this point, because this
+        // code may itself run in response to the $cm->name property access, and
+        // PHP magic function properties do not allow recursion (because PHP).
+        return $this->cm->get_property_without_magic('name');
     }
 
     protected function set_in_database($availability) {
