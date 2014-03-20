@@ -42,14 +42,19 @@ abstract class frontend {
      * Default implementation includes a YUI module called
      * 'moodle-availability_whatever-form' and the 'title' JS string, plus
      * also whatever strings are specified by get_javascript_strings().
+     *
+     * @param stdClass $course Course object
+     * @param \cm_info $cm Course-module currently being edited (null if none)
+     * @param \section_info $section Section currently being edited (null if none)
      */
-    protected function include_javascript() {
+    protected function include_javascript($course, \cm_info $cm = null,
+            \section_info $section = null) {
         global $PAGE, $CFG;
         $component = $this->get_component();
         $PAGE->requires->yui_module(array('moodle-' . $component . '-form',
                 'moodle-core_availability-form'),
                 'M.' . $component . '.form.init', array_merge(array($component),
-                $this->get_javascript_init_params()));
+                $this->get_javascript_init_params($course, $cm, $section)));
 
         $identifiers = $this->get_javascript_strings();
         $identifiers[] = 'title';
@@ -64,8 +69,11 @@ abstract class frontend {
      * Default returns true.
      *
      * @param stdClass $course Course object
+     * @param \cm_info $cm Course-module currently being edited (null if none)
+     * @param \section_info $section Section currently being edited (null if none)
      */
-    protected function allow_usage($course) {
+    protected function allow_usage($course, \cm_info $cm = null,
+            \section_info $section = null) {
         return true;
     }
 
@@ -86,9 +94,13 @@ abstract class frontend {
      * Gets parameters for the plugin's init function. Default returns no
      * parameters.
      *
+     * @param stdClass $course Course object
+     * @param \cm_info $cm Course-module currently being edited (null if none)
+     * @param \section_info $section Section currently being edited (null if none)
      * @return array Array of parameters for the JavaScript function
      */
-    protected function get_javascript_init_params() {
+    protected function get_javascript_init_params($course, \cm_info $cm = null,
+            \section_info $section = null) {
         return array();
     }
 
@@ -104,9 +116,12 @@ abstract class frontend {
     /**
      * Includes JavaScript for the main system and all plugins.
      * 
-     * @param stdClass $course Moodle course object
+     * @param stdClass $course Course object
+     * @param \cm_info $cm Course-module currently being edited (null if none)
+     * @param \section_info $section Section currently being edited (null if none)
      */
-    public static function include_all_javascript($course) {
+    public static function include_all_javascript($course, \cm_info $cm = null,
+            \section_info $section = null) {
         global $PAGE;
 
         // Include main JS. This is initialised on DOM ready, i.e. after the
@@ -127,16 +142,17 @@ abstract class frontend {
         // Include JS for all components.
         $pluginmanager = \core_plugin_manager::instance();
         $enabled = $pluginmanager->get_enabled_plugins('availability');
+//         print_object($enabled); exit;
         foreach ($enabled as $plugin => $info) {
             // TODO Remove this
-            if ($plugin !== 'date') {
+            if ($plugin !== 'date' && $plugin !== 'completion') {
                 continue;
             }
             // You can use a custom frontend.php if necessary.
             $class = '\availability_' . $plugin . '\frontend';
             $frontend = new $class();
-            if ($frontend->allow_usage($course)) {
-                $frontend->include_javascript();
+            if ($frontend->allow_usage($course, $cm, $section)) {
+                $frontend->include_javascript($course, $cm, $section);
             }
         }
     }

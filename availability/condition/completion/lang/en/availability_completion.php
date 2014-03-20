@@ -17,6 +17,12 @@
 /**
  * Language strings.
  *
+AMOS BEGIN
+ CPY [completion_complete,core_condition],[option_complete,availability_completion]
+ CPY [completion_fail,core_condition],[option_fail,availability_completion]
+ CPY [completion_incomplete,core_condition],[option_incomplete,availability_completion]
+ CPY [completion_pass,core_condition],[option_pass,availability_completion]
+AMOS END
  * @package availability_completion
  * @copyright 2014 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -24,6 +30,10 @@
 
 $string['description'] = 'Require students to complete (or not complete) an activity.';
 $string['missing'] = '(Missing activity)';
+$string['option_complete'] = 'must be marked complete';
+$string['option_fail'] = 'must be complete with fail grade';
+$string['option_incomplete'] = 'must not be marked complete';
+$string['option_pass'] = 'must be complete with pass grade';
 $string['requires_0'] = 'The activity <strong>{$a}</strong> is incomplete';
 $string['requires_1'] = 'The activity <strong>{$a}</strong> is marked complete';
 $string['requires_2'] = 'The activity <strong>{$a}</strong> is complete and passed';

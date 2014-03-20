@@ -34,17 +34,60 @@ defined('MOODLE_INTERNAL') || die();
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class frontend extends \core_availability\frontend {
+    /**
+     * @var array Cached init parameters
+     */
+    protected $cacheparams = array();
+
+    /**
+     * @var string IDs of course, cm, and section for cache (if any)
+     */
+    protected $cachekey = '';
+
     protected function get_javascript_strings() {
-        // TODO Add necessary strings here.
-        return array();
+        return array('option_complete','option_fail','option_incomplete','option_pass');
     }
 
-    protected function allow_usage($course) {
+    protected function get_javascript_init_params($course, \cm_info $cm = null,
+            \section_info $section = null) {
+        // Use cached result if available. The cache is just because we call it
+        // twice (once from allow_usage) so it's nice to avoid doing all the
+        // print_string calls twice.
+        $cachekey = $course->id . ',' . ($cm ? $cm->id : '') . ($section ? $section->id : '');
+        if ($cachekey !== $this->cachekey) {
+            // Get list of activities on course which have completion values,
+            // to fill the dropdown.
+            $context = \context_course::instance($course->id);
+            $cms = new \stdClass();
+            $modinfo = get_fast_modinfo($course);
+            foreach ($modinfo->cms as $id => $othercm) {
+                // Add each course-module if it has completion turned on and is not
+                // the one currently being edited.
+                if ($othercm->completion && (empty($cm) || $cm->id != $id)) {
+                    $key = 'cm' . $id;
+                    $cms->{$key} = format_string($othercm->name, true, array('context' => $context));
+                }
+            }
+    
+            $this->cachekey = $cachekey;
+            $this->cacheinitparams = array($cms);
+        }
+        return $this->cacheinitparams;
+    }
+
+    protected function allow_usage($course, \cm_info $cm = null,
+            \section_info $section = null) {
         global $CFG;
 
         // Check if completion is enabled for the course.
         require_once($CFG->libdir . '/completionlib.php');
         $info = new \completion_info($course);
-        return $info->is_enabled();
+        if (!$info->is_enabled()) {
+            return false;
+        }
+
+        // Check if there's at least one other module with completion info.
+        $params = $this->get_javascript_init_params($course, $cm, $section);
+        return ((array)$params[0]) != false;
     }
 }

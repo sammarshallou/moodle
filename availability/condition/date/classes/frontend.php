@@ -70,9 +70,8 @@ class frontend extends \core_availability\frontend {
                 'hour' => $wrongfields['hours'], 'minute' => $wrongfields['minutes']);
     }
 
-    protected function get_javascript_init_params() {
-        global $PAGE;
-
+    protected function get_javascript_init_params($course, \cm_info $cm = null,
+            \section_info $section = null) {
         // Support internationalised calendars.
         $calendartype = \core_calendar\type_factory::get_calendar_instance();
 

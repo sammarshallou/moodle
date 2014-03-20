@@ -69,7 +69,8 @@ class editsection_form extends moodleform {
             // availabilityconditionsjson for consistency with moodleform_mod.
             $mform->addElement('textarea', 'availabilityconditionsjson',
                     get_string('accessrestrictions', 'availability'));
-            \core_availability\frontend::include_all_javascript($course);
+            \core_availability\frontend::include_all_javascript($course, null,
+                    $this->_customdata['cs']);
         }
 
         $this->add_action_buttons();
