@@ -175,7 +175,6 @@ class core_modinfolib_testcase extends advanced_testcase {
         $this->assertEquals($moduledb->groupmode, $cm->groupmode);
         $this->assertEquals(VISIBLEGROUPS, $cm->groupmode);
         $this->assertEquals($moduledb->groupingid, $cm->groupingid);
-        $this->assertEquals($moduledb->groupmembersonly, $cm->groupmembersonly);
         $this->assertEquals($course->groupmodeforce, $cm->coursegroupmodeforce);
         $this->assertEquals($course->groupmode, $cm->coursegroupmode);
         $this->assertEquals(SEPARATEGROUPS, $cm->coursegroupmode);

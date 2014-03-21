@@ -704,9 +704,6 @@ class course_modinfo {
  * @property-read int $groupmode Group mode (one of the constants NOGROUPS, SEPARATEGROUPS, or VISIBLEGROUPS) - from
  *    course_modules table. Use {@link cm_info::$effectivegroupmode} to find the actual group mode that may be forced by course.
  * @property-read int $groupingid Grouping ID (0 = all groupings)
- * @property-read int $groupmembersonly Group members only (if set to 1, only members of a suitable group see this link on the
- *    course page; 0 = everyone sees it even if they don't belong to a suitable group) - from
- *    course_modules table
  * @property-read bool $coursegroupmodeforce Indicates whether the course containing the module has forced the groupmode
  *    This means that cm_info::$groupmode should be ignored and cm_info::$coursegroupmode be used instead
  * @property-read int $coursegroupmode Group mode (one of the constants NOGROUPS, SEPARATEGROUPS, or VISIBLEGROUPS) - from
@@ -863,14 +860,6 @@ class cm_info implements IteratorAggregate {
      * @var int
      */
     private $groupingid;
-
-    /**
-     * Group members only (if set to 1, only members of a suitable group see this link on the
-     * course page; 0 = everyone sees it even if they don't belong to a suitable group)  - from
-     * course_modules table
-     * @var int
-     */
-    private $groupmembersonly;
 
     /**
      * Indent level on course page (0 = no indent) - from course_modules table
@@ -1090,7 +1079,6 @@ class cm_info implements IteratorAggregate {
         'effectivegroupmode' => 'get_effective_groupmode',
         'extra' => false,
         'groupingid' => false,
-        'groupmembersonly' => false,
         'groupmode' => false,
         'icon' => false,
         'iconcomponent' => false,
@@ -1672,7 +1660,6 @@ class cm_info implements IteratorAggregate {
         $this->sectionnum       = $mod->section; // Note weirdness with name here
         $this->groupmode        = isset($mod->groupmode) ? $mod->groupmode : 0;
         $this->groupingid       = isset($mod->groupingid) ? $mod->groupingid : 0;
-        $this->groupmembersonly = isset($mod->groupmembersonly) ? $mod->groupmembersonly : 0;
         $this->indent           = isset($mod->indent) ? $mod->indent : 0;
         $this->extra            = isset($mod->extra) ? $mod->extra : '';
         $this->extraclasses     = isset($mod->extraclasses) ? $mod->extraclasses : '';
