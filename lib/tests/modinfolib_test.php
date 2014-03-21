@@ -237,6 +237,9 @@ class core_modinfolib_testcase extends advanced_testcase {
         $this->assertEquals(new moodle_url('/mod/assign/view.php', array('id' => $moduledb->id)), $cm->url);
         $this->assertEquals($cachedcminfo->customdata, $cm->customdata);
 
+        // Test accessing field without using magic function.
+        $this->assertEquals($cachedcminfo->name, $cm->get_property_without_magic('name'));
+
         // Dynamic fields, just test that they can be retrieved (must be carefully tested in each activity type).
         $this->assertNotEmpty($cm->availableinfo); // Lists all unmet availability conditions.
         $this->assertEquals(0, $cm->uservisible);

@@ -1191,6 +1191,29 @@ class cm_info implements IteratorAggregate {
      * @return mixed
      */
     public function __get($name) {
+        return $this->get_property_without_magic($name);
+    }
+
+    /**
+     * Get properties without using the magic get method.
+     *
+     * The only use for this function is that, in certain situations, we may
+     * need to access a property while adding dynamic data to the modinfo
+     * object. Example:
+     *
+     * $cm->name ... (triggers dynamic data creation) ... $cm->name
+     *
+     * With PHP magic property method you cannot nest them like this - it should
+     * work just fine, but instead of doing the recursive call, it pretends
+     * the property does not exist: 'Undefined property: cm_info::$name'.
+     *
+     * This method can safely be called in recursive situations instead of
+     * a property access.
+     *
+     * @param string $name Property name
+     * @return mixed Property value
+     */
+    public function get_property_without_magic($name) {
         if (isset(self::$standardproperties[$name])) {
             if ($method = self::$standardproperties[$name]) {
                 return $this->$method();
