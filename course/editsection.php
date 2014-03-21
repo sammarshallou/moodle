@@ -76,12 +76,6 @@ if ($mform->is_cancelled()){
         // Usually edit form does not change relative section number but just in case.
         $sectionnum = $data->section;
     }
-    if (!empty($CFG->enableavailability)) {
-        // Update grade and completion conditions.
-        $sectioninfo = get_fast_modinfo($course)->get_section_info($sectionnum);
-        condition_info_section::update_section_from_form($sectioninfo, $data);
-        rebuild_course_cache($course->id, true);
-    }
     course_get_format($course->id)->update_section_format_options($data);
 
     // Set section info, as this might not be present in form_data.

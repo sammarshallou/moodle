@@ -712,11 +712,8 @@ class core_course_renderer extends plugin_renderer_base {
         global $CFG;
         $conditionalhidden = false;
         if (!empty($CFG->enableavailability)) {
-            $conditionalhidden = $mod->availablefrom > time() ||
-                ($mod->availableuntil && $mod->availableuntil < time()) ||
-                count($mod->conditionsgrade) > 0 ||
-                count($mod->conditionscompletion) > 0 ||
-                count($mod->conditionsfield);
+            $info = new \core_availability\info_module($mod);
+            $conditionalhidden = !$info->is_available_for_all();
         }
         return $conditionalhidden;
     }
@@ -737,8 +734,7 @@ class core_course_renderer extends plugin_renderer_base {
     public function course_section_cm_name(cm_info $mod, $displayoptions = array()) {
         global $CFG;
         $output = '';
-        if (!$mod->uservisible &&
-                (empty($mod->showavailability) || empty($mod->availableinfo))) {
+        if (!$mod->uservisible && empty($mod->availableinfo)) {
             // nothing to be displayed to the user
             return $output;
         }
@@ -826,8 +822,7 @@ class core_course_renderer extends plugin_renderer_base {
      */
     public function course_section_cm_text(cm_info $mod, $displayoptions = array()) {
         $output = '';
-        if (!$mod->uservisible &&
-                (empty($mod->showavailability) || empty($mod->availableinfo))) {
+        if (!$mod->uservisible && empty($mod->availableinfo)) {
             // nothing to be displayed to the user
             return $output;
         }
@@ -877,7 +872,7 @@ class core_course_renderer extends plugin_renderer_base {
         if (!$mod->uservisible) {
             // this is a student who is not allowed to see the module but might be allowed
             // to see availability info (i.e. "Available from ...")
-            if (!empty($mod->showavailability) && !empty($mod->availableinfo)) {
+            if (!empty($mod->availableinfo)) {
                 $output = html_writer::tag('div', $mod->availableinfo, array('class' => 'availabilityinfo'));
             }
             return $output;
@@ -952,15 +947,10 @@ class core_course_renderer extends plugin_renderer_base {
         // if:
         // 1) The activity is not visible to users
         // and
-        // 2a) The 'showavailability' option is not set (if that is set,
-        //     we need to display the activity so we can show
-        //     availability info)
-        // or
-        // 2b) The 'availableinfo' is empty, i.e. the activity was
+        // 2) The 'availableinfo' is empty, i.e. the activity was
         //     hidden in a way that leaves no info, such as using the
         //     eye icon.
-        if (!$mod->uservisible &&
-            (empty($mod->showavailability) || empty($mod->availableinfo))) {
+        if (!$mod->uservisible && empty($mod->availableinfo)) {
             return $output;
         }
 
