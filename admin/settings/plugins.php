@@ -478,6 +478,17 @@ if ($hassiteconfig) {
     }
 }
 
+// Availability conditions.
+if ($hassiteconfig) {
+    $ADMIN->add('modules', new admin_category('availabilitysettings', new lang_string('type_availability_plural', 'plugin')));
+    $ADMIN->add('availabilitysettings', new admin_externalpage('manageavailability', new lang_string('manageplugins', 'availability'),
+            $CFG->wwwroot . '/' . $CFG->admin . '/availabilityconditions.php'));
+    foreach (core_plugin_manager::instance()->get_plugins_of_type('availability') as $plugin) {
+        /** @var \core\plugininfo\format $plugin */
+        $plugin->load_settings($ADMIN, 'availabilitysettings', $hassiteconfig);
+    }
+}
+
 /// Add all local plugins - must be always last!
 if ($hassiteconfig) {
     $ADMIN->add('modules', new admin_category('localplugins', new lang_string('localplugins')));
