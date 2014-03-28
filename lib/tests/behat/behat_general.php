@@ -657,4 +657,43 @@ class behat_general extends behat_base {
             return;
         }
     }
+
+    /**
+     * Sets a select dropdown to a given value.
+     *
+     * Note this is different from the 'set value' in form; this one actually
+     * changes the dropdown in the UI rather than directly setting the form
+     * value in DOM.
+     *
+     * @When /^I choose "([^"]*)" in select "([^"]*)"$/
+     * @throws ExpectationException
+     * @param string $option The name of the option within the select
+     * @param string $select An identifier that can be used to findthe select field
+     */
+    public function i_choose_in_select($option, $select) {
+        $node = $this->get_selected_node('select', $select);
+        $node->selectOption($option);
+    }
+
+    /**
+     * Sets a select dropdown (within something) to a given value.
+     *
+     * Note this is different from the 'set value' in form; this one actually
+     * changes the dropdown in the UI rather than directly setting the form
+     * value in DOM.
+     *
+     * @When /^I choose "([^"]*)" in select "([^"]*)" in the "(?P<element2_string>(?:[^"]|\\")*)" "(?P<selector2_string>[^"]*)"$/
+     * @throws ExpectationException
+     * @param string $option The name of the option within the select
+     * @param string $select Name or id of the select field
+     * @param string $containerelement The container selector type
+     * @param string $containerselectortype The container locator
+     */
+    public function i_choose_in_select_in_the($option, $select,
+            $containerelement, $containerselectortype) {
+        $containernode = $this->get_selected_node($containerselectortype, $containerelement);
+        list($selector, $locator) = $this->transform_selector('select', $select);
+        $node = $this->find($selector, $locator, false, $containernode, self::REDUCED_TIMEOUT);
+        $node->selectOption($option);
+    }
 }
