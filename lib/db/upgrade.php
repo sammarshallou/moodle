@@ -3400,129 +3400,131 @@ function xmldb_main_upgrade($oldversion) {
                        EXISTS (SELECT 1 FROM {course_sections_availability} WHERE coursesectionid = cs.id) OR
                        EXISTS (SELECT 1 FROM {course_sections_avail_fields} WHERE coursesectionid = cs.id)");
 
-        // Show progress bar and start db transaction.
-        $transaction = $DB->start_delegated_transaction();
-        $pbar = new progress_bar('availupdate', 500, true);
+        if ($cmcount + $sectcount > 0) {
+            // Show progress bar and start db transaction.
+            $transaction = $DB->start_delegated_transaction();
+            $pbar = new progress_bar('availupdate', 500, true);
 
-        // Loop through all course-modules.
-        // (Performance: On the OU system, the query took <1 second for ~20k
-        // results; updating all those entries took ~3 minutes.)
-        $done = 0;
-        $lastupdate = 0;
-        $rs = $DB->get_recordset_sql("
-                SELECT cm.id, cm.availablefrom, cm.availableuntil, cm.showavailability,
-                       COUNT (DISTINCT cma.id) AS availcount,
-                       COUNT (DISTINCT cmf.id) AS fieldcount
-                  FROM {course_modules} cm
-                       LEFT JOIN {course_modules_availability} cma ON cma.coursemoduleid = cm.id
-                       LEFT JOIN {course_modules_avail_fields} cmf ON cmf.coursemoduleid = cm.id
-                 WHERE cm.availablefrom != 0 OR
-                       cm.availableuntil != 0 OR
-                       cma.id IS NOT NULL OR
-                       cmf.id IS NOT NULL
-              GROUP BY cm.id, cm.availablefrom, cm.availableuntil, cm.showavailability");
-        foreach ($rs as $rec) {
-            // Update progress initially and then once per second.
-            if (time() != $lastupdate) {
-                $lastupdate = time();
-                $pbar->update($done, $cmcount + $sectcount,
-                        "Updating activity availability settings ($done/$cmcount)");
-            }
+            // Loop through all course-modules.
+            // (Performance: On the OU system, the query took <1 second for ~20k
+            // results; updating all those entries took ~3 minutes.)
+            $done = 0;
+            $lastupdate = 0;
+            $rs = $DB->get_recordset_sql("
+                    SELECT cm.id, cm.availablefrom, cm.availableuntil, cm.showavailability,
+                           COUNT (DISTINCT cma.id) AS availcount,
+                           COUNT (DISTINCT cmf.id) AS fieldcount
+                      FROM {course_modules} cm
+                           LEFT JOIN {course_modules_availability} cma ON cma.coursemoduleid = cm.id
+                           LEFT JOIN {course_modules_avail_fields} cmf ON cmf.coursemoduleid = cm.id
+                     WHERE cm.availablefrom != 0 OR
+                           cm.availableuntil != 0 OR
+                           cma.id IS NOT NULL OR
+                           cmf.id IS NOT NULL
+                  GROUP BY cm.id, cm.availablefrom, cm.availableuntil, cm.showavailability");
+            foreach ($rs as $rec) {
+                // Update progress initially and then once per second.
+                if (time() != $lastupdate) {
+                    $lastupdate = time();
+                    $pbar->update($done, $cmcount + $sectcount,
+                            "Updating activity availability settings ($done/$cmcount)");
+                }
 
-            // Get supporting records - only if there are any (to reduce the
-            // number of queries where just date/group is used).
-            if ($rec->availcount) {
-                $availrecs = $DB->get_records('course_modules_availability',
-                        array('coursemoduleid' => $rec->id));
-            } else {
-                $availrecs = array();
-            }
-            if ($rec->fieldcount) {
-                $fieldrecs = $DB->get_records_sql("
-                        SELECT cmaf.userfield, cmaf.operator, cmaf.value, uif.shortname
-                          FROM {course_modules_avail_fields} cmaf
-                     LEFT JOIN {user_info_field} uif ON uif.id = cmaf.customfieldid
-                         WHERE cmaf.coursemoduleid = ?", array($rec->id));
-            } else {
-                $fieldrecs = array();
-            }
+                // Get supporting records - only if there are any (to reduce the
+                // number of queries where just date/group is used).
+                if ($rec->availcount) {
+                    $availrecs = $DB->get_records('course_modules_availability',
+                            array('coursemoduleid' => $rec->id));
+                } else {
+                    $availrecs = array();
+                }
+                if ($rec->fieldcount) {
+                    $fieldrecs = $DB->get_records_sql("
+                            SELECT cmaf.userfield, cmaf.operator, cmaf.value, uif.shortname
+                              FROM {course_modules_avail_fields} cmaf
+                         LEFT JOIN {user_info_field} uif ON uif.id = cmaf.customfieldid
+                             WHERE cmaf.coursemoduleid = ?", array($rec->id));
+                } else {
+                    $fieldrecs = array();
+                }
 
-            // Update item.
-            $availability = upgrade_availability_item(0, 0,
-                    $rec->availablefrom, $rec->availableuntil,
-                    $rec->showavailability, $availrecs, $fieldrecs);
-            if ($availability) {
-                $DB->set_field('course_modules', 'availability', $availability, array('id' => $rec->id));
-            }
+                // Update item.
+                $availability = upgrade_availability_item(0, 0,
+                        $rec->availablefrom, $rec->availableuntil,
+                        $rec->showavailability, $availrecs, $fieldrecs);
+                if ($availability) {
+                    $DB->set_field('course_modules', 'availability', $availability, array('id' => $rec->id));
+                }
 
-            // Update progress.
-            $done++;
+                // Update progress.
+                $done++;
+            }
+            $rs->close();
+
+            // Loop through all course-sections.
+            // (Performance: On the OU system, this took <1 second for, er, 150 results.)
+            $done = 0;
+            $rs = $DB->get_recordset_sql("
+                    SELECT cs.id, cs.groupingid, cs.availablefrom,
+                           cs.availableuntil, cs.showavailability,
+                           COUNT (DISTINCT csa.id) AS availcount,
+                           COUNT (DISTINCT csf.id) AS fieldcount
+                      FROM {course_sections} cs
+                           LEFT JOIN {course_sections_availability} csa ON csa.coursesectionid = cs.id
+                           LEFT JOIN {course_sections_avail_fields} csf ON csf.coursesectionid = cs.id
+                     WHERE cs.groupingid != 0 OR
+                           cs.availablefrom != 0 OR
+                           cs.availableuntil != 0 OR
+                           csa.id IS NOT NULL OR
+                           csf.id IS NOT NULL
+                  GROUP BY cs.id, cs.groupingid, cs.availablefrom,
+                           cs.availableuntil, cs.showavailability");
+            foreach ($rs as $rec) {
+                // Update progress once per second.
+                if (time() != $lastupdate) {
+                    $lastupdate = time();
+                    $pbar->update($done + $cmcount, $cmcount + $sectcount,
+                            "Updating section availability settings ($done/$sectcount)");
+                }
+
+                // Get supporting records - only if there are any (to reduce the
+                // number of queries where just date/group is used).
+                if ($rec->availcount) {
+                    $availrecs = $DB->get_records('course_sections_availability',
+                            array('coursesectionid' => $rec->id));
+                } else {
+                    $availrecs = array();
+                }
+                if ($rec->fieldcount) {
+                    $fieldrecs = $DB->get_records_sql("
+                            SELECT csaf.userfield, csaf.operator, csaf.value, uif.shortname
+                              FROM {course_sections_avail_fields} csaf
+                         LEFT JOIN {user_info_field} uif ON uif.id = csaf.customfieldid
+                             WHERE csaf.coursesectionid = ?", array($rec->id));
+                } else {
+                    $fieldrecs = array();
+                }
+
+                // Update item.
+                $availability = upgrade_availability_item($rec->groupingid ? 1 : 0,
+                        $rec->groupingid, $rec->availablefrom, $rec->availableuntil,
+                        $rec->showavailability, $availrecs, $fieldrecs);
+                if ($availability) {
+                    $DB->set_field('course_sections', 'availability', $availability, array('id' => $rec->id));
+                }
+
+                // Update progress.
+                $done++;
+            }
+            $rs->close();
+
+            // Final progress update for 100%.
+            $pbar->update($done + $cmcount, $cmcount + $sectcount,
+                    'Availability settings updated for ' . ($cmcount + $sectcount) .
+                    ' activities and sections');
+
+            $transaction->allow_commit();
         }
-        $rs->close();
-
-        // Loop through all course-sections.
-        // (Performance: On the OU system, this took <1 second for, er, 150 results.)
-        $done = 0;
-        $rs = $DB->get_recordset_sql("
-                SELECT cs.id, cs.groupingid, cs.availablefrom,
-                       cs.availableuntil, cs.showavailability,
-                       COUNT (DISTINCT csa.id) AS availcount,
-                       COUNT (DISTINCT csf.id) AS fieldcount
-                  FROM {course_sections} cs
-                       LEFT JOIN {course_sections_availability} csa ON csa.coursesectionid = cs.id
-                       LEFT JOIN {course_sections_avail_fields} csf ON csf.coursesectionid = cs.id
-                 WHERE cs.groupingid != 0 OR
-                       cs.availablefrom != 0 OR
-                       cs.availableuntil != 0 OR
-                       csa.id IS NOT NULL OR
-                       csf.id IS NOT NULL
-              GROUP BY cs.id, cs.groupingid, cs.availablefrom,
-                       cs.availableuntil, cs.showavailability");
-        foreach ($rs as $rec) {
-            // Update progress once per second.
-            if (time() != $lastupdate) {
-                $lastupdate = time();
-                $pbar->update($done + $cmcount, $cmcount + $sectcount,
-                        "Updating section availability settings ($done/$sectcount)");
-            }
-
-            // Get supporting records - only if there are any (to reduce the
-            // number of queries where just date/group is used).
-            if ($rec->availcount) {
-                $availrecs = $DB->get_records('course_sections_availability',
-                        array('coursesectionid' => $rec->id));
-            } else {
-                $availrecs = array();
-            }
-            if ($rec->fieldcount) {
-                $fieldrecs = $DB->get_records_sql("
-                        SELECT csaf.userfield, csaf.operator, csaf.value, uif.shortname
-                          FROM {course_sections_avail_fields} csaf
-                     LEFT JOIN {user_info_field} uif ON uif.id = csaf.customfieldid
-                         WHERE csaf.coursesectionid = ?", array($rec->id));
-            } else {
-                $fieldrecs = array();
-            }
-
-            // Update item.
-            $availability = upgrade_availability_item($rec->groupingid ? 1 : 0,
-                    $rec->groupingid, $rec->availablefrom, $rec->availableuntil,
-                    $rec->showavailability, $availrecs, $fieldrecs);
-            if ($availability) {
-                $DB->set_field('course_sections', 'availability', $availability, array('id' => $rec->id));
-            }
-
-            // Update progress.
-            $done++;
-        }
-        $rs->close();
-
-        // Final progress update for 100%.
-        $pbar->update($done + $cmcount, $cmcount + $sectcount,
-                'Availability settings updated for ' . ($cmcount + $sectcount) .
-                ' activities and sections');
-
-        $transaction->allow_commit();
 
         // Drop tables which are not necessary because they are covered by the
         // new availability fields.
