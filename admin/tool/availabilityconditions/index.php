@@ -19,12 +19,12 @@
  *
  * You can also enable/disable them from this screen.
  *
- * @package admin
+ * @package tool_availabilityconditions
  * @copyright 2014 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(__DIR__ . '/../config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->libdir . '/tablelib.php');
 
