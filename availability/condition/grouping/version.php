@@ -25,5 +25,5 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->version = 2014022800;
-$plugin->requires = 2014020700.02; // TODO Update this to release version.
+$plugin->requires = 2014040401;
 $plugin->component = 'availability_grouping';
