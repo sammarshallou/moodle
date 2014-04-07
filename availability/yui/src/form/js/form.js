@@ -765,6 +765,9 @@ M.core_availability.Item = function(json, root) {
         // Plugin is known.
         this.plugin = M.core_availability.form.plugins[json.type];
         this.pluginNode = this.plugin.getNode(json);
+
+        // Add a class with the plugin Frankenstyle name to make CSS easier in plugin.
+        this.pluginNode.addClass('availability_' + json.type);
     }
 
     this.node = Y.Node.create('<div class="availability-item"><h3 class="accesshide"></h3></div>');

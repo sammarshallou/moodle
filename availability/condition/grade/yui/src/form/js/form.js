@@ -43,17 +43,15 @@ M.availability_grade.form.getNode = function(json) {
         // String has already been escaped using format_string.
         html += '<option value="' + grade.id + '">' + grade.name + '</option>';
     }
-    // The width:3em is because size=3 doesn't work any more, and it should be
-    // about that wide
     html += '</select></span></label> <span class="availability-group">' +
             '<label><input type="checkbox" name="min"/>' + strings.option_min +
             '</label> <label><span class="accesshide">' + strings.label_min +
-            '</span><input type="text" name="minval" style="width: 3em" title="' +
+            '</span><input type="text" name="minval" title="' +
             strings.label_min + '"/></label>%</span>' +
             '<span class="availability-group">' +
             '<label><input type="checkbox" name="max"/>' + strings.option_max +
             '</label> <label><span class="accesshide">' + strings.label_max +
-            '</span><input type="text" name="maxval" style="width: 3em" title="' +
+            '</span><input type="text" name="maxval" title="' +
             strings.label_max + '"/></label>%</span>';
     var node = Y.Node.create('<span>' + html + '</span>');
 
