@@ -2592,7 +2592,7 @@ class section_info implements IteratorAggregate {
      * @deprecated Since Moodle 2.7
      */
     private function get_availablefrom() {
-        debugging('$cm->availablefrom has been deprecated. This ' .
+        debugging('$section->availablefrom has been deprecated. This ' .
                 'information is no longer available as the system provides more complex ' .
                 'options (for example, there might be different dates for different users).',
                 DEBUG_DEVELOPER);
@@ -2606,7 +2606,7 @@ class section_info implements IteratorAggregate {
      * @deprecated Since Moodle 2.7
      */
     private function get_availableuntil() {
-        debugging('$cm->availableuntil has been deprecated. This ' .
+        debugging('$section->availableuntil has been deprecated. This ' .
                 'information is no longer available as the system provides more complex ' .
                 'options (for example, there might be different dates for different users).',
                 DEBUG_DEVELOPER);
@@ -2620,7 +2620,7 @@ class section_info implements IteratorAggregate {
      * @deprecated Since Moodle 2.7
      */
     private function get_groupingid() {
-        debugging('$cm->groupingid has been deprecated. This ' .
+        debugging('$section->groupingid has been deprecated. This ' .
                 'information is no longer available as the system provides more complex ' .
                 'options (for example, combining multiple groupings).',
                 DEBUG_DEVELOPER);
