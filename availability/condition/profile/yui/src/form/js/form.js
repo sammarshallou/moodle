@@ -77,16 +77,24 @@ M.availability_profile.form.getNode = function(json) {
         node.one('input').set('value', json.v);
     }
 
-    // Add event handlers.
-    var updateForm = function() {
-        var op = node.one('select[name=op]');
-        var novalue = (op.get('value') === 'isempty' || op.get('value') === 'isnotempty');
-        node.one('input[name=value]').set('disabled', novalue);
-        M.core_availability.form.update();
-    };
-    node.one('select[name=field]').on('change', updateForm, this);
-    node.one('select[name=op]').on('change', updateForm, this);
-    node.one('input[name=value]').on('valuechange', updateForm, this);
+    // Add event handlers (first time only).
+    if (!M.availability_profile.form.addedEvents) {
+        M.availability_profile.form.addedEvents = true;
+        var updateForm = function(input) {
+            var ancestorNode = input.ancestor('span.availability_profile');
+            var op = ancestorNode.one('select[name=op]');
+            var novalue = (op.get('value') === 'isempty' || op.get('value') === 'isnotempty');
+            ancestorNode.one('input[name=value]').set('disabled', novalue);
+            M.core_availability.form.update();
+        };
+        var root = Y.one('#fitem_id_availabilityconditionsjson');
+        root.delegate('change', function() {
+             updateForm(this);
+        }, '.availability_profile select');
+        root.delegate('change', function() {
+             updateForm(this);
+        }, '.availability_profile input[name=value]');
+    }
 
     return node;
 };

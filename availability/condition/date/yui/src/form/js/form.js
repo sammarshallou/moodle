@@ -67,16 +67,21 @@ M.availability_date.form.getNode = function(json) {
         node.one('select[name=direction]').set('value', json.d);
     }
 
-    // Add event handlers.
-    node.one('select[name=direction]').on('change', function() {
-        // For the direction, just update the form fields.
-        M.core_availability.form.update();
-    });
-    node.all('select:not([name=direction])').each(function(select) {
-        select.on('change', function() {
-            M.availability_date.form.updateTime(node);
-        });
-    });
+    // Add event handlers (first time only).
+    if (!M.availability_date.form.addedEvents) {
+        M.availability_date.form.addedEvents = true;
+
+        var root = Y.one('#fitem_id_availabilityconditionsjson');
+        root.delegate('change', function() {
+            // For the direction, just update the form fields.
+            M.core_availability.form.update();
+        }, '.availability_date select[name=direction]');
+
+        root.delegate('change', function() {
+            // Update time using AJAX call from root node.
+            M.availability_date.form.updateTime(this.ancestor('span.availability_date'));
+        }, '.availability_date select:not([name=direction])');
+    }
 
     if (node.one('a[href=#]')) {
         // Add the date selector magic.

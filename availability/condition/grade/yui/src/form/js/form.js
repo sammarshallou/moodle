@@ -69,28 +69,37 @@ M.availability_grade.form.getNode = function(json) {
         node.one('input[name=maxval]').set('value', json.max);
     }
 
-    // Add event handlers.
-    node.one('select[name=id]').on('change', function() {
-        // For the grade item, just update the form fields.
-        M.core_availability.form.update();
-    }, this);
+    // Disables/enables text input fields depending on checkbox.
+    var updateCheckbox = function(check, focus) {
+        var input = check.ancestor('label').next('label').one('input');
+        var checked = check.get('checked');
+        input.set('disabled', !checked);
+        if (focus && checked) {
+            input.focus();
+        }
+        return checked;
+    };
+    node.all('input[type=checkbox]').each(updateCheckbox);
 
-    node.all('input[type=checkbox]').each(function(check) {
-        var updateCheckbox = function() {
-            var input = check.ancestor('label').next('label').one('input');
-            var checked = check.get('checked');
-            input.set('disabled', !checked);
-            if (checked) {
-                input.focus();
-            }
-        };
-        check.on('click', updateCheckbox, this);
-        updateCheckbox();
-    }, this);
-    node.all('input[type=text]').on('valuechange', function() {
-        // For grade values, just update the form fields.
-        M.core_availability.form.update();
-    }, this);
+    // Add event handlers (first time only).
+    if (!M.availability_grade.form.addedEvents) {
+        M.availability_grade.form.addedEvents = true;
+
+        var root = Y.one('#fitem_id_availabilityconditionsjson');
+        root.delegate('change', function() {
+            // For the grade item, just update the form fields.
+            M.core_availability.form.update();
+        }, '.availability_grade select[name=id]');
+
+        root.delegate('click', function() {
+            updateCheckbox(this, true);
+        }, '.availability_grade input[type=checkbox]');
+
+        root.delegate('valuechange', function() {
+            // For grade values, just update the form fields.
+            M.core_availability.form.update();
+        }, '.availability_grade input[type=text]');
+    }
 
     return node;
 };

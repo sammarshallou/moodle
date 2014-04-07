@@ -33,7 +33,7 @@ M.availability_completion.form.getNode = function(json) {
         // String has already been escaped using format_string.
         html += '<option value="' + cm.id + '">' + cm.name + '</option>';
     }
-    html += '</select> <label><span class="accesshide">' + strings.label_completion +
+    html += '</select></label> <label><span class="accesshide">' + strings.label_completion +
             ' </span><select name="e" title="' + strings.label_completion + '">' +
             '<option value="1">' + strings.option_complete + '</option>' +
             '<option value="0">' + strings.option_incomplete + '</option>' +
@@ -51,13 +51,15 @@ M.availability_completion.form.getNode = function(json) {
         node.one('select[name=e]').set('value', json.e);
     }
 
-    // Add event handlers.
-    var updateForm = function() {
-        // Whichever dropdown changed, just update the form.
-        M.core_availability.form.update();
-    };
-    node.one('select[name=cm]').on('change', updateForm);
-    node.one('select[name=e]').on('change', updateForm);
+    // Add event handlers (first time only).
+    if (!M.availability_completion.form.addedEvents) {
+        M.availability_completion.form.addedEvents = true;
+        var root = Y.one('#fitem_id_availabilityconditionsjson');
+        root.delegate('change', function() {
+            // Whichever dropdown changed, just update the form.
+            M.core_availability.form.update();
+        }, '.availability_completion select');
+    }
 
     return node;
 };

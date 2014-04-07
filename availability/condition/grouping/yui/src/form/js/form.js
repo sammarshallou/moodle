@@ -49,11 +49,15 @@ M.availability_grouping.form.getNode = function(json) {
         node.one('select[name=id]').set('value', json.id);
     }
 
-    // Add event handlers.
-    node.one('select[name=id]').on('change', function() {
-        // Just update the form fields.
-        M.core_availability.form.update();
-    }, this);
+    // Add event handlers (first time only).
+    if (!M.availability_grouping.form.addedEvents) {
+        M.availability_grouping.form.addedEvents = true;
+        var root = Y.one('#fitem_id_availabilityconditionsjson');
+        root.delegate('change', function() {
+            // Just update the form fields.
+            M.core_availability.form.update();
+        }, '.availability_grouping select');
+    }
 
     return node;
 };
