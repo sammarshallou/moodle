@@ -65,12 +65,19 @@ M.core_availability.form = {
     idCounter : 0,
 
     /**
-     * Called to initialise the system when the page loads. This is called
-     * after plugins have been added.
+     * Called to initialise the system when the page loads. This method will
+     * also call the init method for each plugin.
      *
      * @method init
      */
-    init : function() {
+    init : function(pluginParams) {
+        // Init all plugins.
+        for(var plugin in pluginParams) {
+            var params = pluginParams[plugin];
+            var pluginClass = M[params[0]].form;
+            pluginClass.init.apply(pluginClass, params);
+        }
+
         // Get the availability field, hide it, and replace with the main div.
         this.field = Y.one('#id_availabilityconditionsjson');
         this.field.setAttribute('aria-hidden', 'true');

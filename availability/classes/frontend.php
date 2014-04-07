@@ -41,33 +41,6 @@ defined('MOODLE_INTERNAL') || die();
  */
 abstract class frontend {
     /**
-     * Includes JavaScript for the current plugin.
-     *
-     * Default implementation includes a YUI module called
-     * 'moodle-availability_whatever-form' and the 'title' JS string, plus
-     * also whatever strings are specified by get_javascript_strings().
-     *
-     * @param stdClass $course Course object
-     * @param \cm_info $cm Course-module currently being edited (null if none)
-     * @param \section_info $section Section currently being edited (null if none)
-     */
-    protected function include_javascript($course, \cm_info $cm = null,
-            \section_info $section = null) {
-        global $PAGE, $CFG;
-        $component = $this->get_component();
-        $PAGE->requires->yui_module(array('moodle-' . $component . '-form',
-                'moodle-core_availability-form'),
-                'M.' . $component . '.form.init', array($component,
-                $this->allow_add($course, $cm, $section),
-                $this->get_javascript_init_params($course, $cm, $section)));
-
-        $identifiers = $this->get_javascript_strings();
-        $identifiers[] = 'title';
-        $identifiers[] = 'description';
-        $PAGE->requires->strings_for_js($identifiers, $component);
-    }
-
-    /**
      * Decides whether this plugin should be available in a given course. The
      * plugin can do this depending on course or system settings.
      *
@@ -96,8 +69,9 @@ abstract class frontend {
     }
 
     /**
-     * Gets parameters for the plugin's init function. Default returns no
-     * parameters.
+     * Gets additional parameters for the plugin's initInner function.
+     *
+     * Default returns no parameters.
      *
      * @param stdClass $course Course object
      * @param \cm_info $cm Course-module currently being edited (null if none)
@@ -129,11 +103,43 @@ abstract class frontend {
             \section_info $section = null) {
         global $PAGE;
 
-        // Include main JS. This is initialised on DOM ready, i.e. after the
-        // plugins.
-        $PAGE->requires->yui_module(array('moodle-core_availability-form',
-                'base', 'node', 'panel', 'moodle-core-notification-dialogue', 'json'),
-                'M.core_availability.form.init', array(), null, true);
+        // Prepare array of required YUI modules. It is bad for performance to
+        // make multiple yui_module calls, so we group all the plugin modules
+        // into a single call (the main init function will call init for each
+        // plugin).
+        $modules = array('moodle-core_availability-form', 'base', 'node',
+                'panel', 'moodle-core-notification-dialogue', 'json');
+
+        // Work out JS to include for all components.
+        $pluginmanager = \core_plugin_manager::instance();
+        $enabled = $pluginmanager->get_enabled_plugins('availability');
+        $componentparams = new \stdClass();
+        foreach ($enabled as $plugin => $info) {
+            // Create plugin front-end object.
+            $class = '\availability_' . $plugin . '\frontend';
+            $frontend = new $class();
+
+            // Add to array of required YUI modules.
+            $component = $frontend->get_component();
+            $modules[] = 'moodle-' . $component . '-form';
+
+            // Get parameters for this plugin.
+            $componentparams->{$plugin} = array($component,
+                    $frontend->allow_add($course, $cm, $section),
+                    $frontend->get_javascript_init_params($course, $cm, $section));
+
+            // Include strings for this plugin.
+            $identifiers = $frontend->get_javascript_strings();
+            $identifiers[] = 'title';
+            $identifiers[] = 'description';
+            $PAGE->requires->strings_for_js($identifiers, $component);
+        }
+
+        // Include all JS (in one call). The init function runs on DOM ready.
+        $PAGE->requires->yui_module($modules,
+                'M.core_availability.form.init', array($componentparams), null, true);
+
+        // Include main strings.
         $PAGE->requires->strings_for_js(array('none', 'cancel', 'delete', 'choosedots'),
                 'moodle');
         $PAGE->requires->strings_for_js(array('addrestriction', 'invalid',
@@ -147,16 +153,6 @@ abstract class frontend {
                 'label_multi', 'label_sign', 'setheading', 'itemheading',
                 'missingplugin'),
                 'availability');
-
-        // Include JS for all components.
-        $pluginmanager = \core_plugin_manager::instance();
-        $enabled = $pluginmanager->get_enabled_plugins('availability');
-        foreach ($enabled as $plugin => $info) {
-            // Create plugin front-end object.
-            $class = '\availability_' . $plugin . '\frontend';
-            $frontend = new $class();
-            $frontend->include_javascript($course, $cm, $section);
-        }
     }
 
     /**
