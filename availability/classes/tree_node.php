@@ -88,11 +88,12 @@ abstract class tree_node {
      * with the update, $logger can be used to output a warning.
      *
      * @param string $restoreid Restore ID
+     * @param int $courseid ID of target course
      * @param \base_logger $logger Logger for any warnings
      * @param string $name Name of this item (for use in warning messages)
      * @return bool True if there was any change
      */
-    public function update_after_restore($restoreid, \base_logger $logger, $name) {
+    public function update_after_restore($restoreid, $courseid, \base_logger $logger, $name) {
         return false;
     }
 

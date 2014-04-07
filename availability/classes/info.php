@@ -286,11 +286,13 @@ abstract class info {
      * necessary (e.g. if a course-module cannot be found after restore).
      *
      * @param string $restoreid Restore identifier
+     * @param int $courseid Target course id
      * @param base_logger $logger Logger for any warnings
      */
-    public function update_after_restore($restoreid, \base_logger $logger) {
+    public function update_after_restore($restoreid, $courseid, \base_logger $logger) {
         $tree = $this->get_availability_tree();
-        $changed = $tree->update_after_restore($restoreid, $logger, $this->get_thing_name());
+        $changed = $tree->update_after_restore($restoreid, $courseid, $logger,
+                $this->get_thing_name());
         if ($changed) {
             // Save modified data.
             $structure = $tree->save();

@@ -158,14 +158,22 @@ class condition extends \core_availability\condition {
         }
     }
 
-    public function update_after_restore($restoreid, \base_logger $logger, $name) {
+    public function update_after_restore($restoreid, $courseid, \base_logger $logger, $name) {
+        global $DB;
         if (!$this->groupingid) {
             // If using 'same as activity' option, no need to change it.
             return false;
         }
         $rec = \restore_dbops::get_backup_ids_record($restoreid, 'grouping', $this->groupingid);
         if (!$rec || !$rec->newitemid) {
-            $this->groupingid = 0;
+            // If we are on the same course (e.g. duplicate) then we can just
+            // use the existing one.
+            if ($DB->record_exists('groupings',
+                    array('id' => $this->groupingid, 'courseid' => $courseid))) {
+                return false;
+            }
+            // Otherwise it's a warning.
+            $this->groupingid = -1;
             $logger->process('Restored item (' . $name .
                     ') has availability condition on grouping that was not restored',
                     \backup::LOG_WARNING);

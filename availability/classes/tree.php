@@ -602,10 +602,12 @@ class tree extends tree_node {
         }
     }
 
-    public function update_after_restore($restoreid, \base_logger $logger, $name) {
+    public function update_after_restore($restoreid, $courseid,
+            \base_logger $logger, $name) {
         $changed = false;
         foreach ($this->children as $child) {
-            $thischanged = $child->update_after_restore($restoreid, $logger, $name);
+            $thischanged = $child->update_after_restore($restoreid, $courseid,
+                    $logger, $name);
             $changed = $changed || $thischanged;
         }
         return $changed;

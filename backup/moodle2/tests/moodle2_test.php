@@ -264,6 +264,74 @@ class core_backup_moodle2_testcase extends advanced_testcase {
     }
 
     /**
+     * Tests the backup and restore of single activity to same course (duplicate)
+     * when it contains availability conditions that depend on other items in
+     * course. 
+     */
+    public function test_duplicate_availability() {
+        global $DB, $CFG;
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+        $CFG->enableavailability = true;
+        $CFG->enablecompletion = true;
+
+        // Create a course with completion enabled and 2 forums.
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(
+                array('format' => 'topics', 'enablecompletion' => COMPLETION_ENABLED));
+        $forum = $generator->create_module('forum', array(
+                'course' => $course->id));
+        $forum2 = $generator->create_module('forum', array(
+                'course' => $course->id, 'completion' => COMPLETION_TRACKING_MANUAL));
+
+        // We need a grade, easiest is to add an assignment.
+        $assignrow = $generator->create_module('assign', array(
+                'course' => $course->id));
+        $assign = new assign(context_module::instance($assignrow->cmid), false, false);
+        $item = $assign->get_grade_item();
+
+        // Make a test group and grouping as well.
+        $group = $generator->create_group(array('courseid' => $course->id,
+                'name' => 'Group!'));
+        $grouping = $generator->create_grouping(array('courseid' => $course->id,
+                'name' => 'Grouping!'));
+
+        // Set the forum to have availability conditions on all those things,
+        // plus some that don't exist or are special values.
+        $availability = '{"op":"|","show":false,"c":[' .
+                '{"type":"completion","cm":' . $forum2->cmid .',"e":1},' .
+                '{"type":"completion","cm":99999999,"e":1},' .
+                '{"type":"grade","id":' . $item->id . ',"min":4,"max":94},' .
+                '{"type":"grade","id":99999998,"min":4,"max":94},' .
+                '{"type":"grouping","id":' . $grouping->id . '},' .
+                '{"type":"grouping","id":99999997},' .
+                '{"type":"group","id":' . $group->id . '},' .
+                '{"type":"group"},' .
+                '{"type":"group","id":99999996}' .
+                ']}';
+        $DB->set_field('course_modules', 'availability', $availability, array(
+                'id' => $forum->cmid));
+
+        // Duplicate it.
+        $newcmid = $this->duplicate($course, $forum->cmid);
+
+        // For those which still exist on the course we expect it to keep using
+        // the real ID. For those which do not exist on the course any more
+        // (e.g. simulating backup/restore of single activity between 2 courses)
+        // we expect the IDs to be replaced with marker value: 0 for cmid
+        // and grade, -1 for group/grouping.
+        $expected = str_replace(
+                array('99999999', '99999998', '99999997', '99999996'),
+                array(0, 0, -1, -1),
+                $availability);
+
+        // Check settings in new activity.
+        $actual = $DB->get_field('course_modules', 'availability', array('id' => $newcmid));
+        $this->assertEquals($expected, $actual);
+    }
+
+    /**
      * Backs a course up and restores it.
      *
      * @param stdClass $course Course object to backup
@@ -295,5 +363,50 @@ class core_backup_moodle2_testcase extends advanced_testcase {
         $rc->destroy();
 
         return $newcourseid;
+    }
+
+    /**
+     * Duplicates a single activity within a course.
+     *
+     * This is based on the code from course/modduplicate.php, but reduced for
+     * simplicity.
+     *
+     * @param stdClass $course Course object
+     * @param int $cmid Activity to duplicate
+     * @return int ID of new activity
+     */
+    protected function duplicate($course, $cmid) {
+        global $USER;
+
+        // Do backup.
+        $bc = new backup_controller(backup::TYPE_1ACTIVITY, $cmid, backup::FORMAT_MOODLE,
+                backup::INTERACTIVE_NO, backup::MODE_IMPORT, $USER->id);
+        $backupid = $bc->get_backupid();
+        $bc->execute_plan();
+        $bc->destroy();
+
+        // Do restore.
+        $rc = new restore_controller($backupid, $course->id,
+                backup::INTERACTIVE_NO, backup::MODE_IMPORT, $USER->id, backup::TARGET_CURRENT_ADDING);
+        $this->assertTrue($rc->execute_precheck());
+        $rc->execute_plan();
+
+        // Find cmid.
+        $tasks = $rc->get_plan()->get_tasks();
+        $cmcontext = context_module::instance($cmid);
+        $newcmid = 0;
+        foreach ($tasks as $task) {
+            if (is_subclass_of($task, 'restore_activity_task')) {
+                if ($task->get_old_contextid() == $cmcontext->id) {
+                    $newcmid = $task->get_moduleid();
+                    break;
+                }
+            }
+        }
+        $rc->destroy();
+        if (!$newcmid) {
+            throw new coding_exception('Unexpected: failure to find restored cmid');
+        }
+        return $newcmid;
     }
 }

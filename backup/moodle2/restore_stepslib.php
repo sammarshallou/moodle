@@ -579,7 +579,8 @@ class restore_update_availability extends restore_execution_step {
             $section = $sectionsbyid[$rec->newitemid];
             if (!is_null($section->availability)) {
                 $info = new \core_availability\info_section($section);
-                $info->update_after_restore($this->get_restoreid(), $this->get_logger());
+                $info->update_after_restore($this->get_restoreid(),
+                        $this->get_courseid(), $this->get_logger());
             }
         }
         $rs->close();
@@ -598,7 +599,8 @@ class restore_update_availability extends restore_execution_step {
             $cm = $modinfo->get_cm($rec->newitemid);
             if (!is_null($cm->availability)) {
                 $info = new \core_availability\info_module($cm);
-                $info->update_after_restore($this->get_restoreid(), $this->get_logger());
+                $info->update_after_restore($this->get_restoreid(),
+                        $this->get_courseid(), $this->get_logger());
             }
         }
         $rs->close();

@@ -187,9 +187,17 @@ class condition extends \core_availability\condition {
         return 'cm' . $this->cmid . ' ' . $type;
     }
 
-    public function update_after_restore($restoreid, \base_logger $logger, $name) {
+    public function update_after_restore($restoreid, $courseid, \base_logger $logger, $name) {
+        global $DB;
         $rec = \restore_dbops::get_backup_ids_record($restoreid, 'course_module', $this->cmid);
         if (!$rec || !$rec->newitemid) {
+            // If we are on the same course (e.g. duplicate) then we can just
+            // use the existing one.
+            if ($DB->record_exists('course_modules',
+                    array('id' => $this->cmid, 'course' => $courseid))) {
+                return false;
+            }
+            // Otherwise it's a warning.
             $this->cmid = 0;
             $logger->process('Restored item (' . $name .
                     ') has availability condition on module that was not restored',
