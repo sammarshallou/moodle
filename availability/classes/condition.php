@@ -171,4 +171,20 @@ abstract class condition extends node {
         // By default, assumes there are no dependent ids.
         return false;
     }
+
+    /**
+     * If the plugin has been configured to rely on a particular activity's
+     * completion value, it should return true here. (This is necessary so that
+     * we know the course page needs to update when that activity becomes
+     * complete.)
+     *
+     * Default implementation returns false.
+     *
+     * @param stdClass $course Moodle course object
+     * @param int $cmid ID of activity whose completion value is considered
+     * @return boolean True if the availability of something else may rely on it
+     */
+    public static function completion_value_used($course, $cmid) {
+        return false;
+    }
 }

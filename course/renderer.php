@@ -665,8 +665,7 @@ class core_course_renderer extends plugin_renderer_base {
                 // off the JS.
                 $extraclass = '';
                 if (!empty($CFG->enableavailability) &&
-                        class_exists('availability_completion\condition') &&
-                        availability_completion\condition::completion_value_used($course, $mod->id)) {
+                        core_availability\info::completion_value_used($course, $mod->id)) {
                     $extraclass = ' preventjs';
                 }
                 $output .= html_writer::start_tag('form', array('method' => 'post',

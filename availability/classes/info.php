@@ -597,4 +597,30 @@ abstract class info {
 
         return $info;
     }
+
+    /**
+     * Used in course/lib.php because we need to disable the completion tickbox
+     * JS (using the non-JS version instead, which causes a page reload) if a
+     * completion tickbox value may affect a conditional activity.
+     *
+     * @param stdClass $course Moodle course object
+     * @param int $cmid Course-module id
+     * @return bool True if this is used in a condition, false otherwise
+     */
+    public static function completion_value_used($course, $cmid) {
+        // Access all plugins. Normally only the completion plugin is going
+        // to affect this value, but it's potentially possible that some other
+        // plugin could also rely on the completion plugin.
+        $pluginmanager = \core_plugin_manager::instance();
+        $enabled = $pluginmanager->get_enabled_plugins('availability');
+        $componentparams = new \stdClass();
+        foreach ($enabled as $plugin => $info) {
+            // Use the static method.
+            $class = '\availability_' . $plugin . '\condition';
+            if ($class::completion_value_used($course, $cmid)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
