@@ -130,7 +130,7 @@ class core_backup_moodle2_testcase extends advanced_testcase {
         $backuppath = $CFG->tempdir . '/backup/' . $backupid;
         check_dir_exists($backuppath);
         get_file_packer('application/vnd.moodle.backup')->extract_to_pathname(
-                __DIR__ . '/availability_26_format.mbz', $backuppath);
+                __DIR__ . '/fixtures/availability_26_format.mbz', $backuppath);
 
         // Do restore to new course with default settings.
         $generator = $this->getDataGenerator();

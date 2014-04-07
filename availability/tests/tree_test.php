@@ -36,8 +36,8 @@ defined('MOODLE_INTERNAL') || die();
 class tree_testcase extends \advanced_testcase {
     public function setUp() {
         // Load the mock classes so they can be used.
-        require_once(__DIR__ . '/mock_condition.php');
-        require_once(__DIR__ . '/mock_info.php');
+        require_once(__DIR__ . '/fixtures/mock_condition.php');
+        require_once(__DIR__ . '/fixtures/mock_info.php');
     }
 
     /**

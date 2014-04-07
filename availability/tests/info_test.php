@@ -38,7 +38,7 @@ use core_availability\info_section;
 class info_testcase extends \advanced_testcase {
     public function setUp() {
         // Load the mock condition so that it can be used.
-        require_once(__DIR__ . '/mock_condition.php');
+        require_once(__DIR__ . '/fixtures/mock_condition.php');
     }
 
     /**
