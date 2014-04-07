@@ -113,6 +113,29 @@ class condition extends \core_availability\condition {
         return $allow;
     }
 
+    /**
+     * Returns a more readable keyword corresponding to a completion state.
+     *
+     * Used to make lang strings easier to read.
+     *
+     * @param int $completionstate COMPLETION_xx constant
+     * @return string Readable keyword
+     */
+    protected static function get_lang_string_keyword($completionstate) {
+        switch($completionstate) {
+            case COMPLETION_INCOMPLETE:
+                return 'incomplete';
+            case COMPLETION_COMPLETE:
+                return 'complete';
+            case COMPLETION_COMPLETE_PASS:
+                return 'complete_pass';
+            case COMPLETION_COMPLETE_FAIL:
+                return 'complete_fail';
+            default:
+                throw new \coding_exception('Unexpected completion state: ' . $completionstate);
+        }
+    }
+
     public function get_description($full, $not, \core_availability\info $info) {
         // Get name for module.
         $modinfo = $info->get_modinfo();
@@ -127,18 +150,18 @@ class condition extends \core_availability\condition {
             // Convert NOT strings to use the equivalent where possible.
             switch ($this->expectedcompletion) {
                 case COMPLETION_INCOMPLETE:
-                    $str = 'requires_' . COMPLETION_COMPLETE;
+                    $str = 'requires_' . self::get_lang_string_keyword(COMPLETION_COMPLETE);
                     break;
                 case COMPLETION_COMPLETE:
-                    $str = 'requires_' . COMPLETION_INCOMPLETE;
+                    $str = 'requires_' . self::get_lang_string_keyword(COMPLETION_INCOMPLETE);
                     break;
                 default:
                     // The other two cases do not have direct opposites.
-                    $str = 'requires_not' . $this->expectedcompletion;
+                    $str = 'requires_not_' . self::get_lang_string_keyword($this->expectedcompletion);
                     break;
             }
         } else {
-            $str = 'requires_' . $this->expectedcompletion;
+            $str = 'requires_' . self::get_lang_string_keyword($this->expectedcompletion);
         }
 
         return get_string($str, 'availability_completion', $modname);
