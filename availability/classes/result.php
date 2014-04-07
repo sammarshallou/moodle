@@ -40,17 +40,17 @@ class result {
     /** @var bool True if the item is available */
     protected $available;
 
-    /** @var node[] Array of nodes to display in failure information (node=>node). */
+    /** @var tree_node[] Array of nodes to display in failure information (node=>node). */
     protected $shownodes = array();
 
     /**
      * Constructs result.
      *
      * @param bool $available True if available
-     * @param node $node Node if failed & should be displayed
+     * @param tree_node $node Node if failed & should be displayed
      * @param result[] $failedchildren Array of children who failed too
      */
-    public function __construct($available, node $node = null,
+    public function __construct($available, tree_node $node = null,
             array $failedchildren = array()) {
         $this->available = $available;
         if (!$available) {
@@ -80,7 +80,7 @@ class result {
      * the user failed the test, and which are not set to totally hide
      * output.)
      *
-     * @param node[] $array Input array of nodes
+     * @param tree_node[] $array Input array of nodes
      * @return array Output array containing only those nodes set for display
      */
     public function filter_nodes(array $array) {

@@ -51,7 +51,7 @@ defined('MOODLE_INTERNAL') || die();
  * @copyright 2014 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class tree extends node {
+class tree extends tree_node {
     /** @var int Operator: AND */
     const OP_AND = '&';
     /** @var int Operator: OR */
@@ -67,7 +67,7 @@ class tree extends node {
     /** @var string Operator type (OP_xx constant) */
     protected $op;
 
-    /** @var node[] Children in this branch (may be empty array if needed) */
+    /** @var tree_node[] Children in this branch (may be empty array if needed) */
     protected $children;
 
     /**

@@ -33,7 +33,7 @@ defined('MOODLE_INTERNAL') || die();
  * @copyright 2014 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-abstract class node {
+abstract class tree_node {
     /**
      * Determines whether this particular item is currently available
      * according to the availability criteria.

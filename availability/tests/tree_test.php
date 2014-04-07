@@ -607,7 +607,7 @@ class tree_testcase extends \advanced_testcase {
     /**
      * Utility function to build the PHP structure representing a tree.
      *
-     * @param array|node $children Children or single child
+     * @param array|tree_node $children Children or single child
      * @param string $op Operator
      * @param bool|null $show True/false show param or null if none
      * @param array|null $showc showc param or null if none
