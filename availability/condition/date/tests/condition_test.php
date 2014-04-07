@@ -40,7 +40,7 @@ class availability_date_condition_testcase extends advanced_testcase {
     public function setUp() {
         // Load the mock info class so that it can be used.
         global $CFG;
-        require_once($CFG->dirroot . '/availability/tests/mock_info.php');
+        require_once($CFG->dirroot . '/availability/tests/fixtures/mock_info.php');
     }
 
     /**
