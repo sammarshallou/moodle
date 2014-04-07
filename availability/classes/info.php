@@ -198,7 +198,7 @@ abstract class info {
             // activity to fix it). Obviously it should never happen anyway, but
             // just in case.
             debugging('Error processing availability data for &lsquo;' .
-                    $this->get_thing_name() . '&rsquo;: ' . s($e->a));
+                    $this->get_thing_name() . '&rsquo;: ' . s($e->a), DEBUG_DEVELOPER);
             $this->modinfo = null;
             return false;
         }
@@ -275,7 +275,7 @@ abstract class info {
         } catch (\coding_exception $e) {
             // Again we catch the message to avoid problems in GUI.
             debugging('Error processing availability data for &lsquo;' .
-                    $this->get_thing_name() . '&rsquo;: ' . s($e->a));
+                    $this->get_thing_name() . '&rsquo;: ' . s($e->a), DEBUG_DEVELOPER);
             return false;
         }
     }
