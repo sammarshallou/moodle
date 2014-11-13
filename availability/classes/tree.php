@@ -663,10 +663,16 @@ class tree extends tree_node {
     public function update_after_restore($restoreid, $courseid,
             \base_logger $logger, $name) {
         $changed = false;
-        foreach ($this->children as $child) {
-            $thischanged = $child->update_after_restore($restoreid, $courseid,
-                    $logger, $name);
-            $changed = $changed || $thischanged;
+        foreach ($this->children as $index => $child) {
+            if ($child->include_after_restore($restoreid, $courseid, $logger, $name,
+                    info::get_restore_task($restoreid))) {
+                $thischanged = $child->update_after_restore($restoreid, $courseid,
+                        $logger, $name);
+                $changed = $changed || $thischanged;
+            } else {
+                unset($this->children[$index]);
+                $changed = true;
+            }
         }
         return $changed;
     }
