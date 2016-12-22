@@ -798,9 +798,12 @@ class file_storage {
      * @param int $itemid item ID or all files if not specified
      * @param string $sort A fragment of SQL to use for sorting
      * @param bool $includedirs whether or not include directories
+     * @param int $limitfrom return a subset of records, starting at this point (optional).
+     * @param int $limitnum return a subset comprising this many records in total (optional, required if $limitfrom is set).
      * @return stored_file[] array of stored_files indexed by pathanmehash
      */
-    public function get_area_files($contextid, $component, $filearea, $itemid = false, $sort = "itemid, filepath, filename", $includedirs = true) {
+    public function get_area_files($contextid, $component, $filearea, $itemid = false, $sort = "itemid, filepath, filename",
+            $includedirs = true, $limitfrom = 0, $limitnum = 0) {
         global $DB;
 
         $conditions = array('contextid'=>$contextid, 'component'=>$component, 'filearea'=>$filearea);
@@ -811,6 +814,12 @@ class file_storage {
             $itemidsql = '';
         }
 
+        $includedirssql = '';
+        if (!$includedirs) {
+            $includedirssql = 'AND f.filename != :dot';
+            $conditions['dot'] = '.';
+        }
+
         $sql = "SELECT ".self::instance_sql_fields('f', 'r')."
                   FROM {files} f
              LEFT JOIN {files_reference} r
@@ -818,17 +827,15 @@ class file_storage {
                  WHERE f.contextid = :contextid
                        AND f.component = :component
                        AND f.filearea = :filearea
+                       $includedirssql
                        $itemidsql";
         if (!empty($sort)) {
             $sql .= " ORDER BY {$sort}";
         }
 
         $result = array();
-        $filerecords = $DB->get_records_sql($sql, $conditions);
+        $filerecords = $DB->get_records_sql($sql, $conditions, $limitfrom, $limitnum);
         foreach ($filerecords as $filerecord) {
-            if (!$includedirs and $filerecord->filename === '.') {
-                continue;
-            }
             $result[$filerecord->pathnamehash] = $this->get_file_instance($filerecord);
         }
         return $result;
