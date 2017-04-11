@@ -138,6 +138,59 @@ class plugin_misplaced_exception extends moodle_exception {
 }
 
 /**
+ * Static class monitors performance of upgrade steps.
+ */
+class core_upgrade_time {
+    /** @var float Time at start of current upgrade (plugin/system) */
+    protected static $before;
+    /** @var float[] Array from version number => time at savepoint */
+    protected static $savepoints;
+
+    /**
+     * Records current time at the start of the current upgrade item, e.g. plugin.
+     */
+    public static function record_start() {
+        self::$before = microtime(true);
+        self::$savepoints = [];
+    }
+
+    /**
+     * Records current time at the end of a given numbered step.
+     *
+     * @param float $version Version number (may have decimals, or not)
+     */
+    public static function record_savepoint($version) {
+        self::$savepoints[(string)$version] = microtime(true);
+    }
+
+    /**
+     * Gets the time since the record_start function was called, rounded to 2 digits.
+     *
+     * @return float Elapsed time
+     */
+    public static function get_elapsed() {
+        return microtime(true) - self::$before;
+    }
+
+    /**
+     * Gets a list of all savepoints since the last record_start call, including
+     * the elapsed time for each one.
+     *
+     * @return string[] Text strings listing savepoints (one per line)
+     */
+    public static function get_savepoint_list() {
+        $out = [];
+        $before = self::$before;
+        foreach (self::$savepoints as $version => $time) {
+            $out[] = $version . ': ' .
+                    get_string('successduration', '', format_float($time - $before, 2));
+            $before = $time;
+        }
+        return $out;
+    }
+}
+
+/**
  * Sets maximum expected time needed for upgrade task.
  * Please always make sure that upgrade will not run longer!
  *
@@ -224,6 +277,8 @@ function upgrade_main_savepoint($result, $version, $allowabort=true) {
     // reset upgrade timeout to default
     upgrade_set_timeout();
 
+    core_upgrade_time::record_savepoint($version);
+
     // this is a safe place to stop upgrades if user aborts page loading
     if ($allowabort and connection_aborted()) {
         die;
@@ -267,6 +322,8 @@ function upgrade_mod_savepoint($result, $version, $modname, $allowabort=true) {
 
     // reset upgrade timeout to default
     upgrade_set_timeout();
+
+    core_upgrade_time::record_savepoint($version);
 
     // this is a safe place to stop upgrades if user aborts page loading
     if ($allowabort and connection_aborted()) {
@@ -312,6 +369,8 @@ function upgrade_block_savepoint($result, $version, $blockname, $allowabort=true
     // reset upgrade timeout to default
     upgrade_set_timeout();
 
+    core_upgrade_time::record_savepoint($version);
+
     // this is a safe place to stop upgrades if user aborts page loading
     if ($allowabort and connection_aborted()) {
         die;
@@ -351,6 +410,8 @@ function upgrade_plugin_savepoint($result, $version, $type, $plugin, $allowabort
 
     // Reset upgrade timeout to default
     upgrade_set_timeout();
+
+    core_upgrade_time::record_savepoint($version);
 
     // This is a safe place to stop upgrades if user aborts page loading
     if ($allowabort and connection_aborted()) {
@@ -1495,6 +1556,7 @@ function print_upgrade_part_start($plugin, $installation, $verbose) {
             echo $OUTPUT->heading($plugin);
         }
     }
+    core_upgrade_time::record_start();
     if ($installation) {
         if (empty($plugin) or $plugin == 'moodle') {
             // no need to log - log table not yet there ;-)
@@ -1516,7 +1578,7 @@ function print_upgrade_part_start($plugin, $installation, $verbose) {
  * @param bool $installation true if installation, false means upgrade
  */
 function print_upgrade_part_end($plugin, $installation, $verbose) {
-    global $OUTPUT;
+    global $OUTPUT, $CFG;
     upgrade_started();
     if ($installation) {
         if (empty($plugin) or $plugin == 'moodle') {
@@ -1532,7 +1594,29 @@ function print_upgrade_part_end($plugin, $installation, $verbose) {
         }
     }
     if ($verbose) {
-        $notification = new \core\output\notification(get_string('success'), \core\output\notification::NOTIFY_SUCCESS);
+        $duration = core_upgrade_time::get_elapsed();
+        $savepoints = '';
+        if ($CFG->debugdeveloper) {
+            $savepointarray = core_upgrade_time::get_savepoint_list();
+            if ($savepointarray) {
+                if (CLI_SCRIPT) {
+                    // In CLI mode, show multiple notifications, one for each save point.
+                    foreach ($savepointarray as $savepoint) {
+                        $notification = new \core\output\notification($savepoint,
+                                \core\output\notification::NOTIFY_SUCCESS);
+                        $notification->set_show_closebutton(false);
+                        echo $OUTPUT->render($notification);
+                    }
+                } else {
+                    // In interactive mode, make a bullet list of each notification.
+                    $savepoints = html_writer::alist($savepointarray);
+                }
+            }
+        }
+        $notification = new \core\output\notification(
+                $savepoints .
+                get_string('successduration', '', format_float($duration, 2)),
+                \core\output\notification::NOTIFY_SUCCESS);
         $notification->set_show_closebutton(false);
         echo $OUTPUT->render($notification);
         print_upgrade_separator();
