@@ -127,7 +127,7 @@ class engine extends \core_search\engine {
      *
      * @throws \core_search\engine_exception
      * @param  stdClass  $filters Containing query and filters.
-     * @param  array     $usercontexts Contexts where the user has access. True if the user can access all contexts.
+     * @param  array     $usercontexts Contexts/groups where user has access. True if user can access all contexts.
      * @param  int       $limit The maximum number of results to return.
      * @return \core_search\document[] Results or false if no results
      */
@@ -279,6 +279,9 @@ class engine extends \core_search\engine {
         if (!empty($data->courseids)) {
             $query->addFilterQuery('{!cache=false}courseid:(' . implode(' OR ', $data->courseids) . ')');
         }
+        if (!empty($data->groupids)) {
+            $query->addFilterQuery('{!cache=false}groupid:(' . implode(' OR ', $data->groupids) . ')');
+        }
 
         if (!empty($data->timestart) or !empty($data->timeend)) {
             if (empty($data->timestart)) {
@@ -306,6 +309,11 @@ class engine extends \core_search\engine {
             // Join all area contexts into a single array and implode.
             $allcontexts = array();
             foreach ($usercontexts as $areaid => $areacontexts) {
+                if ($areaid === \core_search\manager::USER_GROUPS ||
+                        $areaid === \core_search\manager::SEPARATE_GROUPS_CONTEXTS) {
+                    // Skip special cases that aren't really areas.
+                    continue;
+                }
                 if (!empty($data->areaids) && !in_array($areaid, $data->areaids)) {
                     // Skip unused areas.
                     continue;
@@ -320,6 +328,24 @@ class engine extends \core_search\engine {
                 return null;
             }
             $query->addFilterQuery('contextid:(' . implode(' OR ', $allcontexts) . ')');
+
+            // Add another restriction to handle group ids. If there are any contexts using separate
+            // groups, then results in that context will not show unless you belong to the group.
+            // (Note: Access all groups is taken care of earlier, when computing these arrays.)
+            $separategroupscontexts = $usercontexts[\core_search\manager::SEPARATE_GROUPS_CONTEXTS];
+            if ($separategroupscontexts) {
+                $groupids = $usercontexts[\core_search\manager::USER_GROUPS];
+                if ($groupids) {
+                    // Either the document has no groupid, or the groupid is one that the user
+                    // belongs to, or the context is not one of the separate groups contexts.
+                    $query->addFilterQuery('(*:* -groupid:[* TO *]) OR ' .
+                            'groupid:(' . implode(' OR ', $groupids) . ') OR ' .
+                            '(*:* -contextid:(' . implode(' OR ', $separategroupscontexts) . '))');
+                } else {
+                    $query->addFilterQuery('(*:* -groupid:[* TO *]) OR ' .
+                            '(*:* -contextid:(' . implode(' OR ', $separategroupscontexts) . '))');
+                }
+            }
         }
 
         if ($this->file_indexing_enabled()) {
@@ -1084,6 +1110,9 @@ class engine extends \core_search\engine {
             return $configured;
         }
 
+        // Update schema if required/possible.
+        $this->check_latest_schema();
+
         // Check that the schema is already set up.
         try {
             $schema = new \search_solr\schema();
@@ -1277,5 +1306,40 @@ class engine extends \core_search\engine {
         $url .= '/solr/' . $this->config->indexname . '/' . ltrim($path, '/');
 
         return new \moodle_url($url);
+    }
+
+    /**
+     * Solr includes group support in the execute_query function.
+     *
+     * @return bool True
+     */
+    public function supports_groups() {
+        return true;
+    }
+
+    protected function update_schema($oldversion, $newversion) {
+        // Construct schema.
+        $schema = new schema();
+        if (!$schema->can_setup_server()) {
+            return;
+        }
+
+        switch ($newversion) {
+            // This version just requires a setup call to add new fields.
+            case 2017091700:
+                $setup = true;
+                break;
+
+            // If we don't know about the schema version we might not have implemented the
+            // change correctly, so return.
+            default:
+                return;
+        }
+
+        if ($setup) {
+            $schema->setup();
+        }
+
+        return;
     }
 }

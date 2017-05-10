@@ -88,6 +88,16 @@ class manager {
     const DISPLAY_INDEXING_PROGRESS_EVERY = 30.0;
 
     /**
+     * @var string Constant used in area list to list all specific groups that user belongs to.
+     */
+    const USER_GROUPS = '!usergroups';
+
+    /**
+     * @var string Constant used in area list to list contexts that are restricted by groups.
+     */
+    const SEPARATE_GROUPS_CONTEXTS = '!separategroupscontexts';
+
+    /**
      * @var \core_search\base[] Enabled search areas.
      */
     protected static $enabledsearchareas = null;
@@ -394,6 +404,10 @@ class manager {
         // This will store area - allowed contexts relations.
         $areascontexts = array();
 
+        // Initialise two special-case arrays for storing other information related to the contexts.
+        $areascontexts[self::USER_GROUPS] = array();
+        $areascontexts[self::SEPARATE_GROUPS_CONTEXTS] = array();
+
         if (empty($limitcourseids) && !empty($areasbylevel[CONTEXT_SYSTEM])) {
             // We add system context to all search areas working at this level. Here each area is fully responsible of
             // the access control as we can not automate much, we can not even check guest access as some areas might
@@ -443,6 +457,7 @@ class manager {
 
         // Keep a list of included course context ids (needed for the block calculation below).
         $coursecontextids = [];
+        $modulecms = [];
 
         foreach ($courses as $course) {
             if (!empty($limitcourseids) && !in_array($course->id, $limitcourseids)) {
@@ -452,6 +467,7 @@ class manager {
 
             $coursecontext = \context_course::instance($course->id);
             $coursecontextids[] = $coursecontext->id;
+            $hasgrouprestrictions = false;
 
             // Info about the course modules.
             $modinfo = get_fast_modinfo($course);
@@ -481,9 +497,26 @@ class manager {
                             continue;
                         }
                         if ($modinstance->uservisible) {
-                            $areascontexts[$areaid][$modinstance->context->id] = $modinstance->context->id;
+                            $contextid = $modinstance->context->id;
+                            $areascontexts[$areaid][$contextid] = $contextid;
+                            $modulecms[$modinstance->id] = $modinstance;
+
+                            if (!has_capability('moodle/site:accessallgroups', $modinstance->context) &&
+                                    $searchclass->restrict_cm_access_by_group($modinstance)) {
+                                $areascontexts[self::SEPARATE_GROUPS_CONTEXTS][$contextid] = $contextid;
+                                $hasgrouprestrictions = true;
+                            }
                         }
                     }
+                }
+            }
+
+            // Insert group information for course (unless there aren't any modules restricted by
+            // group for this user in this course, in which case don't bother).
+            if ($hasgrouprestrictions) {
+                $groups = groups_get_all_groups($course->id, $USER->id, 0, 'g.id');
+                foreach ($groups as $group) {
+                    $areascontexts[self::USER_GROUPS][$group->id] = $group->id;
                 }
             }
         }
@@ -682,6 +715,13 @@ class manager {
             // User can not access any context.
             $docs = array();
         } else {
+            // If engine does not support groups, remove group information from the area list.
+            if (!$this->engine->supports_groups() && is_array($areascontexts)) {
+                unset($areascontexts[self::USER_GROUPS]);
+                unset($areascontexts[self::SEPARATE_GROUPS_CONTEXTS]);
+            }
+
+            // Execute the actual query.
             $docs = $this->engine->execute_query($formdata, $areascontexts, $limit);
         }
 

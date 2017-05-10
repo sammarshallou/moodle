@@ -474,4 +474,32 @@ abstract class base {
 
         return [$sql, $params];
     }
+
+    /**
+     * Checks whether the content of this search area should be restricted by group for the
+     * specified module. Called at query time.
+     *
+     * If restricted by group, the search query will (where supported by the engine) filter out
+     * results for groups the user does not belong to, unless the user has 'access all groups'
+     * for the activity. This affects only documents which set the 'groupid' field; results with no
+     * groupid will not be restricted.
+     *
+     * Even if you return true to this function, you may still need to do group access checks in
+     * check_access, because the search engine may not support group restrictions.
+     *
+     * This function will only be called for search areas within module plugins.
+     *
+     * When there are multiple search areas within one module plugin, if any search area returns
+     * 'true' to this function, then results will be restricted by group in *all* search areas. If
+     * this behaviour is undesrirable, do not return true.
+     *
+     * The default implementation returns false. If the search area does support groups, a possible
+     * implementation would be 'return $cm->effectivegroupmode == SEPARATEGROUPS;'.
+     *
+     * @param \cm_info $cm
+     * @return bool True to restrict by group
+     */
+    public function restrict_cm_access_by_group(\cm_info $cm) {
+        return false;
+    }
 }

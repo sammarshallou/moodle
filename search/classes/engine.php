@@ -42,7 +42,7 @@ abstract class engine {
     /**
      * The search engine configuration.
      *
-     * @var stdClass
+     * @var \stdClass
      */
     protected $config = null;
 
@@ -65,7 +65,7 @@ abstract class engine {
     /**
      * User data required to show their fullnames. Indexed by userid.
      *
-     * @var stdClass[]
+     * @var \stdClass[]
      */
     protected static $cachedusers = array();
 
@@ -439,8 +439,25 @@ abstract class engine {
      *
      * Engines should reasonably attempt to fill up to limit with valid results if they are available.
      *
-     * @param  stdClass $filters Query and filters to apply.
-     * @param  array    $usercontexts Contexts where the user has access. True if the user can access all contexts.
+     * The $filters object may include the following fields (optional except q):
+     * - q: value of main search field; results should include this text
+     * - title: if included, title must match this search
+     * - areaids: array of search area id strings (only these areas will be searched)
+     * - courseids: array of course ids (only these courses will be searched)
+     * - groupids: array of group ids (only results specifically from these groupids will be
+     *   searched) - this option will be ignored if the search engine doesn't support groups
+     *
+     * The $usercontexts array may also include groups information, but only if the engine returns true to
+     * the supports_groups function. In that case it will be keyed by special case keys
+     * manager::SEPARATE_GROUPS_CONTEXTS and manager::USER_GROUPS. These keys should be used to
+     * restrict results based on their groupid as follows:
+     *
+     * 1. Restrictions only apply to contexts listed in SEPARATE_GROUPS_CONTEXTS array.
+     * 2. In those contexts, only include results if the groupid is not set, or if the groupid
+     *    matches one of the values in USER_GROUPS array.
+     *
+     * @param \stdClass $filters Query and filters to apply.
+     * @param  array    $usercontexts Contexts/groups where user has access. True if user can access all contexts.
      * @param  int      $limit The maximum number of results to return. If empty, limit to manager::MAX_RESULTS.
      * @return \core_search\document[] Results or false if no results
      */
@@ -453,4 +470,63 @@ abstract class engine {
      * @return void
      */
     abstract function delete($areaid = null);
+
+    /**
+     * Checks that the schema is the latest version. If the version stored in config does not match
+     * the current, this function will attempt to upgrade the schema.
+     */
+    public function check_latest_schema() {
+        if (empty($this->config->schemaversion)) {
+            $currentversion = 0;
+        } else {
+            $currentversion = $this->config->schemaversion;
+        }
+        if ($currentversion < document::SCHEMA_VERSION) {
+            $this->update_schema((int)$currentversion, (int)document::SCHEMA_VERSION);
+        }
+    }
+
+    /**
+     * Usually called by the engine; marks that the schema has been updated.
+     *
+     * @param int $version Records the schema version now applied
+     */
+    public function record_applied_schema_version($version) {
+        set_config('schemaversion', $version, $this->pluginname);
+    }
+
+    /**
+     * Requests the search engine to upgrade the schema. The engine should update the schema if
+     * possible/necessary, and should ensure that record_applied_schema_version is called as a
+     * result.
+     *
+     * If it is not possible to upgrade the schema at the moment, it can do nothing and return; the
+     * function will be called again next time search is initialised.
+     *
+     * The default implementation just returns, with a DEBUG_DEVELOPER warning.
+     *
+     * @param int $oldversion Old schema version
+     * @param int $newversion New schema version
+     */
+    protected function update_schema($oldversion, $newversion) {
+        debugging('Unable to update search engine schema: ' . $this->pluginname, DEBUG_DEVELOPER);
+        return;
+    }
+
+    /**
+     * Checks if this search engine supports groups.
+     *
+     * In order to implement groups and return true to this function, the search engine should:
+     *
+     * 1. Handle the special case keys manager::SEPARATE_GROUPS_CONTEXTS and manager::USER_GROUPS
+     *    in the $usercontexts parameter for execute_query (ideally, using these to automatically
+     *    restrict search results).
+     * 2. Support the optional groupids parameter in the $filter parameter for execute_query to
+     *    restrict results to only those where the stored groupid matches the given value.
+     *
+     * @return bool True if this engine supports searching by group id field
+     */
+    public function supports_groups() {
+        return false;
+    }
 }

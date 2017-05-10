@@ -15,6 +15,31 @@ information provided here is intended especially for developers.
   change was required to make search work after restoring sites. It also allows more flexible
   reindexing in other cases.)
 
+* Search engine plugins may need to be modified because the search schema has been changed to
+  support group searching (it is possible that the search engine may continue to work unmodified,
+  but it will not then support group searching). The modification steps are:
+  - Implement the new update_schema function to make the schema change (add groupid field).
+  - Ensure that the groupid field is stored correctly when provided in a document while indexing.
+  - execute_query should support the new $data->groupids parameter (to allow users to restrict
+    search results to specific groups) and special input context values SEPARATE_GROUPS_CONTEXTS
+    and USER_GROUPS (to automatically restrict search results users cannot access due to groups).
+    See implementation in Solr search engine.
+  - Return true to new supports_groups() function.
+
+* Search areas that wish to support group searching should set the new optional search document
+  field groupid (note: to remain compatible with earlier versions, do this inside an if statement
+  so that it only happens on 3.4+). If there are cases when it would be beneficial to restrict
+  search results by group at the search engine level (e.g. for a forum in separate groups mode
+  where there might be posts in many groups but a typical student can only access one) then the
+  search area should also implement the new optional restrict_cm_access_by_group function. See
+  documentation in \core_search\base class and example in \mod_forum\search\post class.
+
+* When a search engine supports groups, the \core_search\manager::search function now accepts
+  an optional 'groupids' parameter in its $data input. This parameter is an array of one or more
+  group IDs. If supplied, only results from those groups will be returned. (This does not override
+  group restrictions e.g. on a separate groups forum where the current user does not belong to the
+  group.)
+
 === 3.2 ===
 
 * Base search area classes have been renamed, please update your search areas to use the classes below:
