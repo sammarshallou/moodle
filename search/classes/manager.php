@@ -331,7 +331,7 @@ class manager {
      * @return bool|array Indexed by area identifier (component + area name). Returns true if the user can see everything.
      */
     protected function get_areas_user_accesses($limitcourseids = false) {
-        global $CFG, $USER;
+        global $DB, $USER;
 
         // All results for admins. Eventually we could add a new capability for managers.
         if (is_siteadmin()) {
@@ -412,6 +412,62 @@ class manager {
                     foreach ($modinstances as $modinstance) {
                         if ($modinstance->uservisible) {
                             $areascontexts[$areaid][$modinstance->context->id] = $modinstance->context->id;
+                        }
+                    }
+                }
+            }
+
+            if (!empty($areasbylevel[CONTEXT_BLOCK])) {
+                // Get list of all block types we care about.
+                $blocklist = [];
+                foreach ($areasbylevel[CONTEXT_BLOCK] as $areaid => $searchclass) {
+                    $blocklist[$searchclass->get_block_name()] = true;
+                }
+                list ($insql, $inparams) = $DB->get_in_or_equal(array_keys($blocklist));
+
+                // Query all blocks that are within this course, and are set to be visible, and are
+                // in a supported page type (basically just course view). This query could be
+                // extended (or a second query added) to support blocks that are within a module
+                // context as well, and we could add more page types if required.
+                if (empty($coursecontext)) {
+                    $coursecontext = \context_course::instance($course->id);
+                }
+                $blockrecs = $DB->get_records_sql("
+                        SELECT x.*, bi.blockname AS blockname, bi.id AS blockinstanceid
+                          FROM {block_instances} bi
+                          JOIN {context} x ON x.instanceid = bi.id AND x.contextlevel = ?
+                     LEFT JOIN {block_positions} bp ON bp.blockinstanceid = bi.id
+                               AND bp.contextid = bi.parentcontextid
+                               AND bp.pagetype LIKE 'course-view-%'
+                               AND bp.subpage = ''
+                               AND bp.visible = 0
+                         WHERE bi.parentcontextid = ?
+                               AND bi.blockname $insql
+                               AND bi.subpagepattern IS NULL
+                               AND (bi.pagetypepattern = 'site-index'
+                                   OR bi.pagetypepattern LIKE 'course-view-%'
+                                   OR bi.pagetypepattern = 'course-*'
+                                   OR bi.pagetypepattern = '*')
+                               AND bp.id IS NULL",
+                        array_merge([CONTEXT_BLOCK, $coursecontext->id], $inparams));
+                $blockcontextsbyname = [];
+                foreach ($blockrecs as $blockrec) {
+                    if (empty($blockcontextsbyname[$blockrec->blockname])) {
+                        $blockcontextsbyname[$blockrec->blockname] = [];
+                    }
+                    \context_helper::preload_from_record($blockrec);
+                    $blockcontextsbyname[$blockrec->blockname][] = \context_block::instance(
+                            $blockrec->blockinstanceid);
+                }
+
+                // Add the block contexts the user can view.
+                foreach ($areasbylevel[CONTEXT_BLOCK] as $areaid => $searchclass) {
+                    if (empty($blockcontextsbyname[$searchclass->get_block_name()])) {
+                        continue;
+                    }
+                    foreach ($blockcontextsbyname[$searchclass->get_block_name()] as $context) {
+                        if (has_capability('moodle/block:view', $context)) {
+                            $areascontexts[$areaid][$context->id] = $context->id;
                         }
                     }
                 }
