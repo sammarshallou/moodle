@@ -113,6 +113,15 @@ class base_block_testcase extends advanced_testcase {
         $block7id = $DB->insert_record('block_instances', $instance);
         \context_block::instance($block7id);
 
+        // 8. Block on user dashboard page with 'my-index' page type.
+        $usercontext = \context_user::instance(
+                $DB->get_field('user', 'id', ['username' => 'admin']));
+        $instance->pagetypepattern = 'my-index';
+        $instance->timemodified = 8;
+        $instance->parentcontextid = $usercontext->id;
+        $block8id = $DB->insert_record('block_instances', $instance);
+        \context_block::instance($block8id);
+
         // Get all the blocks.
         $area = new block_mockblock\search\area();
         $rs = $area->get_recordset_by_timestamp();
@@ -122,8 +131,8 @@ class base_block_testcase extends advanced_testcase {
         }
         $rs->close();
 
-        // Only blocks 1, 3, 6, and 7 should be returned. Check all the fields for the first two.
-        $this->assertCount(4, $results);
+        // Only blocks 1, 3, 6, 7, and 8 should be returned. Check all the fields for the first two.
+        $this->assertCount(5, $results);
 
         $this->assertEquals($block1id, $results[0]->id);
         $this->assertEquals(1, $results[0]->timemodified);
@@ -142,6 +151,7 @@ class base_block_testcase extends advanced_testcase {
         // For the later ones, just check it got the right ones!
         $this->assertEquals($block6id, $results[2]->id);
         $this->assertEquals($block7id, $results[3]->id);
+        $this->assertEquals($block8id, $results[4]->id);
 
         // Repeat with a time restriction.
         $rs = $area->get_recordset_by_timestamp(2);
@@ -151,11 +161,12 @@ class base_block_testcase extends advanced_testcase {
         }
         $rs->close();
 
-        // Only block 3, 6, and 7 are returned.
-        $this->assertCount(3, $results);
+        // Only block 3, 6, 7, and 8 are returned.
+        $this->assertCount(4, $results);
         $this->assertEquals($block3id, $results[0]->id);
         $this->assertEquals($block6id, $results[1]->id);
         $this->assertEquals($block7id, $results[2]->id);
+        $this->assertEquals($block8id, $results[3]->id);
     }
 
     /**
@@ -172,6 +183,8 @@ class base_block_testcase extends advanced_testcase {
         $coursecontext = \context_course::instance($course->id);
         $page = $generator->create_module('page', ['course' => $course->id]);
         $pagecontext = \context_module::instance($page->cmid);
+        $usercontext = \context_user::instance(
+                $DB->get_field('user', 'id', ['username' => 'admin']));
 
         // Create block on course page.
         $configdata = base64_encode(serialize(new \stdClass()));
@@ -222,8 +235,6 @@ class base_block_testcase extends advanced_testcase {
         $instance->pagetypepattern = '*';
         $instance->parentcontextid = $coursecontext->id;
         $block4id = $DB->insert_record('block_instances', $instance);
-
-        // Get document URL.
         $doc = $this->get_doc($course->id, $block4id);
         $expected = new moodle_url('/course/view.php', ['id' => $course->id], 'inst' . $block4id);
         $this->assertEquals($expected, $area->get_doc_url($doc));
@@ -232,10 +243,17 @@ class base_block_testcase extends advanced_testcase {
         // And same thing but 'course-*' pages.
         $instance->pagetypepattern = 'course-*';
         $block5id = $DB->insert_record('block_instances', $instance);
-
-        // Get document URL.
         $doc = $this->get_doc($course->id, $block5id);
         $expected = new moodle_url('/course/view.php', ['id' => $course->id], 'inst' . $block5id);
+        $this->assertEquals($expected, $area->get_doc_url($doc));
+        $this->assertEquals($expected, $area->get_context_url($doc));
+
+        // Next block is on a dashboard my-index page.
+        $instance->parentcontextid = $usercontext->id;
+        $instance->pagetypepattern = 'my-index';
+        $block6id = $DB->insert_record('block_instances', $instance);
+        $doc = $this->get_doc($course->id, $block6id);
+        $expected = new moodle_url('/my/index.php', null, 'inst' . $block6id);
         $this->assertEquals($expected, $area->get_doc_url($doc));
         $this->assertEquals($expected, $area->get_context_url($doc));
     }

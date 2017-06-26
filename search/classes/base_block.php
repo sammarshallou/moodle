@@ -102,16 +102,21 @@ abstract class base_block extends base {
                   JOIN {context} x ON x.instanceid = bi.id AND x.contextlevel = ?
                   JOIN {context} parent ON parent.id = bi.parentcontextid
              LEFT JOIN {course_modules} cm ON cm.id = parent.instanceid AND parent.contextlevel = ?
+             LEFT JOIN {user} u ON u.id = parent.instanceid AND parent.contextlevel = ?
                   JOIN {course} c ON c.id = cm.course
                        OR (c.id = parent.instanceid AND parent.contextlevel = ?)
+                       OR (u.id = parent.instanceid AND c.id = ?)
                  WHERE bi.timemodified >= ?
                        AND bi.blockname = ?
-                       AND (parent.contextlevel = ? AND (bi.pagetypepattern LIKE 'course-view-%' 
+                       AND (
+                           (parent.contextlevel = ? AND (bi.pagetypepattern LIKE 'course-view-%' 
                            OR bi.pagetypepattern IN ('site-index', 'course-*', '*')))
+                           OR (parent.contextlevel = ? AND (bi.pagetypepattern = 'my-index'))
+                           )
                        $restrictions
               ORDER BY bi.timemodified ASC",
-                [CONTEXT_BLOCK, CONTEXT_MODULE, CONTEXT_COURSE, $modifiedfrom,
-                $this->get_block_name(), CONTEXT_COURSE]);
+                [CONTEXT_BLOCK, CONTEXT_MODULE, CONTEXT_USER, CONTEXT_COURSE, SITEID, $modifiedfrom,
+                $this->get_block_name(), CONTEXT_COURSE, CONTEXT_USER]);
     }
 
     public function get_doc_url(\core_search\document $doc) {
@@ -120,16 +125,17 @@ abstract class base_block extends base {
         // Load block instance and find cmid if there is one.
         $blockinstanceid = preg_replace('~^.*-~', '', $doc->get('id'));
         $instance = $DB->get_record_sql("
-                SELECT bi.id, bi.pagetypepattern, bi.subpagepattern, cm.id AS cmid
+                SELECT bi.id, bi.pagetypepattern, bi.subpagepattern, cm.id AS cmid, u.id AS userid
                   FROM {block_instances} bi
                   JOIN {context} parent ON parent.id = bi.parentcontextid
              LEFT JOIN {course_modules} cm ON cm.id = parent.instanceid AND parent.contextlevel = ?
+             LEFT JOIN {user} u ON u.id = parent.instanceid AND parent.contextlevel = ?
                  WHERE bi.id = ?",
-                [CONTEXT_MODULE, $blockinstanceid], MUST_EXIST);
+                [CONTEXT_MODULE, CONTEXT_USER, $blockinstanceid], MUST_EXIST);
         $courseid = $doc->get('courseid');
         $anchor = 'inst' . $blockinstanceid;
 
-        // Check if the block is at course or module level.
+        // Check if the block is at course, user, or module level.
         if ($instance->cmid) {
             // No module-level page types are supported at present so the search system won't return
             // them. But let's put some example code here to indicate how it could work.
@@ -138,6 +144,14 @@ abstract class base_block extends base {
             $modinfo = get_fast_modinfo($courseid);
             $cm = $modinfo->get_cm($instance->cmid);
             return new \moodle_url($cm->url, null, $anchor);
+        } else if ($instance->userid) {
+            if ($instance->pagetypepattern === 'my-index') {
+                return new \moodle_url('/my/index.php', null, $anchor);
+            } else {
+                debugging('Unexpected user-level page type for block ' . $blockinstanceid . ': ' .
+                        $instance->pagetypepattern, DEBUG_DEVELOPER);
+                return new \moodle_url('/my/index.php', null, $anchor);
+            }
         } else {
             // The block is at course level. Let's check the page type, although in practice we
             // currently only support the course main page.

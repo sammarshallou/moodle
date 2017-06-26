@@ -460,6 +460,34 @@ class manager {
                             $blockrec->blockinstanceid);
                 }
 
+                // For site course only, add block contexts from user's dashboard.
+                if ($course->id == SITEID) {
+                    $usercontext = \context_user::instance($USER->id);
+                    $blockrecs = $DB->get_records_sql("
+                        SELECT x.*, bi.blockname AS blockname, bi.id AS blockinstanceid
+                          FROM {block_instances} bi
+                          JOIN {context} x ON x.instanceid = bi.id AND x.contextlevel = ?
+                     LEFT JOIN {block_positions} bp ON bp.blockinstanceid = bi.id
+                               AND bp.contextid = bi.parentcontextid
+                               AND bp.pagetype = 'my-index'
+                               AND bp.visible = 0
+                         WHERE bi.parentcontextid = ?
+                               AND bi.blockname $insql
+                               AND bi.subpagepattern IS NULL
+                               AND bi.pagetypepattern = 'my-index'
+                               AND bp.id IS NULL",
+                            array_merge([CONTEXT_BLOCK, $usercontext->id], $inparams));
+                    $blockcontextsbyname = [];
+                    foreach ($blockrecs as $blockrec) {
+                        if (empty($blockcontextsbyname[$blockrec->blockname])) {
+                            $blockcontextsbyname[$blockrec->blockname] = [];
+                        }
+                        \context_helper::preload_from_record($blockrec);
+                        $blockcontextsbyname[$blockrec->blockname][] = \context_block::instance(
+                                $blockrec->blockinstanceid);
+                    }
+                }
+
                 // Add the block contexts the user can view.
                 foreach ($areasbylevel[CONTEXT_BLOCK] as $areaid => $searchclass) {
                     if (empty($blockcontextsbyname[$searchclass->get_block_name()])) {
