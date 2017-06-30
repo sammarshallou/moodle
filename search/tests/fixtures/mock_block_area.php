@@ -37,8 +37,4 @@ class area extends \core_search\base_block {
     public function get_document($record, $options = array()) {
         throw new \coding_exception('Not implemented');
     }
-
-    public function check_access($id) {
-        throw new \coding_exception('Not implemented');
-    }
 }

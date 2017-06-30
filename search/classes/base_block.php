@@ -38,6 +38,8 @@ defined('MOODLE_INTERNAL') || die();
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class base_block extends base {
+    /** @var string Cache name used for block instances */
+    const CACHE_INSTANCES = 'base_block_instances';
 
     /**
      * The context levels the search area is working on.
@@ -115,17 +117,9 @@ abstract class base_block extends base {
     }
 
     public function get_doc_url(\core_search\document $doc) {
-        global $DB;
-
         // Load block instance and find cmid if there is one.
         $blockinstanceid = preg_replace('~^.*-~', '', $doc->get('id'));
-        $instance = $DB->get_record_sql("
-                SELECT bi.id, bi.pagetypepattern, bi.subpagepattern, cm.id AS cmid
-                  FROM {block_instances} bi
-                  JOIN {context} parent ON parent.id = bi.parentcontextid
-             LEFT JOIN {course_modules} cm ON cm.id = parent.instanceid AND parent.contextlevel = ?
-                 WHERE bi.id = ?",
-                [CONTEXT_MODULE, $blockinstanceid], MUST_EXIST);
+        $instance = $this->get_block_instance($blockinstanceid);
         $courseid = $doc->get('courseid');
         $anchor = 'inst' . $blockinstanceid;
 
@@ -156,5 +150,94 @@ abstract class base_block extends base {
 
     public function get_context_url(\core_search\document $doc) {
         return $this->get_doc_url($doc);
+    }
+
+    /**
+     * Checks access for a document in this search area.
+     *
+     * If you override this function for a block, you should call this base class version first
+     * as it will check that the block is still visible to users in a supported location.
+     *
+     * @param int $id Document id
+     * @return int manager:ACCESS_xx constant
+     */
+    public function check_access($id) {
+        $instance = $this->get_block_instance($id, IGNORE_MISSING);
+        if (!$instance) {
+            // This generally won't happen because if the block has been deleted then we won't have
+            // included its context in the search area list, but just in case.
+            return manager::ACCESS_DELETED;
+        }
+
+        // Check block has not been moved to an unsupported area since it was indexed. (At the
+        // moment, only blocks within site and course context are supported, also only certain
+        // page types.)
+        if (!$instance->courseid ||
+                !self::is_supported_page_type_at_course_context($instance->pagetypepattern)) {
+            return manager::ACCESS_DELETED;
+        }
+
+        // Note we do not need to check if the block was hidden or if the user has access to the
+        // context, because those checks are included in the list of search contexts user can access
+        // that is calculated in manager.php every time they do a query.
+        return manager::ACCESS_GRANTED;
+    }
+
+    /**
+     * Checks if a page type is supported for blocks when at course (or also site) context. This
+     * function should be consistent with the SQL in get_recordset_by_timestamp.
+     *
+     * @param string $pagetype Page type
+     * @return bool True if supported
+     */
+    protected static function is_supported_page_type_at_course_context($pagetype) {
+        if (in_array($pagetype, ['site-index', 'course-*', '*'])) {
+            return true;
+        }
+        if (preg_match('~^course-view-~', $pagetype)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Gets a block instance with given id.
+     *
+     * Returns the fields id, pagetypepattern, subpagepattern from block_instances and also the
+     * cmid (if parent context is an activity module).
+     *
+     * @param int $id ID of block instance
+     * @param int $strictness MUST_EXIST or IGNORE_MISSING
+     * @return false|mixed Block instance data (may be false if strictness is IGNORE_MISSING)
+     */
+    protected function get_block_instance($id, $strictness = MUST_EXIST) {
+        global $DB;
+
+        $cache = \cache::make_from_params(\cache_store::MODE_REQUEST, 'core_search',
+                self::CACHE_INSTANCES, [], ['simplekeys' => true]);
+        $id = (int)$id;
+        $instance = $cache->get($id);
+        if (!$instance) {
+            $instance = $DB->get_record_sql("
+                    SELECT bi.id, bi.pagetypepattern, bi.subpagepattern,
+                           c.id AS courseid, cm.id AS cmid
+                      FROM {block_instances} bi
+                      JOIN {context} parent ON parent.id = bi.parentcontextid
+                 LEFT JOIN {course} c ON c.id = parent.instanceid AND parent.contextlevel = ?
+                 LEFT JOIN {course_modules} cm ON cm.id = parent.instanceid AND parent.contextlevel = ?
+                     WHERE bi.id = ?",
+                    [CONTEXT_COURSE, CONTEXT_MODULE, $id], $strictness);
+            $cache->set($id, $instance);
+        }
+        return $instance;
+    }
+
+    /**
+     * Clears static cache. This function can be removed (with calls to it in the test script
+     * replaced with cache_helper::purge_all) if MDL-59427 is fixed.
+     */
+    public static function clear_static() {
+        \cache::make_from_params(\cache_store::MODE_REQUEST, 'core_search',
+                self::CACHE_INSTANCES, [], ['simplekeys' => true])->purge();
     }
 }

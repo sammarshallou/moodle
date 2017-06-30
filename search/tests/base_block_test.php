@@ -241,6 +241,60 @@ class base_block_testcase extends advanced_testcase {
     }
 
     /**
+     * Tests the check_access function.
+     */
+    public function test_check_access() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Create course and activity module.
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $coursecontext = \context_course::instance($course->id);
+        $page = $generator->create_module('page', ['course' => $course->id]);
+        $pagecontext = \context_module::instance($page->cmid);
+
+        // Create block on course page.
+        $configdata = base64_encode(serialize(new \stdClass()));
+        $instance = (object)['blockname' => 'mockblock', 'parentcontextid' => $coursecontext->id,
+                'showinsubcontexts' => 0, 'pagetypepattern' => 'course-view-*', 'defaultweight' => 0,
+                'timecreated' => 1, 'timemodified' => 1, 'configdata' => $configdata];
+        $blockid = $DB->insert_record('block_instances', $instance);
+
+        // Check access for block that exists.
+        $area = new block_mockblock\search\area();
+        $this->assertEquals(\core_search\manager::ACCESS_GRANTED, $area->check_access($blockid));
+
+        // Check access for nonexistent block.
+        $this->assertEquals(\core_search\manager::ACCESS_DELETED, $area->check_access($blockid + 1));
+
+        // Check if block is not in a course context any longer.
+        $DB->set_field('block_instances', 'parentcontextid', $pagecontext->id, ['id' => $blockid]);
+        \core_search\base_block::clear_static();
+        $this->assertEquals(\core_search\manager::ACCESS_DELETED, $area->check_access($blockid));
+
+        // Or what if it is in a course context but has supported vs. unsupported page type.
+        $DB->set_field('block_instances', 'parentcontextid', $coursecontext->id, ['id' => $blockid]);
+
+        $DB->set_field('block_instances', 'pagetypepattern', 'course-*', ['id' => $blockid]);
+        \core_search\base_block::clear_static();
+        $this->assertEquals(\core_search\manager::ACCESS_GRANTED, $area->check_access($blockid));
+
+        $DB->set_field('block_instances', 'pagetypepattern', '*', ['id' => $blockid]);
+        \core_search\base_block::clear_static();
+        $this->assertEquals(\core_search\manager::ACCESS_GRANTED, $area->check_access($blockid));
+
+        $DB->set_field('block_instances', 'pagetypepattern', 'course-view-frogs', ['id' => $blockid]);
+        \core_search\base_block::clear_static();
+        $this->assertEquals(\core_search\manager::ACCESS_GRANTED, $area->check_access($blockid));
+
+        $DB->set_field('block_instances', 'pagetypepattern', 'anythingelse', ['id' => $blockid]);
+        \core_search\base_block::clear_static();
+        $this->assertEquals(\core_search\manager::ACCESS_DELETED, $area->check_access($blockid));
+    }
+
+    /**
      * Gets a search document object from the fake search area.
      *
      * @param int $courseid Course id in document

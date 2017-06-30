@@ -88,10 +88,4 @@ class content extends \core_search\base_block {
             $document->add_stored_file($file);
         }
     }
-
-    public function check_access($id) {
-        // No access restrictions - the system has already checked the block is in a context the
-        // user can access, and that it is not hidden.
-        return \core_search\manager::ACCESS_GRANTED;
-    }
 }

@@ -294,6 +294,8 @@ class manager {
         static::$enabledsearchareas = null;
         static::$allsearchareas = null;
         static::$instance = null;
+
+        base_block::clear_static();
     }
 
     /**
@@ -380,19 +382,23 @@ class manager {
             $courses[SITEID] = get_course(SITEID);
         }
 
+        // Keep a list of included course context ids (needed for the block calculation below).
+        $coursecontextids = [];
+
         foreach ($courses as $course) {
             if (!empty($limitcourseids) && !in_array($course->id, $limitcourseids)) {
                 // Skip non-included courses.
                 continue;
             }
 
+            $coursecontext = \context_course::instance($course->id);
+            $coursecontextids[] = $coursecontext->id;
+
             // Info about the course modules.
             $modinfo = get_fast_modinfo($course);
 
             if (!empty($areasbylevel[CONTEXT_COURSE])) {
                 // Add the course contexts the user can view.
-
-                $coursecontext = \context_course::instance($course->id);
                 foreach ($areasbylevel[CONTEXT_COURSE] as $areaid => $searchclass) {
                     if ($course->visible || has_capability('moodle/course:viewhiddencourses', $coursecontext)) {
                         $areascontexts[$areaid][$coursecontext->id] = $coursecontext->id;
@@ -416,23 +422,25 @@ class manager {
                     }
                 }
             }
+        }
 
-            if (!empty($areasbylevel[CONTEXT_BLOCK])) {
-                // Get list of all block types we care about.
-                $blocklist = [];
-                foreach ($areasbylevel[CONTEXT_BLOCK] as $areaid => $searchclass) {
-                    $blocklist[$searchclass->get_block_name()] = true;
-                }
-                list ($insql, $inparams) = $DB->get_in_or_equal(array_keys($blocklist));
+        // Add all supported block contexts, in a single query for performance.
+        if (!empty($areasbylevel[CONTEXT_BLOCK])) {
+            // Get list of all block types we care about.
+            $blocklist = [];
+            foreach ($areasbylevel[CONTEXT_BLOCK] as $areaid => $searchclass) {
+                $blocklist[$searchclass->get_block_name()] = true;
+            }
+            list ($blocknamesql, $blocknameparams) = $DB->get_in_or_equal(array_keys($blocklist));
 
-                // Query all blocks that are within this course, and are set to be visible, and are
-                // in a supported page type (basically just course view). This query could be
-                // extended (or a second query added) to support blocks that are within a module
-                // context as well, and we could add more page types if required.
-                if (empty($coursecontext)) {
-                    $coursecontext = \context_course::instance($course->id);
-                }
-                $blockrecs = $DB->get_records_sql("
+            // Get list of course contexts.
+            list ($contextsql, $contextparams) = $DB->get_in_or_equal($coursecontextids);
+
+            // Query all blocks that are within an included course, and are set to be visible, and
+            // in a supported page type (basically just course view). This query could be
+            // extended (or a second query added) to support blocks that are within a module
+            // context as well, and we could add more page types if required.
+            $blockrecs = $DB->get_records_sql("
                         SELECT x.*, bi.blockname AS blockname, bi.id AS blockinstanceid
                           FROM {block_instances} bi
                           JOIN {context} x ON x.instanceid = bi.id AND x.contextlevel = ?
@@ -441,34 +449,33 @@ class manager {
                                AND bp.pagetype LIKE 'course-view-%'
                                AND bp.subpage = ''
                                AND bp.visible = 0
-                         WHERE bi.parentcontextid = ?
-                               AND bi.blockname $insql
+                         WHERE bi.parentcontextid $contextsql
+                               AND bi.blockname $blocknamesql
                                AND bi.subpagepattern IS NULL
                                AND (bi.pagetypepattern = 'site-index'
                                    OR bi.pagetypepattern LIKE 'course-view-%'
                                    OR bi.pagetypepattern = 'course-*'
                                    OR bi.pagetypepattern = '*')
                                AND bp.id IS NULL",
-                        array_merge([CONTEXT_BLOCK, $coursecontext->id], $inparams));
-                $blockcontextsbyname = [];
-                foreach ($blockrecs as $blockrec) {
-                    if (empty($blockcontextsbyname[$blockrec->blockname])) {
-                        $blockcontextsbyname[$blockrec->blockname] = [];
-                    }
-                    \context_helper::preload_from_record($blockrec);
-                    $blockcontextsbyname[$blockrec->blockname][] = \context_block::instance(
-                            $blockrec->blockinstanceid);
+                    array_merge([CONTEXT_BLOCK], $contextparams, $blocknameparams));
+            $blockcontextsbyname = [];
+            foreach ($blockrecs as $blockrec) {
+                if (empty($blockcontextsbyname[$blockrec->blockname])) {
+                    $blockcontextsbyname[$blockrec->blockname] = [];
                 }
+                \context_helper::preload_from_record($blockrec);
+                $blockcontextsbyname[$blockrec->blockname][] = \context_block::instance(
+                        $blockrec->blockinstanceid);
+            }
 
-                // Add the block contexts the user can view.
-                foreach ($areasbylevel[CONTEXT_BLOCK] as $areaid => $searchclass) {
-                    if (empty($blockcontextsbyname[$searchclass->get_block_name()])) {
-                        continue;
-                    }
-                    foreach ($blockcontextsbyname[$searchclass->get_block_name()] as $context) {
-                        if (has_capability('moodle/block:view', $context)) {
-                            $areascontexts[$areaid][$context->id] = $context->id;
-                        }
+            // Add the block contexts the user can view.
+            foreach ($areasbylevel[CONTEXT_BLOCK] as $areaid => $searchclass) {
+                if (empty($blockcontextsbyname[$searchclass->get_block_name()])) {
+                    continue;
+                }
+                foreach ($blockcontextsbyname[$searchclass->get_block_name()] as $context) {
+                    if (has_capability('moodle/block:view', $context)) {
+                        $areascontexts[$areaid][$context->id] = $context->id;
                     }
                 }
             }
