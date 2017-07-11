@@ -191,7 +191,9 @@ class search_manager_testcase extends advanced_testcase {
         $course = $generator->create_course();
         $forum = $generator->create_module('forum', ['course' => $course->id]);
 
-        // Index everything up to current.
+        // Index everything up to current. Ensure the course is older than current second so it
+        // definitely doesn't get indexed again next time.
+        $this->waitForSecond();
         $search = testable_core_search::instance();
         $search->index(false, 0);
 
@@ -215,14 +217,12 @@ class search_manager_testcase extends advanced_testcase {
         // Clear the count of added documents.
         $search->get_engine()->get_and_clear_added_documents();
 
-        // Make the search engine delay while indexing each document. (Note: I initially tried to
-        // use a smaller value of 1.1 seconds but I saw sporadic failures from Travis CI where it
-        // was somehow happening faster than that, so I've increased it.)
-        $search->get_engine()->set_add_delay(2);
+        // Make the search engine delay while indexing each document.
+        $search->get_engine()->set_add_delay(1.2);
 
-        // Index with a limit of 3 seconds - it should index 2 of the documents (after the second
-        // one, it will have taken 4 seconds so it will stop).
-        $search->index(false, 3);
+        // Index with a limit of 2 seconds - it should index 2 of the documents (after the second
+        // one, it will have taken 2.4 seconds so it will stop).
+        $search->index(false, 2);
         $added = $search->get_engine()->get_and_clear_added_documents();
         $this->assertCount(2, $added);
         $this->assertEquals('Frog', $added[0]->get('title'));
@@ -234,10 +234,7 @@ class search_manager_testcase extends advanced_testcase {
 
         // Wait to next second (so as to not reindex the label more than once, as it will now
         // be timed before the indexing run).
-        $before = time();
-        while (time() === $before) {
-            usleep(100000);
-        }
+        $this->waitForSecond();
 
         // Next index with 1 second limit should do the label and not the forum - the logic is,
         // if it spent ages indexing an area last time, do that one last on next run.
@@ -246,11 +243,11 @@ class search_manager_testcase extends advanced_testcase {
         $this->assertCount(1, $added);
         $this->assertEquals('Vampire', $added[0]->get('title'));
 
-        // Index again with a 3 second limit - it will redo last post for safety (because of other
+        // Index again with a 2 second limit - it will redo last post for safety (because of other
         // things possibly having the same time second), and then do the remaining one. (Note:
         // because it always does more than one second worth of items, it would actually index 2
-        // posts even if the limit were less than 3.)
-        $search->index(false, 3);
+        // posts even if the limit were less than 2.)
+        $search->index(false, 2);
         $added = $search->get_engine()->get_and_clear_added_documents();
         $this->assertCount(2, $added);
         $this->assertEquals('Toad', $added[0]->get('title'));
@@ -258,7 +255,7 @@ class search_manager_testcase extends advanced_testcase {
         $this->assertFalse(get_config($componentname, $varname . '_partial'));
 
         // Index again - there should be nothing to index this time.
-        $search->index(false, 3);
+        $search->index(false, 2);
         $added = $search->get_engine()->get_and_clear_added_documents();
         $this->assertCount(0, $added);
         $this->assertFalse(get_config($componentname, $varname . '_partial'));
