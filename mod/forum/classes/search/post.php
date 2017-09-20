@@ -68,7 +68,7 @@ class post extends \core_search\base_mod {
             return null;
         }
 
-        $sql = "SELECT fp.*, f.id AS forumid, f.course AS courseid
+        $sql = "SELECT fp.*, f.id AS forumid, f.course AS courseid, fd.groupid AS groupid
                   FROM {forum_posts} fp
                   JOIN {forum_discussions} fd ON fd.id = fp.discussion
                   JOIN {forum} f ON f.id = fd.forum
@@ -109,6 +109,11 @@ class post extends \core_search\base_mod {
         $doc->set('userid', $record->userid);
         $doc->set('owneruserid', \core_search\manager::NO_OWNER_ID);
         $doc->set('modified', $record->modified);
+
+        // Store group id if there is one. (0 and -1 both mean not restricted to group.)
+        if ($record->groupid > 0) {
+            $doc->set('groupid', $record->groupid);
+        }
 
         // Check if this document should be considered new.
         if (isset($options['lastindexedtime']) && ($options['lastindexedtime'] < $record->created)) {
@@ -291,5 +296,16 @@ class post extends \core_search\base_mod {
                 array('id' => $discussionid), '*', MUST_EXIST);
         }
         return $this->discussionsdata[$discussionid];
+    }
+
+    /**
+     * Checks if search results should be restricted based on groups. This is true only if the
+     * forum is in separate groups mode.
+     *
+     * @param \cm_info $cm Course-module instance for forum
+     * @return bool True if forum in separate groups mode
+     */
+    public function restrict_cm_access_by_group(\cm_info $cm) {
+        return $cm->effectivegroupmode == SEPARATEGROUPS;
     }
 }

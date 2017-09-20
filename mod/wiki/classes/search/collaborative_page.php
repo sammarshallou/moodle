@@ -57,7 +57,7 @@ class collaborative_page extends \core_search\base_mod {
             return null;
         }
 
-        $sql = "SELECT p.*, w.id AS wikiid, w.course AS courseid
+        $sql = "SELECT p.*, w.id AS wikiid, w.course AS courseid, s.groupid AS groupid
                   FROM {wiki_pages} p
                   JOIN {wiki_subwikis} s ON s.id = p.subwikiid
                   JOIN {wiki} w ON w.id = s.wikiid
@@ -111,6 +111,9 @@ class collaborative_page extends \core_search\base_mod {
         $doc->set('content', $content);
         $doc->set('contextid', $context->id);
         $doc->set('courseid', $record->courseid);
+        if ($record->groupid > 0) {
+            $doc->set('groupid', $record->groupid);
+        }
         $doc->set('owneruserid', \core_search\manager::NO_OWNER_ID);
         $doc->set('modified', $record->timemodified);
 
@@ -204,5 +207,16 @@ class collaborative_page extends \core_search\base_mod {
         $fileareas = array('attachments'); // Filearea.
 
         return $fileareas;
+    }
+
+    /**
+     * Checks if search results should be restricted based on groups. This is true only if the
+     * activity is in separate groups mode.
+     *
+     * @param \cm_info $cm Course-module instance for activity of this type
+     * @return bool True if in separate groups mode
+     */
+    public function restrict_cm_access_by_group(\cm_info $cm) {
+        return $cm->effectivegroupmode == SEPARATEGROUPS;
     }
 }
