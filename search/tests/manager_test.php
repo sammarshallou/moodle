@@ -851,6 +851,102 @@ class search_manager_testcase extends advanced_testcase {
     }
 
     /**
+     * Tests group-related aspects of the get_areas_user_accesses function.
+     */
+    public function test_search_user_accesses_groups() {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        // Create 2 courses each with 2 groups and 2 forums (separate/visible groups).
+        $generator = $this->getDataGenerator();
+        $course1 = $generator->create_course();
+        $course2 = $generator->create_course();
+        $group1 = $generator->create_group(['courseid' => $course1->id]);
+        $group2 = $generator->create_group(['courseid' => $course1->id]);
+        $group3 = $generator->create_group(['courseid' => $course2->id]);
+        $group4 = $generator->create_group(['courseid' => $course2->id]);
+        $forum1s = $generator->create_module('forum', ['course' => $course1->id, 'groupmode' => SEPARATEGROUPS]);
+        $id1s = context_module::instance($forum1s->cmid)->id;
+        $forum1v = $generator->create_module('forum', ['course' => $course1->id, 'groupmode' => VISIBLEGROUPS]);
+        $id1v = context_module::instance($forum1v->cmid)->id;
+        $forum2s = $generator->create_module('forum', ['course' => $course2->id, 'groupmode' => SEPARATEGROUPS]);
+        $id2s = context_module::instance($forum2s->cmid)->id;
+        $forum2n = $generator->create_module('forum', ['course' => $course2->id, 'groupmode' => NOGROUPS]);
+        $id2n = context_module::instance($forum2n->cmid)->id;
+
+        // Get search instance.
+        $search = testable_core_search::instance();
+        $search->add_core_search_areas();
+
+        // User 1 is a manager in one course and a student in the other one. They belong to
+        // all of the groups 1, 2, 3, and 4.
+        $user1 = $generator->create_user();
+        $generator->enrol_user($user1->id, $course1->id, 'manager');
+        $generator->enrol_user($user1->id, $course2->id, 'student');
+        groups_add_member($group1, $user1);
+        groups_add_member($group2, $user1);
+        groups_add_member($group3, $user1);
+        groups_add_member($group4, $user1);
+
+        $this->setUser($user1);
+        $contexts = $search->get_areas_user_accesses();
+
+        // Double-check all the forum contexts.
+        $postcontexts = $contexts['mod_forum-post'];
+        sort($postcontexts);
+        $this->assertEquals([$id1s, $id1v, $id2s, $id2n], $postcontexts);
+
+        // Only the context in the second course (no accessallgroups) is restricted.
+        $restrictedcontexts = $contexts[\core_search\manager::SEPARATE_GROUPS_CONTEXTS];
+        sort($restrictedcontexts);
+        $this->assertEquals([$id2s], $restrictedcontexts);
+
+        // Only the groups from the second course (no accessallgroups) are included.
+        $groupids = $contexts[\core_search\manager::USER_GROUPS];
+        sort($groupids);
+        $this->assertEquals([$group3->id, $group4->id], $groupids);
+
+        // User 2 is a student in each course and belongs to groups 2 and 4.
+        $user2 = $generator->create_user();
+        $generator->enrol_user($user2->id, $course1->id, 'student');
+        $generator->enrol_user($user2->id, $course2->id, 'student');
+        groups_add_member($group2, $user2);
+        groups_add_member($group4, $user2);
+
+        $this->setUser($user2);
+        $contexts = $search->get_areas_user_accesses();
+
+        // Double-check all the forum contexts.
+        $postcontexts = $contexts['mod_forum-post'];
+        sort($postcontexts);
+        $this->assertEquals([$id1s, $id1v, $id2s, $id2n], $postcontexts);
+
+        // Both separate groups forums are restricted.
+        $restrictedcontexts = $contexts[\core_search\manager::SEPARATE_GROUPS_CONTEXTS];
+        sort($restrictedcontexts);
+        $this->assertEquals([$id1s, $id2s], $restrictedcontexts);
+
+        // Groups from both courses are included.
+        $groupids = $contexts[\core_search\manager::USER_GROUPS];
+        sort($groupids);
+        $this->assertEquals([$group2->id, $group4->id], $groupids);
+
+        // User 3 is a manager at system level.
+        $user3 = $generator->create_user();
+        role_assign($DB->get_field('role', 'id', ['shortname' => 'manager'], MUST_EXIST), $user3->id,
+                \context_system::instance());
+
+        $this->setUser($user3);
+        $contexts = $search->get_areas_user_accesses();
+
+        // Nothing is restricted and no groups are relevant.
+        $this->assertEquals([], $contexts[\core_search\manager::SEPARATE_GROUPS_CONTEXTS]);
+        $this->assertEquals([], $contexts[\core_search\manager::USER_GROUPS]);
+    }
+
+    /**
      * test_is_search_area
      *
      * @return void
