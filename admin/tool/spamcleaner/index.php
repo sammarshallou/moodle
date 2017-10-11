@@ -264,6 +264,7 @@ function print_user_list($users_rs, $keywords) {
             $count++;
             filter_user($user, $keywords, $count);
         }
+        $rs->close();
     }
 
     if (!$count) {

@@ -474,6 +474,10 @@ class mod_feedback_responses_table extends table_sql {
      */
     public function build_table() {
         if ($this->rawdata instanceof \Traversable && !$this->rawdata->valid()) {
+            // Remember to close the recordset, even if it hasn't got any data in it.
+            if ($this->rawdata instanceof moodle_recordset) {
+                $this->rawdata->close();
+            }
             return;
         }
         if (!$this->rawdata) {
