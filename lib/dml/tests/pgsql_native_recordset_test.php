@@ -36,7 +36,7 @@ require_once($CFG->dirroot.'/lib/dml/pgsql_native_moodle_database.php');
  * @copyright 2017 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class pgsql_native_recordset_testcase extends basic_testcase {
+class pgsql_native_recordset_testcase extends advanced_testcase {
 
     /** @var pgsql_native_moodle_database Special database connection */
     protected $specialdb;
@@ -106,8 +106,14 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         // Query the table and check the actual queries using debug mode, also check the count.
         $this->specialdb->set_debug(true);
         $before = $this->specialdb->perf_get_queries();
+        $this->assertFalse($this->specialdb->is_transaction_started());
+
         ob_start();
         $rs = $this->specialdb->get_recordset_sql('SELECT * FROM {silly_test_table} ORDER BY id');
+
+        // Transaction is marked started now.
+        $this->assertTrue($this->specialdb->is_transaction_started());
+
         $index = 0;
         foreach ($rs as $rec) {
             $index++;
@@ -115,8 +121,12 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         }
         $this->assertEquals(7, $index);
         $rs->close();
+
         $debugging = ob_get_contents();
         ob_end_clean();
+
+        // Transaction is finished now.
+        $this->assertFalse($this->specialdb->is_transaction_started());
 
         // Expect 4 fetches - first three, next three, last one (with 2).
         $this->assert_query_regexps([
@@ -169,7 +179,9 @@ class pgsql_native_recordset_testcase extends basic_testcase {
     public function test_recordset_cursors_overlapping() {
         $this->init_db(3);
 
+        $this->assertFalse($this->specialdb->is_transaction_started());
         $rs1 = $this->specialdb->get_recordset('silly_test_table', null, 'id');
+        $this->assertTrue($this->specialdb->is_transaction_started());
         $rs2 = $this->specialdb->get_recordset('silly_test_table', null, 'id DESC');
 
         // Read first 3 from first recordset.
@@ -218,7 +230,9 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         $rs2->next();
         $this->assertFalse($rs2->valid());
         $this->assertEquals([2, 1], $read);
+        $this->assertTrue($this->specialdb->is_transaction_started());
         $rs2->close();
+        $this->assertFalse($this->specialdb->is_transaction_started());
     }
 
     /**
@@ -229,13 +243,16 @@ class pgsql_native_recordset_testcase extends basic_testcase {
 
         // Transaction inside the recordset processing.
         $rs = $this->specialdb->get_recordset('silly_test_table', null, 'id');
+        $this->assertTrue($this->specialdb->is_transaction_started());
         foreach ($rs as $rec) {
             $read[] = $rec->id;
             $transaction = $this->specialdb->start_delegated_transaction();
             $transaction->allow_commit();
         }
         $this->assertEquals([1, 2, 3, 4, 5, 6, 7], $read);
+        $this->assertTrue($this->specialdb->is_transaction_started());
         $rs->close();
+        $this->assertFalse($this->specialdb->is_transaction_started());
     }
 
     /**
@@ -246,13 +263,16 @@ class pgsql_native_recordset_testcase extends basic_testcase {
 
         // Transaction outside the recordset processing.
         $transaction = $this->specialdb->start_delegated_transaction();
+        $this->assertTrue($this->specialdb->is_transaction_started());
         $rs = $this->specialdb->get_recordset('silly_test_table', null, 'id');
         foreach ($rs as $rec) {
             $read[] = $rec->id;
         }
         $this->assertEquals([1, 2, 3, 4, 5, 6, 7], $read);
         $rs->close();
+        $this->assertTrue($this->specialdb->is_transaction_started());
         $transaction->allow_commit();
+        $this->assertFalse($this->specialdb->is_transaction_started());
     }
 
     /**
@@ -263,13 +283,16 @@ class pgsql_native_recordset_testcase extends basic_testcase {
 
         // Transaction outside the recordset processing.
         $transaction = $this->specialdb->start_delegated_transaction();
+        $this->assertTrue($this->specialdb->is_transaction_started());
         $rs = $this->specialdb->get_recordset('silly_test_table', null, 'id');
         $transaction->allow_commit();
         foreach ($rs as $rec) {
             $read[] = $rec->id;
         }
         $this->assertEquals([1, 2, 3, 4, 5, 6, 7], $read);
+        $this->assertTrue($this->specialdb->is_transaction_started());
         $rs->close();
+        $this->assertFalse($this->specialdb->is_transaction_started());
     }
 
     /**
@@ -280,13 +303,16 @@ class pgsql_native_recordset_testcase extends basic_testcase {
 
         // Transaction outside the recordset processing.
         $rs = $this->specialdb->get_recordset('silly_test_table', null, 'id');
+        $this->assertTrue($this->specialdb->is_transaction_started());
         $transaction = $this->specialdb->start_delegated_transaction();
         foreach ($rs as $rec) {
             $read[] = $rec->id;
         }
         $this->assertEquals([1, 2, 3, 4, 5, 6, 7], $read);
         $rs->close();
+        $this->assertTrue($this->specialdb->is_transaction_started());
         $transaction->allow_commit();
+        $this->assertFalse($this->specialdb->is_transaction_started());
     }
 
     /**
@@ -330,6 +356,7 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         ob_start();
         $rs = $this->specialdb->get_recordset_sql(
                 'SELECT * FROM {silly_test_table} ORDER BY id', [], 0, 100);
+        $this->assertFalse($this->specialdb->is_transaction_started());
         $index = 0;
         foreach ($rs as $rec) {
             $index++;
@@ -359,6 +386,7 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         $before = $this->specialdb->perf_get_queries();
         ob_start();
         $rs = $this->specialdb->get_recordset_sql('SELECT * FROM {silly_test_table} ORDER BY id');
+        $this->assertFalse($this->specialdb->is_transaction_started());
         $index = 0;
         foreach ($rs as $rec) {
             $index++;
@@ -375,6 +403,43 @@ class pgsql_native_recordset_testcase extends basic_testcase {
 
         // There should have been 1 query tracked for perf log.
         $this->assertEquals(1, $this->specialdb->perf_get_queries() - $before);
+    }
+
+    /**
+     * When dispatching events, 'external' observers (such as writing to the log table) are not
+     * triggered until after the transaction commits. Test this behaviour takes account of
+     * recordset transactions.
+     */
+    public function test_event_transaction_behaviour() {
+        global $DB;
+        require_once(__DIR__. '/../../tests/fixtures/event_fixtures.php');
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->setAdminUser();
+
+        set_config('enabled_stores', 'logstore_standard', 'tool_log');
+        set_config('buffersize', 0, 'logstore_standard');
+        get_log_manager(true);
+
+        // When using a recordset that creates a cursor, the log entry is not created until after
+        // the transaction closes.
+        $rs = $DB->get_recordset('user');
+        $before = $DB->count_records('logstore_standard_log');
+        $context = \context_system::instance();
+        \core_tests\event\unittest_executed::create(['context' => $context])->trigger();
+        $this->assertEquals($before, $DB->count_records('logstore_standard_log'));
+        $rs->close();
+        $this->assertEquals($before + 1, $DB->count_records('logstore_standard_log'));
+
+        // When using a recordset that does not create a cursor (no transaction), the log entry
+        // is created immediately without waiting for it to close.
+        $rs = $DB->get_recordset('user', null, '', '*', 0, 1);
+        $before = $DB->count_records('logstore_standard_log');
+        $context = \context_system::instance();
+        \core_tests\event\unittest_executed::create(['context' => $context])->trigger();
+        $this->assertEquals($before + 1, $DB->count_records('logstore_standard_log'));
+        $rs->close();
     }
 
     /**

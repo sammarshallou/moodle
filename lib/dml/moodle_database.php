@@ -2453,6 +2453,15 @@ abstract class moodle_database {
     }
 
     /**
+     * Called when all transactions are closed - informs various other parts of the system that
+     * may have been waiting.
+     */
+    protected function transactions_all_finished() {
+        \core\event\manager::database_transaction_commited();
+        \core\message\manager::database_transaction_commited();
+    }
+
+    /**
      * This is a test that throws an exception if transaction in progress.
      * This test does not force rollback of active transactions.
      * @return void
@@ -2533,8 +2542,7 @@ abstract class moodle_database {
         array_pop($this->transactions);
 
         if (empty($this->transactions)) {
-            \core\event\manager::database_transaction_commited();
-            \core\message\manager::database_transaction_commited();
+            $this->transactions_all_finished();
         }
     }
 

@@ -782,7 +782,7 @@ class pgsql_native_moodle_database extends moodle_database {
      * they were opened.)
      */
     protected function start_recordset_transaction() {
-        if ($this->recordsetdepth === 0 && !$this->is_transaction_started()) {
+        if ($this->recordsetdepth === 0 && !parent::is_transaction_started()) {
             $this->begin_transaction();
         }
         $this->recordsetdepth++;
@@ -800,8 +800,9 @@ class pgsql_native_moodle_database extends moodle_database {
             throw new coding_exception('Unexpected recordset close');
         }
         $this->recordsetdepth--;
-        if ($this->recordsetdepth === 0 && !$this->is_transaction_started()) {
+        if ($this->recordsetdepth === 0 && !parent::is_transaction_started()) {
             $this->commit_transaction();
+            $this->transactions_all_finished();
         }
     }
 
@@ -1477,6 +1478,26 @@ class pgsql_native_moodle_database extends moodle_database {
         if ($result) {
             pg_free_result($result);
         }
+    }
+
+    /**
+     * Checks if database transaction is in progress. This includes both moodle_transaction
+     * transactions and also internally-generated recordset transactions.
+     *
+     * @return bool True if underlying database transaction has started
+     */
+    public function is_transaction_started() {
+        return $this->recordsetdepth > 0 || parent::is_transaction_started();
+    }
+
+    /**
+     * Override parent function so that it only does stuff if there is no recordset.
+     */
+    protected function transactions_all_finished() {
+        if ($this->recordsetdepth > 0) {
+            return;
+        }
+        parent::transactions_all_finished();
     }
 
     /**
