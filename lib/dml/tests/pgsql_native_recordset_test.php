@@ -225,6 +225,7 @@ class pgsql_native_recordset_testcase extends basic_testcase {
 
         // Transaction inside the recordset processing.
         $rs = $this->specialdb->get_recordset('silly_test_table', null, 'id');
+        $read = [];
         foreach ($rs as $rec) {
             $read[] = $rec->id;
             $transaction = $this->specialdb->start_delegated_transaction();
@@ -243,6 +244,7 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         // Transaction outside the recordset processing.
         $transaction = $this->specialdb->start_delegated_transaction();
         $rs = $this->specialdb->get_recordset('silly_test_table', null, 'id');
+        $read = [];
         foreach ($rs as $rec) {
             $read[] = $rec->id;
         }
@@ -261,6 +263,7 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         $transaction = $this->specialdb->start_delegated_transaction();
         $rs = $this->specialdb->get_recordset('silly_test_table', null, 'id');
         $transaction->allow_commit();
+        $read = [];
         foreach ($rs as $rec) {
             $read[] = $rec->id;
         }
@@ -277,6 +280,7 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         // Transaction outside the recordset processing.
         $rs = $this->specialdb->get_recordset('silly_test_table', null, 'id');
         $transaction = $this->specialdb->start_delegated_transaction();
+        $read = [];
         foreach ($rs as $rec) {
             $read[] = $rec->id;
         }
