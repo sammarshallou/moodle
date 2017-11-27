@@ -162,12 +162,9 @@ class pgsql_native_moodle_recordset extends moodle_recordset {
         $this->current = null;
         $this->blobs   = null;
 
-        // If using cursors, drop the cursor and close the transaction.
+        // If using cursors, close the cursor.
         if ($this->cursorname) {
-            if ($this->db->close_cursor($this->cursorname)) {
-                $this->db->finish_recordset_transaction();
-            }
-
+            $this->db->close_cursor($this->cursorname);
             $this->cursorname = null;
         }
     }

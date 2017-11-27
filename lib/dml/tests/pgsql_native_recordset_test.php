@@ -121,15 +121,13 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         // Expect 4 fetches - first three, next three, last one (with 2).
         $this->assert_query_regexps([
                 '~SELECT \* FROM~',
-                '~BEGIN~',
                 '~FETCH 3 FROM crs1~',
                 '~FETCH 3 FROM crs1~',
                 '~FETCH 3 FROM crs1~',
-                '~CLOSE crs1~',
-                '~COMMIT~'], $debugging);
+                '~CLOSE crs1~'], $debugging);
 
         // There should have been 7 queries tracked for perf log.
-        $this->assertEquals(7, $this->specialdb->perf_get_queries() - $before);
+        $this->assertEquals(5, $this->specialdb->perf_get_queries() - $before);
 
         // Try a second time - this time we'll request exactly 3 items so that it has to query
         // twice (as it can't tell if the first batch is the last).
@@ -152,14 +150,12 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         // Expect 2 fetches - first three, then next one (empty).
         $this->assert_query_regexps([
                 '~SELECT \* FROM~',
-                '~BEGIN~',
                 '~FETCH 3 FROM crs2~',
                 '~FETCH 3 FROM crs2~',
-                '~CLOSE crs2~',
-                '~COMMIT~'], $debugging);
+                '~CLOSE crs2~'], $debugging);
 
-        // There should have been 6 queries tracked for perf log.
-        $this->assertEquals(6, $this->specialdb->perf_get_queries() - $before);
+        // There should have been 4 queries tracked for perf log.
+        $this->assertEquals(4, $this->specialdb->perf_get_queries() - $before);
     }
 
     /**
@@ -305,6 +301,14 @@ class pgsql_native_recordset_testcase extends basic_testcase {
         } catch (dml_transaction_exception $e) {
             $this->assertContains('rollback please', $e->getMessage());
         } finally {
+
+            // Rollback should not kill our recordset.
+            $read = [];
+            foreach ($rs as $rec) {
+                $read[] = $rec->id;
+            }
+            $this->assertEquals([1, 2, 3, 4, 5, 6, 7], $read);
+
             // This would happen in real code (that isn't within the same function) anyway because
             // it would go out of scope.
             $rs->close();
@@ -312,6 +316,7 @@ class pgsql_native_recordset_testcase extends basic_testcase {
 
         // OK, transaction aborted, now get the recordset again and check nothing was deleted.
         $rs = $this->specialdb->get_recordset('silly_test_table', null, 'id');
+        $read = [];
         foreach ($rs as $rec) {
             $read[] = $rec->id;
         }

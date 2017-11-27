@@ -51,9 +51,6 @@ class pgsql_native_moodle_database extends moodle_database {
     /** @var int Default number of rows to fetch at a time when using recordsets with cursors */
     const DEFAULT_FETCH_BUFFER_SIZE = 100000;
 
-    /** @var int Depth of recordset nesting */
-    protected $recordsetdepth = 0;
-
     /**
      * Detects if all needed PHP stuff installed.
      * Note: can be used before connect()
@@ -754,12 +751,8 @@ class pgsql_native_moodle_database extends moodle_database {
             $this->cursorcount++;
             $cursorname = 'crs' . $this->cursorcount;
 
-            // Cursors only work inside a transaction. If required, start a delegated transaction
-            // for it.
-            $this->start_recordset_transaction();
-
             // Do the query to a cursor.
-            $sql = 'DECLARE ' . $cursorname . ' NO SCROLL CURSOR FOR ' . $sql;
+            $sql = 'DECLARE ' . $cursorname . ' NO SCROLL CURSOR WITH HOLD FOR ' . $sql;
             $result = pg_query_params($this->pgsql, $sql, $params);
         } else {
             $result = pg_query_params($this->pgsql, $sql, $params);
@@ -773,36 +766,6 @@ class pgsql_native_moodle_database extends moodle_database {
         }
 
         return new pgsql_native_moodle_recordset($result, $this, $cursorname);
-    }
-
-    /**
-     * Starts a recordset transaction if one is needed, tracking the depth of recordsets.
-     *
-     * (Recordsets only use a single transaction. They do not need to be closed in the same order
-     * they were opened.)
-     */
-    protected function start_recordset_transaction() {
-        if ($this->recordsetdepth === 0 && !$this->is_transaction_started()) {
-            $this->begin_transaction();
-        }
-        $this->recordsetdepth++;
-    }
-
-    /**
-     * For use by recordset only; do not call directly.
-     *
-     * Finishes a recordset transaction if one was started, tracking the depth of recordsets.
-     *
-     * @throws dml_transaction_exception If the recordset wasn't closed correctly
-     */
-    public function finish_recordset_transaction() {
-        if ($this->recordsetdepth <= 0) {
-            throw new coding_exception('Unexpected recordset close');
-        }
-        $this->recordsetdepth--;
-        if ($this->recordsetdepth === 0 && !$this->is_transaction_started()) {
-            $this->commit_transaction();
-        }
     }
 
     /**
@@ -852,9 +815,6 @@ class pgsql_native_moodle_database extends moodle_database {
      */
     public function close_cursor($cursorname) {
         // If the transaction got cancelled, then ignore this request.
-        if ($this->recordsetdepth === 0) {
-            return false;
-        }
         $sql = 'CLOSE ' . $cursorname;
         $this->query_start($sql, [], SQL_QUERY_AUX);
         $result = pg_query($this->pgsql, $sql);
@@ -1485,14 +1445,9 @@ class pgsql_native_moodle_database extends moodle_database {
      * @return void
      */
     protected function begin_transaction() {
-        // Don't start it if we already started one because of the recordset.
-        if ($this->recordsetdepth > 0) {
-            return;
-        }
-
         $this->savepointpresent = true;
         $sql = "BEGIN ISOLATION LEVEL READ COMMITTED; SAVEPOINT moodle_pg_savepoint";
-        $this->query_start($sql, NULL, SQL_QUERY_AUX);
+        $this->query_start($sql, null, SQL_QUERY_AUX);
         $result = pg_query($this->pgsql, $sql);
         $this->query_end($result);
 
@@ -1505,14 +1460,9 @@ class pgsql_native_moodle_database extends moodle_database {
      * @return void
      */
     protected function commit_transaction() {
-        // Don't really commit it if we still have a recordset open.
-        if ($this->recordsetdepth > 0) {
-            return;
-        }
-
         $this->savepointpresent = false;
         $sql = "RELEASE SAVEPOINT moodle_pg_savepoint; COMMIT";
-        $this->query_start($sql, NULL, SQL_QUERY_AUX);
+        $this->query_start($sql, null, SQL_QUERY_AUX);
         $result = pg_query($this->pgsql, $sql);
         $this->query_end($result);
 
@@ -1525,12 +1475,9 @@ class pgsql_native_moodle_database extends moodle_database {
      * @return void
      */
     protected function rollback_transaction() {
-        // Immediately abandon the recordset as well.
-        $this->recordsetdepth = 0;
-
         $this->savepointpresent = false;
         $sql = "RELEASE SAVEPOINT moodle_pg_savepoint; ROLLBACK";
-        $this->query_start($sql, NULL, SQL_QUERY_AUX);
+        $this->query_start($sql, null, SQL_QUERY_AUX);
         $result = pg_query($this->pgsql, $sql);
         $this->query_end($result);
 
