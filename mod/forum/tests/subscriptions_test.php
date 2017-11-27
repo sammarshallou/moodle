@@ -28,9 +28,6 @@ global $CFG;
 require_once($CFG->dirroot . '/mod/forum/lib.php');
 
 class mod_forum_subscriptions_testcase extends advanced_testcase {
-    /** @var int Number of extra database queries counted for a recordset query */
-    protected $extraqueriesperrecordset = 0;
-
     /**
      * Test setUp.
      */
@@ -41,11 +38,6 @@ class mod_forum_subscriptions_testcase extends advanced_testcase {
         // tests using these functions.
         \mod_forum\subscriptions::reset_forum_cache();
         \mod_forum\subscriptions::reset_discussion_cache();
-
-        // Postgres native database class now makes extra queries for each recordset.
-        if (get_class($DB) === 'pgsql_native_moodle_database') {
-            $this->extraqueriesperrecordset = 2;
-        }
     }
 
     /**
@@ -982,11 +974,11 @@ class mod_forum_subscriptions_testcase extends advanced_testcase {
         // Reset the subscription cache.
         \mod_forum\subscriptions::reset_forum_cache();
 
-        // Filling the subscription cache should only use a single query.
+        // Filling the subscription cache should use a query.
         $startcount = $DB->perf_get_reads();
         $this->assertNull(\mod_forum\subscriptions::fill_subscription_cache($forum->id));
         $postfillcount = $DB->perf_get_reads();
-        $this->assertEquals(1 + $this->extraqueriesperrecordset, $postfillcount - $startcount);
+        $this->assertNotEquals($postfillcount, $startcount);
 
         // Now fetch some subscriptions from that forum - these should use
         // the cache and not perform additional queries.
@@ -1058,7 +1050,7 @@ class mod_forum_subscriptions_testcase extends advanced_testcase {
         $result = \mod_forum\subscriptions::fill_subscription_cache_for_course($course->id, $user->id);
         $this->assertNull($result);
         $postfillcount = $DB->perf_get_reads();
-        $this->assertEquals(1 + $this->extraqueriesperrecordset, $postfillcount - $startcount);
+        $this->assertNotEquals($postfillcount, $startcount);
         $this->assertFalse(\mod_forum\subscriptions::fetch_subscription_cache($disallowforum->id, $user->id));
         $this->assertFalse(\mod_forum\subscriptions::fetch_subscription_cache($chooseforum->id, $user->id));
         $this->assertTrue(\mod_forum\subscriptions::fetch_subscription_cache($initialforum->id, $user->id));
@@ -1073,7 +1065,7 @@ class mod_forum_subscriptions_testcase extends advanced_testcase {
             $this->assertTrue(\mod_forum\subscriptions::fetch_subscription_cache($initialforum->id, $user->id));
         }
         $finalcount = $DB->perf_get_reads();
-        $this->assertEquals(count($users) * (1 + $this->extraqueriesperrecordset), $finalcount - $postfillcount);
+        $this->assertNotEquals($finalcount, $postfillcount);
     }
 
     /**
@@ -1126,7 +1118,7 @@ class mod_forum_subscriptions_testcase extends advanced_testcase {
         $startcount = $DB->perf_get_reads();
         $this->assertNull(\mod_forum\subscriptions::fill_discussion_subscription_cache($forum->id));
         $postfillcount = $DB->perf_get_reads();
-        $this->assertEquals(1 + $this->extraqueriesperrecordset, $postfillcount - $startcount);
+        $this->assertNotEquals($postfillcount, $startcount);
 
         // Now fetch some subscriptions from that forum - these should use
         // the cache and not perform additional queries.
@@ -1193,7 +1185,7 @@ class mod_forum_subscriptions_testcase extends advanced_testcase {
             $this->assertInternalType('array', $result);
         }
         $finalcount = $DB->perf_get_reads();
-        $this->assertEquals(20 * (1 + $this->extraqueriesperrecordset), $finalcount - $startcount);
+        $this->assertNotEquals($finalcount, $startcount);
     }
 
     /**
