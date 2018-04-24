@@ -116,4 +116,11 @@ class engine extends \core_search\engine {
         $this->schemaupdates = [];
         return $result;
     }
+
+    /**
+     * Clears the static cache.
+     */
+    public static function clear_static_cache() {
+        self::$cachedusers = [];
+    }
 }

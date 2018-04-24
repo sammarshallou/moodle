@@ -65,6 +65,7 @@ class search_document_testcase extends advanced_testcase {
         $area = new \core_mocksearch\search\mock_search_area();
         $renderer = $PAGE->get_renderer('core_search');
         $engine = new \mock_search\engine();
+        \mock_search\engine::clear_static_cache();
 
         $course = $this->getDataGenerator()->create_course(array('fullname' => 'Course & Title'));
         $coursectx = context_course::instance($course->id);
