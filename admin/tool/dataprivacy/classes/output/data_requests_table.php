@@ -192,6 +192,14 @@ class data_requests_table extends table_sql {
             $actions[] = new action_menu_link_secondary($actionurl, null, $actiontext, $actiondata);
         }
 
+        if ($status == api::DATAREQUEST_STATUS_COMPLETE) {
+            $userid = $data->foruser->id;
+            $usercontext = \context_user::instance($userid, IGNORE_MISSING);
+            if ($usercontext && api::can_download_data_request_for_user($userid, $data->requestedbyuser->id)) {
+                $actions[] = api::get_download_link($usercontext, $requestid);
+            }
+        }
+
         $actionsmenu = new action_menu($actions);
         $actionsmenu->set_menu_trigger(get_string('actions'));
         $actionsmenu->set_owner_selector('request-actions-' . $requestid);
