@@ -170,6 +170,9 @@ $temp->add(new admin_setting_configselect('tempdatafoldercleanup', new lang_stri
             168 => new lang_string('numdays', '', 7),
 )));
 
+// TEST CODE: Add an encrypted password setting.
+$temp->add(new admin_setting_encryptedpassword('sillypassword', 'Silly password', 'This is a silly password just to test the encryption'));
+
 $ADMIN->add('server', $temp);
 
 

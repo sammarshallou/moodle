@@ -111,6 +111,8 @@ $PAGE->set_heading($SITE->fullname);
 $courserenderer = $PAGE->get_renderer('core', 'course');
 echo $OUTPUT->header();
 
+print_object('The silly password is: ' . \core_admin\setting_encryption::decrypt($CFG->sillypassword));
+
 $siteformatoptions = course_get_format($SITE)->get_format_options();
 $modinfo = get_fast_modinfo($SITE);
 $modnamesused = $modinfo->get_used_module_names();
