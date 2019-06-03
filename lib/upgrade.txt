@@ -1,6 +1,11 @@
 This files describes API changes in core libraries and APIs,
 information provided here is intended especially for developers.
 
+=== 3.11 ===
+* New encryption API in \core\encryption allows secure (AES-256-CTR) encryption and decryption of
+  data. By default the key is stored in moodledata but admins can configure a different, more secure
+  location in config.php if required.
+
 === 3.10 ===
 * PHPUnit has been upgraded to 8.5. That comes with a few changes:
   - Breaking change: All the "template methods" (setUp(), tearDown()...) now require to return void. This implies
