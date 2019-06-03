@@ -1,5 +1,10 @@
 This files describes API changes in /admin/*.
 
+=== 3.10 ===
+
+* New admin setting admin_setting_encryptedpassword, and associated API in \core_admin\setting_encryption.php,
+  allow passwords in admin settings to be encrypted so that even the admin cannot read them.
+
 === 3.9 ===
 
 * The following functions, previously used (exclusively) by upgrade steps are not available anymore because of the upgrade cleanup performed for this version. See MDL-65809 for more info:
