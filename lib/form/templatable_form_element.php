@@ -82,7 +82,7 @@ trait templatable_form_element {
         $context['type'] = $this->getType();
         $context['attributes'] = implode(' ', $otherattributes);
         $context['emptylabel'] = ($this->getLabel() === '');
-        $context['iderror'] = preg_replace('/^id_/', 'id_error_', $context['id']);
+        $context['iderror'] = preg_replace('/^(fgroup_)?id_/', '$1id_error_', $context['id']);
 
         // Elements with multiple values need array syntax.
         if ($this->getAttribute('multiple')) {
