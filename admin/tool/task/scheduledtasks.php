@@ -98,7 +98,12 @@ if ($mform && ($mform->is_cancelled() || !empty($CFG->preventscheduledtaskchange
 
 } else {
     echo $OUTPUT->header();
+    $PAGE->requires->js_call_amd('tool_task/scheduledtasks', 'init');
+    $PAGE->requires->strings_for_js(['ok', 'error'], 'moodle');
+    $PAGE->requires->strings_for_js(['error_loading'], 'tool_task');
     $tasks = core\task\manager::get_all_scheduled_tasks();
+    $running = core\task\manager::get_running_tasks();
+    echo $renderer->running_tasks_table($running);
     echo $renderer->scheduled_tasks_table($tasks);
     echo $OUTPUT->footer();
 }

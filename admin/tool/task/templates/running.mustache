@@ -1,0 +1,96 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template tool_task/running
+
+    Template for displaying a list of currently running tasks.
+
+    Context variables required for this template:
+    * adhoc - list of currently running ad-hoc tasks (fields: taskclass, component, time, started)
+    * scheduled - list of currently-running scheduled tasks (fields: taskname, taskclass, component, time, started)
+    * anytasks - true if there are any tasks
+    * lastupdated - time data was retrieved
+
+    Example context (json):
+    {
+        "adhoc": [{"taskclass":"core\\task\\asynchronous_backup_task","component":"Core","time":"2 secs","started":1573667402}],
+        "scheduled":[{"taskname":"Synchronise manual enrolments task","taskclass":"enrol_manual\\task\\sync_enrolments",
+            "component":"Manual enrolments","time":"0 secs","started":1573651413}],
+        "anytasks": true,
+        "lastupdated": 1573651286
+    }
+
+}}
+<div aria-live="polite">
+<div class="tool_task_running">
+<h2>
+    {{#str}}runningnow, tool_task{{/str}}
+</h2>
+<p>
+    {{#str}}lastupdated, tool_task, {{#userdate}} {{lastupdated}}, {{#str}} strftimetime {{/str}} {{/userdate}}{{/str}}
+    <button id="tool_task_refresh" title="{{#str}}refresh{{/str}}" class="btn btn-secondary btn-sm align-baseline ml-2">{{#pix}}i/reload, core{{/pix}}{{#str}}refresh{{/str}}</button>
+</p>
+{{#anytasks}}
+    <table class="admintable generaltable">
+        <thead>
+            <tr>
+                <th scope="col">{{#str}}name{{/str}}</th>
+                <th scope="col">{{#str}}component, tool_task{{/str}}</th>
+                <th scope="col">{{#str}}time{{/str}}</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            {{#scheduled}}
+                <tr>
+                    <th scope="col">
+                        {{taskname}}
+                        <span class="badge badge-primary">{{#str}}scheduled, tool_task{{/str}}</span>
+                        <span class="task-class text-ltr">{{taskclass}}</span>
+                    </th>
+                    <td>
+                        {{component}}
+                    </td>
+                    <td>
+                        {{time}}
+                    </td>
+                </tr>
+            {{/scheduled}}
+
+            {{#adhoc}}
+                <tr>
+                    <th scope="col">
+                        {{taskclass}}
+                        <span class="badge badge-secondary">{{#str}}adhoc, tool_task{{/str}}</span>
+                    </th>
+                    <td>
+                        {{component}}
+                    </td>
+                    <td>
+                        {{time}}
+                    </td>
+                </tr>
+            {{/adhoc}}
+        </tbody>
+    </table>
+{{/anytasks}}
+{{^anytasks}}
+    <p>{{#str}}notasksrunning, tool_task{{/str}}</p>
+{{/anytasks}}
+
+</div>
+</div>
