@@ -186,6 +186,7 @@ function cron_run_inner_scheduled_task(\core\task\task_base $task) {
     try {
         get_mailer('buffer');
         cron_prepare_core_renderer();
+        \core\task\manager::scheduled_task_starting($task);
         $task->execute();
         if ($DB->is_transaction_started()) {
             throw new coding_exception("Task left transaction open");
@@ -269,6 +270,7 @@ function cron_run_inner_adhoc_task(\core\task\adhoc_task $task) {
     try {
         get_mailer('buffer');
         cron_prepare_core_renderer();
+        \core\task\manager::adhoc_task_starting($task);
         $task->execute();
         if ($DB->is_transaction_started()) {
             throw new coding_exception("Task left transaction open");

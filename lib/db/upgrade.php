@@ -3787,5 +3787,29 @@ function xmldb_main_upgrade($oldversion) {
     // Automatically generated Moodle v3.8.0 release upgrade line.
     // Put any upgrade step following this.
 
+    if ($oldversion < 2019120500.01) {
+
+        // Define field running to be added to task_scheduled.
+        $table = new xmldb_table('task_scheduled');
+        $field = new xmldb_field('running', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'disabled');
+
+        // Conditionally launch add field running.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field running to be added to task_adhoc.
+        $table = new xmldb_table('task_adhoc');
+        $field = new xmldb_field('running', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'blocking');
+
+        // Conditionally launch add field running.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2019120500.01);
+    }
+
     return true;
 }

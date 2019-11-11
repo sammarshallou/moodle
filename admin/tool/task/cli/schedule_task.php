@@ -154,6 +154,7 @@ if ($execute = $options['execute']) {
 
     try {
         get_mailer('buffer');
+        \core\task\manager::scheduled_task_starting($task);
         $task->execute();
         if (isset($predbqueries)) {
             mtrace("... used " . ($DB->perf_get_queries() - $predbqueries) . " dbqueries");

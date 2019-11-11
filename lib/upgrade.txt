@@ -1,6 +1,11 @@
 This files describes API changes in core libraries and APIs,
 information provided here is intended especially for developers.
 
+=== 3.9 ===
+* The task system has new functions adhoc_task_starting() and scheduled_task_starting() which must
+  be called before executing a task, and a new function \core\task\manager::get_running_tasks()
+  returns information about currently-running tasks.
+
 === 3.8 ===
 * Add CLI option to notify all cron tasks to stop: admin/cli/cron.php --stop
 * The rotate_image function has been added to the stored_file class (MDL-63349)
