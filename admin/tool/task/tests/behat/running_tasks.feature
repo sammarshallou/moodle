@@ -7,9 +7,18 @@ Feature: See running scheduled tasks
   Background:
     Given I log in as "admin"
 
-  Scenario: If no tasks are running, I should not see that message
+  Scenario: If no tasks are running and tasks are not disabled, I should not see those messages
     When I navigate to "Server > Tasks > Scheduled tasks" in site administration
-    Then I should see "No tasks are running now"
+    Then I should not see "Background processing is disabled"
+    And I should see "No tasks are running now"
+
+  Scenario: If tasks are disabled, I should see a message which links me to the setting
+    When the following config values are set as admin:
+      | task_disable_processing | 1 |
+    And I navigate to "Server > Tasks > Scheduled tasks" in site administration
+    Then I should see "Background processing is disabled"
+    And I follow "Settings"
+    And I should see "Disable background tasks"
 
   @javascript
   Scenario: If tasks are running, I should see a message informing me about that

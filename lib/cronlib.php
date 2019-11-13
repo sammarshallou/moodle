@@ -25,8 +25,10 @@
 
 /**
  * Execute cron tasks
+ *
+ * @param bool $force Run even if scheduled tasks are disabled
  */
-function cron_run() {
+function cron_run(bool $force = false) {
     global $DB, $CFG, $OUTPUT;
 
     if (CLI_MAINTENANCE) {
@@ -69,11 +71,16 @@ function cron_run() {
         set_config('lastcroninterval', max(1, $timenow - $laststart), 'tool_task');
     }
 
-    // Run all scheduled tasks.
-    cron_run_scheduled_tasks($timenow);
+    if (!empty($CFG->task_disable_processing) && !$force) {
+        mtrace('Background processing is disabled (task_disable_processing admin setting).');
+        mtrace('Use --force to override.');
+    } else {
+        // Run all scheduled tasks.
+        cron_run_scheduled_tasks($timenow);
 
-    // Run adhoc tasks.
-    cron_run_adhoc_tasks($timenow);
+        // Run adhoc tasks.
+        cron_run_adhoc_tasks($timenow);
+    }
 
     mtrace("Cron script completed correctly");
 
@@ -329,6 +336,11 @@ function cron_run_single_task(\core\task\scheduled_task $task) {
 
     if (moodle_needs_upgrading()) {
         echo "Moodle upgrade pending, cron execution suspended.\n";
+        return false;
+    }
+
+    if (!empty($CFG->task_disable_processing)) {
+        echo "Background processing is disabled (task_disable_processing admin setting).\n";
         return false;
     }
 

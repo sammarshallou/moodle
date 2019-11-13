@@ -103,6 +103,9 @@ if ($mform && ($mform->is_cancelled() || !empty($CFG->preventscheduledtaskchange
     $PAGE->requires->strings_for_js(['error_loading'], 'tool_task');
     $tasks = core\task\manager::get_all_scheduled_tasks();
     $running = core\task\manager::get_running_tasks();
+    if ($CFG->task_disable_processing) {
+        echo $renderer->task_processing_disabled();
+    }
     echo $renderer->running_tasks_table($running);
     echo $renderer->scheduled_tasks_table($tasks);
     echo $OUTPUT->footer();

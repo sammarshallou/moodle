@@ -35,6 +35,7 @@ list($options, $unrecognized) = cli_get_params(
         'keep-alive' => 0,
         'showsql' => false,
         'showdebugging' => false,
+        'force' => false,
     ], [
         'h' => 'help',
         'e' => 'execute',
@@ -57,6 +58,7 @@ Options:
      --showdebugging       Show developer level debugging information
  -e, --execute             Run all queued adhoc tasks
  -k, --keep-alive=N        Keep this script alive for N seconds and poll for new adhoc tasks
+     --force               Run even if background processing is disabled
 
 Example:
 \$sudo -u www-data /usr/bin/php admin/tool/task/cli/adhoc_task.php --execute
@@ -113,6 +115,12 @@ $timenow = $timestart;
 $finishtime = $timenow + (int)$options['keep-alive'];
 $humantimenow = date('r', $timenow);
 mtrace("Server Time: {$humantimenow}\n");
+
+if (!empty($CFG->task_disable_processing) && !$options['force']) {
+    mtrace('Background processing is disabled (task_disable_processing admin setting).');
+    mtrace('Use --force to override.');
+    exit(1);
+}
 
 // Run all adhoc tasks.
 $taskcount = 0;

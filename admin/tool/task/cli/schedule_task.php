@@ -29,7 +29,8 @@ require_once("$CFG->libdir/clilib.php");
 require_once("$CFG->libdir/cronlib.php");
 
 list($options, $unrecognized) = cli_get_params(
-    array('help' => false, 'list' => false, 'execute' => false, 'showsql' => false, 'showdebugging' => false),
+    array('help' => false, 'list' => false, 'execute' => false, 'showsql' => false,
+        'showdebugging' => false, 'force' => false),
     array('h' => 'help')
 );
 
@@ -47,6 +48,7 @@ Options:
 --list                List all scheduled tasks
 --showsql             Show sql queries before they are executed
 --showdebugging       Show developer level debugging information
+--force               Execute task even if background processing is disabled
 -h, --help            Print out this help
 
 Example:
@@ -117,6 +119,12 @@ if ($execute = $options['execute']) {
 
     if (moodle_needs_upgrading()) {
         mtrace("Moodle upgrade pending, cannot execute tasks.");
+        exit(1);
+    }
+
+    if (!empty($CFG->task_disable_processing) && !$options['force']) {
+        mtrace('Background processing is disabled (task_disable_processing admin setting).');
+        mtrace('Use --force to override.');
         exit(1);
     }
 

@@ -39,6 +39,7 @@ list($options, $unrecognized) = cli_get_params(
     array(
         'help' => false,
         'stop' => false,
+        'force' => false,
     ),
     array(
         'h' => 'help',
@@ -58,6 +59,7 @@ if ($options['help']) {
 Options:
 -h, --help            Print out this help
 -s, --stop            Notify all other running cron processes to stop after the current task
+--force               Execute task even if background processing is disabled
 
 Example:
 \$sudo -u www-data /usr/bin/php admin/cli/cron.php
@@ -74,4 +76,4 @@ if ($options['stop']) {
     die;
 }
 
-cron_run();
+cron_run($options['force']);

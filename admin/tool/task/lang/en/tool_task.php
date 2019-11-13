@@ -25,6 +25,7 @@
 $string['adhoc'] = 'Ad-hoc';
 $string['adhoctasks'] = 'Ad-hoc tasks';
 $string['asap'] = 'ASAP';
+$string['backgroundprocessingdisabled'] = 'Background processing is disabled; no new tasks will be started. The system will not operate properly until it is enabled again.';
 $string['backtoscheduledtasks'] = 'Back to scheduled tasks';
 $string['blocking'] = 'Blocking';
 $string['cannotfindthepathtothecli'] = 'Cannot find the path to the PHP CLI executable so task execution aborted. Set the \'Path to PHP CLI\' setting in Site administration / Server / System paths.';

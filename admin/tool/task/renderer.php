@@ -253,6 +253,16 @@ class tool_task_renderer extends plugin_renderer_base {
     }
 
     /**
+     * Displays a warning on the page if task processing is disabled.
+     *
+     * @return string HTML code for information about task processing being disabled
+     */
+    public function task_processing_disabled(): string {
+        return $this->render_from_template('tool_task/disabled',
+                ['url' => new moodle_url('/admin/settings.php', ['section' => 'taskprocessing'])]);
+    }
+
+    /**
      * Renders a link back to the scheduled tasks page (used from the 'run now' screen).
      *
      * @return string HTML code
