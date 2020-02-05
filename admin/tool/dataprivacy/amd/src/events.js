@@ -26,6 +26,7 @@ define([], function() {
         bulkApprove: 'tool_dataprivacy-data_request:bulk_approve',
         deny: 'tool_dataprivacy-data_request:deny',
         bulkDeny: 'tool_dataprivacy-data_request:bulk_deny',
-        complete: 'tool_dataprivacy-data_request:complete'
+        complete: 'tool_dataprivacy-data_request:complete',
+        approveSelectCourses: 'tool_dataprivacy-data_request:approve-selected-courses'
     };
 });

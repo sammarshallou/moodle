@@ -28,7 +28,8 @@ define(['jquery', 'core/notification', 'core/custom_interaction_events', 'core/m
         var SELECTORS = {
             APPROVE_BUTTON: '[data-action="approve"]',
             DENY_BUTTON: '[data-action="deny"]',
-            COMPLETE_BUTTON: '[data-action="complete"]'
+            COMPLETE_BUTTON: '[data-action="complete"]',
+            APPROVE_REQUEST_SELECT_COURSE: '[data-action="approve-selected-courses"]',
         };
 
         /**
@@ -78,6 +79,16 @@ define(['jquery', 'core/notification', 'core/custom_interaction_events', 'core/m
                 this.getRoot().trigger(completeEvent, this);
 
                 if (!completeEvent.isDefaultPrevented()) {
+                    this.hide();
+                    data.originalEvent.preventDefault();
+                }
+            }.bind(this));
+
+            this.getModal().on(CustomEvents.events.activate, SELECTORS.APPROVE_REQUEST_SELECT_COURSE, function(e, data) {
+                let approveSelectCoursesEvent = $.Event(DataPrivacyEvents.approveSelectCourses);
+                this.getRoot().trigger(approveSelectCoursesEvent, this);
+
+                if (!approveSelectCoursesEvent.isDefaultPrevented()) {
                     this.hide();
                     data.originalEvent.preventDefault();
                 }
