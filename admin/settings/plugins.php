@@ -590,6 +590,32 @@ if ($hassiteconfig) {
         new lang_string('searchhideallcategory_desc', 'admin'),
         0));
 
+    $temp->add(new admin_setting_heading('searchmanagement', new lang_string('searchmanagement', 'admin'),
+            new lang_string('searchmanagement_desc', 'admin')));
+
+    // Get list of search engines including those with alternate settings.
+    $temp->add(new admin_setting_configselect('searchenginequeryonly',
+            new lang_string('searchenginequeryonly', 'admin'),
+            new lang_string('searchenginequeryonly_desc', 'admin'), '', function() use($engines) {
+                $options = ['' => new lang_string('searchenginequeryonly_none', 'admin')];
+                foreach ($engines as $name => $display) {
+                    $options[$name] = $display;
+
+                    $classname = '\search_' . $name . '\engine';
+                    $engine = new $classname;
+                    if ($engine->has_alternate_configuration()) {
+                        $options[$name . '-alternate'] =
+                                new lang_string('searchenginealternatesettings', 'admin', $display);
+                    }
+                }
+                return $options;
+            }));
+    $temp->add(new admin_setting_configcheckbox('searchbannerenable',
+            new lang_string('searchbannerenable', 'admin'), new lang_string('searchbannerenable_desc', 'admin'),
+            0));
+    $temp->add(new admin_setting_confightmleditor('searchbanner',
+            new lang_string('searchbanner', 'admin'), '', ''));
+
     $ADMIN->add('searchplugins', $temp);
     $ADMIN->add('searchplugins', new admin_externalpage('searchareas', new lang_string('searchareas', 'admin'),
         new moodle_url('/admin/searchareas.php')));
