@@ -45,6 +45,9 @@ class behat_app extends behat_base {
     /** @var string URL for running Ionic server */
     protected $ionicurl = '';
 
+    /** @var string Mobile app version (lazy-loaded) */
+    protected static $appversion = '';
+
     /**
      * Checks if the current OS is Windows, from the point of view of task-executing-and-killing.
      *
@@ -52,6 +55,21 @@ class behat_app extends behat_base {
      */
     protected static function is_windows() : bool {
         return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+    }
+
+    /**
+     * Checks the current app version.
+     *
+     * @param string $version Version to compare against
+     * @return bool True if current app version is at least that one
+     */
+    public static function is_app_version_at_least(string $version): bool {
+        global $CFG;
+        if (!self::$appversion) {
+            self::$appversion = file_get_contents($CFG->dataroot . '/behat/appversion.txt');
+        }
+
+        return version_compare(self::$appversion, $version) >= 0;
     }
 
     /**

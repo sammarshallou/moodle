@@ -786,6 +786,9 @@ class behat_config_util {
             }
         }
 
+        // Save the version into the behat dataroot so that we can use it in scenarios.
+        file_put_contents($CFG->dataroot . '/behat/appversion.txt', $installedversion);
+
         if ($verbose) {
             mtrace('Configured app tests for version ' . $installedversion);
         }
