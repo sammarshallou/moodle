@@ -549,8 +549,19 @@ if ($hassiteconfig) {
 
     // Search engine selection.
     $temp->add(new admin_setting_heading('searchengineheading', new lang_string('searchengine', 'admin'), ''));
-    $temp->add(new admin_setting_configselect('searchengine',
-                                new lang_string('selectsearchengine', 'admin'), '', 'simpledb', $engines));
+    $searchengineselect = new admin_setting_configselect('searchengine',
+            new lang_string('selectsearchengine', 'admin'), '', 'simpledb', $engines);
+    $searchengineselect->set_validate_function(function(string $value): string {
+        global $CFG;
+
+        // Check nobody's setting the indexing and query-only server to the same one.
+        if ($CFG->searchenginequeryonly === $value) {
+            return get_string('searchenginequeryonlysame', 'admin');
+        } else {
+            return '';
+        }
+    });
+    $temp->add($searchengineselect);
     $temp->add(new admin_setting_heading('searchoptionsheading', new lang_string('searchoptions', 'admin'), ''));
     $temp->add(new admin_setting_configcheckbox('searchindexwhendisabled',
             new lang_string('searchindexwhendisabled', 'admin'), new lang_string('searchindexwhendisabled_desc', 'admin'),
@@ -594,7 +605,7 @@ if ($hassiteconfig) {
             new lang_string('searchmanagement_desc', 'admin')));
 
     // Get list of search engines including those with alternate settings.
-    $temp->add(new admin_setting_configselect('searchenginequeryonly',
+    $searchenginequeryonlyselect = new admin_setting_configselect('searchenginequeryonly',
             new lang_string('searchenginequeryonly', 'admin'),
             new lang_string('searchenginequeryonly_desc', 'admin'), '', function() use($engines) {
                 $options = ['' => new lang_string('searchenginequeryonly_none', 'admin')];
@@ -609,7 +620,18 @@ if ($hassiteconfig) {
                     }
                 }
                 return $options;
-            }));
+            });
+    $searchenginequeryonlyselect->set_validate_function(function(string $value): string {
+        global $CFG;
+
+        // Check nobody's setting the indexing and query-only server to the same one.
+        if ($CFG->searchengine === $value) {
+            return get_string('searchenginequeryonlysame', 'admin');
+        } else {
+            return '';
+        }
+    });
+    $temp->add($searchenginequeryonlyselect);
     $temp->add(new admin_setting_configcheckbox('searchbannerenable',
             new lang_string('searchbannerenable', 'admin'), new lang_string('searchbannerenable_desc', 'admin'),
             0));

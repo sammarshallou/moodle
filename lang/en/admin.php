@@ -1131,6 +1131,7 @@ $string['searchenginealternatesettings'] = '{$a} (alternate settings)';
 $string['searchenginequeryonly'] = 'Query-only search engine';
 $string['searchenginequeryonly_desc'] = 'This search engine will be used only for making queries, not indexing. By using this feature you can reindex in a different search engine, while user queries continue to work from this one.';
 $string['searchenginequeryonly_none'] = 'None (use main search engine for queries)';
+$string['searchenginequeryonlysame'] = 'The query-only search engine and the main search engine cannot be set to the same value.';
 $string['searchindexactions'] = 'Index actions';
 $string['searchindexdeleted'] = 'Index deleted';
 $string['searchindextime'] = 'Indexing time limit';
