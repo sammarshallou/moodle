@@ -78,6 +78,21 @@ if ($ADMIN->fulltree) {
                     new lang_string('solrauthuser', 'search_solr'), '', '', PARAM_RAW));
             $settings->add(new admin_setting_configpasswordunmask('search_solr/alternateserver_password',
                     new lang_string('solrauthpassword', 'search_solr'), '', ''));
+            $settings->add(new admin_setting_configtext('search_solr/alternatessl_cert',
+                    new lang_string('solrsslcert', 'search_solr'),
+                    new lang_string('solrsslcert_desc', 'search_solr'), '', PARAM_RAW));
+            $settings->add(new admin_setting_configtext('search_solr/alternatessl_key',
+                    new lang_string('solrsslkey', 'search_solr'),
+                    new lang_string('solrsslkey_desc', 'search_solr'), '', PARAM_RAW));
+            $settings->add(new admin_setting_configpasswordunmask('search_solr/alternatessl_keypassword',
+                    new lang_string('solrsslkeypassword', 'search_solr'),
+                    new lang_string('solrsslkeypassword_desc', 'search_solr'), ''));
+            $settings->add(new admin_setting_configtext('search_solr/alternatessl_cainfo',
+                    new lang_string('solrsslcainfo', 'search_solr'),
+                    new lang_string('solrsslcainfo_desc', 'search_solr'), '', PARAM_RAW));
+            $settings->add(new admin_setting_configtext('search_solr/alternatessl_capath',
+                    new lang_string('solrsslcapath', 'search_solr'),
+                    new lang_string('solrsslcapath_desc', 'search_solr'), '', PARAM_RAW));
         }
     }
 }
