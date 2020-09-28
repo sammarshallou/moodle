@@ -232,6 +232,9 @@ if ($hassiteconfig) {
         ]
     ));
 
+    // TEST CODE: Add an encrypted password setting.
+    $temp->add(new admin_setting_encryptedpassword('sillypassword', 'Silly password', 'This is a silly password just to test the encryption'));
+
     $ADMIN->add('server', $temp);
 
     $temp->add(new admin_setting_configduration('filescleanupperiod',
