@@ -1,6 +1,10 @@
 This files describes API changes in core libraries and APIs,
 information provided here is intended especially for developers.
 
+=== 3.11 ===
+* Admin setting admin_setting_configmulticheckbox now supports lazy-loading the options list by
+  supplying a callback function instead of an array of options.
+
 === 3.10 ===
 * Retains the source course id when a course is copied from another course on the same site.
 * Added function setScrollable in core/modal. This function can be used to set the modal's body to be scrollable or not
