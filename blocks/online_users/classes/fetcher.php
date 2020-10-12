@@ -86,7 +86,8 @@ class fetcher {
         }
         $params = array();
 
-        $userfields = \user_picture::fields('u', array('username'));
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC], ['username']);
+        ['selects' => $userfields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
 
         // Add this to the SQL to show only group users.
         if ($currentgroup !== null) {

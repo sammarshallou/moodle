@@ -187,7 +187,8 @@ class helper {
         global $DB;
 
         // Get users that the user has role assignments to.
-        $allusernames = get_all_user_name_fields(true, 'u');
+        $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+        ['selects' => $allusernames] = $userfieldsapi->get_sql('u', false, '', '', false);
         $sql = "SELECT u.id, $allusernames
                   FROM {role_assignments} ra, {context} c, {user} u
                  WHERE ra.userid = :userid

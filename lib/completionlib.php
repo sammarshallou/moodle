@@ -1190,10 +1190,14 @@ class completion_info {
                 context_course::instance($this->course->id),
                 'moodle/course:isincompletionreports', $groupid, true);
 
-        $allusernames = get_all_user_name_fields(true, 'u');
+        $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+        ['selects' => $allusernames] = $userfieldsapi->get_sql('u', false, '', '', false);
         $sql = 'SELECT u.id, u.idnumber, ' . $allusernames;
         if ($extracontext) {
-            $sql .= get_extra_user_fields_sql($extracontext, 'u', '', array('idnumber'));
+            // TODO Does not support custom profile fields.
+            $userfields = new \core\user_fields([\core\user_fields::PURPOSE_IDENTITY], [], ['idnumber']);
+            ['selects' => $selectfields] = $userfields->get_sql($extracontext, false, false, 'u');
+            $sql .= $selectfields;
         }
         $sql .= ' FROM (' . $enrolledsql . ') eu JOIN {user} u ON u.id = eu.id';
 

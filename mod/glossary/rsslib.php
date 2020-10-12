@@ -145,7 +145,8 @@
         }
 
         if ($glossary->rsstype == 1) {//With author
-            $allnamefields = get_all_user_name_fields(true,'u');
+            $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+            $allnamefields = $userfieldsapi->get_sql('u', false, '', '', false);
             $sql = "SELECT e.id AS entryid,
                       e.concept AS entryconcept,
                       e.definition AS entrydefinition,

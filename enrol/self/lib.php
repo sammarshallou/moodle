@@ -1021,7 +1021,8 @@ class enrol_self_plugin extends enrol_plugin {
                 // We only use the first user.
                 $i = 0;
                 do {
-                    $allnames = get_all_user_name_fields(true, 'u');
+                    $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+                    ['selects' => $allnames] = $userfieldsapi->get_sql('u', false, '', '', false);
                     $rusers = get_role_users($croles[$i], $context, true, 'u.id,  u.confirmed, u.username, '. $allnames . ',
                     u.email, r.sortorder, ra.id', 'r.sortorder, ra.id ASC, ' . $sort, null, '', '', '', '', $sortparams);
                     $i++;

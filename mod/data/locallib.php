@@ -1112,9 +1112,8 @@ function data_search_entries($data, $cm, $context, $mode, $currentgroup, $search
     $advparams       = array();
     // This is used for the initial reduction of advanced search results with required entries.
     $entrysql        = '';
-    $namefields = user_picture::fields('u');
-    // Remove the id from the string. This already exists in the sql statement.
-    $namefields = str_replace('u.id,', '', $namefields);
+    $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC], [], ['id']);
+    ['selects' => $namefields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
 
     // Find the field we are sorting on.
     if ($sort <= 0 or !$sortfield = data_get_field_from_id($sort, $data)) {

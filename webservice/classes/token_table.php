@@ -217,8 +217,9 @@ class token_table extends \table_sql {
             debugging('Initial bar not implemented yet. Call out($pagesize, false)');
         }
 
-        $usernamefields = get_all_user_name_fields(true, 'u');
-        $creatorfields = get_all_user_name_fields(true, 'c', null, 'creator');
+        $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+        ['selects' => $usernamefields] = $userfieldsapi->get_sql('u', false, '', '', false);
+        ['selects' => $creatorfields] = $userfieldsapi->get_sql('c', false, 'creator', '', false);
 
         $params = ["tokenmode" => EXTERNAL_TOKEN_PERMANENT];
 

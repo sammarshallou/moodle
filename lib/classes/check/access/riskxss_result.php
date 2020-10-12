@@ -90,7 +90,8 @@ class riskxss_result extends \core\check\result {
 
         global $CFG, $DB;
 
-        $userfields = \user_picture::fields('u');
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC]);
+        ['selects' => $userfields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
         $users = $DB->get_records_sql("SELECT DISTINCT $userfields $this->sqlfrom", $this->params);
         foreach ($users as $uid => $user) {
             $url = "$CFG->wwwroot/user/view.php?id=$user->id";

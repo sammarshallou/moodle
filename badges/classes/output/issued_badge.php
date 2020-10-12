@@ -76,7 +76,8 @@ class issued_badge implements renderable {
                 array('hash' => $hash), IGNORE_MISSING);
         if ($rec) {
             // Get a recipient from database.
-            $namefields = get_all_user_name_fields(true, 'u');
+            $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+            ['selects' => $namefields] = $userfieldsapi->get_sql('u', false, '', '', false);
             $user = $DB->get_record_sql("SELECT u.id, $namefields, u.deleted, u.email
                         FROM {user} u WHERE u.id = :userid", array('userid' => $rec->userid));
             $this->recipient = $user;

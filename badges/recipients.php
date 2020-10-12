@@ -87,7 +87,8 @@ if ($badge->has_manual_award_criteria() && has_capability('moodle/badges:awardba
     echo $OUTPUT->box($OUTPUT->single_button($url, get_string('award', 'badges')), 'clearfix mdl-align');
 }
 
-$namefields = get_all_user_name_fields(true, 'u');
+$userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+['selects' => $namefields] = $userfieldsapi->get_sql('u', false, '', '', false);
 $sql = "SELECT b.userid, b.dateissued, b.uniquehash, $namefields
     FROM {badge_issued} b INNER JOIN {user} u
         ON b.userid = u.id

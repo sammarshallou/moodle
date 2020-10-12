@@ -90,7 +90,8 @@ if ($override->groupid) {
     $group = $DB->get_record('groups', array('id' => $override->groupid), 'id, name');
     $confirmstr = get_string("overridedeletegroupsure", "assign", $group->name);
 } else {
-    $namefields = get_all_user_name_fields(true);
+    $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+    ['selects' => $namefields] = $userfieldsapi->get_sql('', false, '', '', false);
     $user = $DB->get_record('user', array('id' => $override->userid),
             'id, ' . $namefields);
     $confirmstr = get_string("overridedeleteusersure", "assign", fullname($user));

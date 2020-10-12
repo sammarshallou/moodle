@@ -325,7 +325,8 @@ switch ($mode) {
                         JOIN ($esql) ue ON a.userid = ue.id
                         WHERE pageid $usql";
             if ($essayattempts = $DB->get_records_sql($sql, $parameters)) {
-                $ufields = user_picture::fields('u');
+                $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC]);
+                ['selects' => $ufields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
                 // Get all the users who have taken this lesson.
                 list($sort, $sortparams) = users_order_by_sql('u');
 

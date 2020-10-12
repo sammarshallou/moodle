@@ -388,7 +388,8 @@ function feedback_get_recent_mod_activity(&$activities, &$index,
 
     $sqlargs = array();
 
-    $userfields = user_picture::fields('u', null, 'useridagain');
+    $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC]);
+    ['selects' => $userfields] = $userfieldsapi->get_sql(null, false, false, 'u', '', 'useridagain', false);
     $sql = " SELECT fk . * , fc . * , $userfields
                 FROM {feedback_completed} fc
                     JOIN {feedback} fk ON fk.id = fc.feedback
@@ -985,7 +986,8 @@ function feedback_get_incomplete_users(cm_info $cm,
 
     //first get all user who can complete this feedback
     $cap = 'mod/feedback:complete';
-    $allnames = get_all_user_name_fields(true, 'u');
+    $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+    ['selects' => $allnames] = $userfieldsapi->get_sql('u', false, '', '', false);
     $fields = 'u.id, ' . $allnames . ', u.picture, u.email, u.imagealt';
     if (!$allusers = get_users_by_capability($context,
                                             $cap,
@@ -1122,7 +1124,8 @@ function feedback_get_complete_users($cm,
         $sortsql = '';
     }
 
-    $ufields = user_picture::fields('u');
+    $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC]);
+    ['selects' => $ufields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
     $sql = 'SELECT DISTINCT '.$ufields.', c.timemodified as completed_timemodified
             FROM {user} u, {feedback_completed} c '.$fromgroup.'
             WHERE '.$where.' anonymous_response = :anon

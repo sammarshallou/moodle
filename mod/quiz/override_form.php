@@ -142,13 +142,14 @@ class quiz_override_form extends moodleform {
                 }
 
                 // Get the list of appropriate users, depending on whether and how groups are used.
+                $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
                 if ($accessallgroups) {
                     $users = get_users_by_capability($this->context, 'mod/quiz:attempt',
-                            'u.id, u.email, ' . get_all_user_name_fields(true, 'u'),
+                            'u.id, u.email, ' . $userfieldsapi->get_sql('u', false, '', '', false),
                             $sort);
                 } else if ($groups = groups_get_activity_allowed_groups($cm)) {
                     $users = get_users_by_capability($this->context, 'mod/quiz:attempt',
-                            'u.id, u.email, ' . get_all_user_name_fields(true, 'u'),
+                            'u.id, u.email, ' . $userfieldsapi->get_sql('u', false, '', '', false),
                             $sort, '', '', array_keys($groups));
                 }
 
@@ -163,7 +164,8 @@ class quiz_override_form extends moodleform {
                 }
 
                 $userchoices = array();
-                $canviewemail = in_array('email', get_extra_user_fields($this->context));
+                // TODO Does not support custom profile fields.
+                $canviewemail = in_array('email', \core\user_fields::get_identity_fields($this->context, false));
                 foreach ($users as $id => $user) {
                     if (empty($invalidusers[$id]) || (!empty($override) &&
                             $id == $override->userid)) {

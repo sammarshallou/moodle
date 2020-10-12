@@ -368,7 +368,8 @@ function users_order_by_sql($usertablealias = '', $search = null, context $conte
     $params[$paramkey] = $search;
     $paramkey++;
 
-    $fieldstocheck = array_merge(array('firstname', 'lastname'), get_extra_user_fields($context));
+    // TODO Does not support custom profile fields.
+    $fieldstocheck = array_merge(array('firstname', 'lastname'), \core\user_fields::get_identity_fields($context, false));
     foreach ($fieldstocheck as $key => $field) {
         $exactconditions[] = 'LOWER(' . $tableprefix . $field . ') = LOWER(:' . $paramkey . ')';
         $params[$paramkey] = $search;
@@ -514,11 +515,14 @@ function get_users_listing($sort='lastaccess', $dir='ASC', $page=0, $recordsperp
     // is supposed to see.
     $extrafields = '';
     if ($extracontext) {
-        $extrafields = get_extra_user_fields_sql($extracontext, '', '',
-                array('id', 'username', 'email', 'firstname', 'lastname', 'city', 'country',
-                'lastaccess', 'confirmed', 'mnethostid'));
+        // TODO Does not support custom profile fields.
+        $userfields = new \core\user_fields([\core\user_fields::PURPOSE_IDENTITY], [],
+                ['id', 'username', 'email', 'firstname', 'lastname', 'city', 'country',
+                'lastaccess', 'confirmed', 'mnethostid']);
+        [$extrafields, , ] = $userfields->get_sql($extracontext, false);
     }
-    $namefields = get_all_user_name_fields(true);
+    $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+    ['selects' => $namefields] = $userfieldsapi->get_sql('', false, '', '', false);
     $extrafields = "$extrafields, $namefields";
 
     // warning: will return UNCONFIRMED USERS

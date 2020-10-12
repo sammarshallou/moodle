@@ -253,19 +253,10 @@ class core_user {
 
         // TODO Does not support custom profile fields.
         $extra = \core\user_fields::get_identity_fields(null, false);
-
-        // We need the username just to skip guests.
-        $extrafieldlist = $extra;
-        if (!in_array('username', $extra)) {
-            $extrafieldlist[] = 'username';
-        }
-        // The deleted flag will always be false because users_search_sql excludes deleted users,
-        // but it must be present or it causes PHP warnings in some functions below.
-        if (!in_array('deleted', $extra)) {
-            $extrafieldlist[] = 'deleted';
-        }
-        $selectfields = \user_picture::fields('u',
-                array_merge(get_all_user_name_fields(), $extrafieldlist));
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_IDENTITY,
+                \core\user_fields::PURPOSE_USERPIC, \core\user_fields::PURPOSE_NAME],
+                ['username', 'deleted']);
+        ['selects' => $selectfields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
 
         $index = 1;
         foreach ($extra as $fieldname) {

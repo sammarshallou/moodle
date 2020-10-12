@@ -91,7 +91,8 @@ switch ($action) {
                 }
 
                 if ($errorstr) {
-                    $user = $DB->get_record('user', array('id' => $userid), 'id, ' . get_all_user_name_fields(true));
+                    $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+                    $user = $DB->get_record('user', array('id' => $userid), 'id, ' . $userfieldsapi->get_sql('', false, '', '', false));
                     $gradestr = new stdClass();
                     $gradestr->username = fullname($user);
                     $gradestr->itemname = $grade_item->get_name();

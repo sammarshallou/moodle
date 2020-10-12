@@ -127,10 +127,11 @@ class report extends \mod_scorm\report {
             $columns[] = 'fullname';
             $headers[] = get_string('name');
 
-            $extrafields = get_extra_user_fields($coursecontext);
+            // TODO Does not support custom profile fields.
+            $extrafields = \core\user_fields::get_identity_fields($coursecontext, false);
             foreach ($extrafields as $field) {
                 $columns[] = $field;
-                $headers[] = get_user_field_name($field);
+                $headers[] = \core\user_fields::get_display_name($field);
             }
             $columns[] = 'attempt';
             $headers[] = get_string('attempt', 'scorm');
@@ -150,9 +151,10 @@ class report extends \mod_scorm\report {
 
             // Construct the SQL.
             $select = 'SELECT DISTINCT '.$DB->sql_concat('u.id', '\'#\'', 'COALESCE(st.attempt, 0)').' AS uniqueid, ';
-            $select .= 'st.scormid AS scormid, st.attempt AS attempt, ' .
-                    \user_picture::fields('u', array('idnumber'), 'userid') .
-                    get_extra_user_fields_sql($coursecontext, 'u', '', array('email', 'idnumber')) . ' ';
+            // TODO Does not support custom profile fields.
+            $userfields = new \core\user_fields([\core\user_fields::PURPOSE_IDENTITY, \core\user_fields::PURPOSE_USERPIC], ['idnumber']);
+            ['selects' => $selectfields] = $userfields->get_sql($coursecontext, false, false, 'u', '', 'userid');
+            $select .= 'st.scormid AS scormid, st.attempt AS attempt ' . $selectfields . ' ';
 
             // This part is the same for all cases - join users and scorm_scoes_track tables.
             $from = 'FROM {user} u ';
@@ -412,7 +414,7 @@ class report extends \mod_scorm\report {
                     }
                     if (in_array('picture', $columns)) {
                         $user = new \stdClass();
-                        $additionalfields = explode(',', \user_picture::fields());
+                        $additionalfields = explode(',', implode(',', \core\user_fields::get_picture_fields()));
                         $user = username_load_fields_from_object($user, $scouser, null, $additionalfields);
                         $user->id = $scouser->userid;
                         $row[] = $OUTPUT->user_picture($user, array('courseid' => $course->id));

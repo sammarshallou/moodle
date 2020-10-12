@@ -140,7 +140,8 @@ class tablelog extends \table_sql implements \renderable {
      * Setup the headers for the html table.
      */
     protected function define_table_columns() {
-        $extrafields = get_extra_user_fields($this->context);
+        // TODO Does not support custom profile fields.
+        $extrafields = \core\user_fields::get_identity_fields($this->context, false);
 
         // Define headers and columns.
         $cols = array(
@@ -394,17 +395,20 @@ class tablelog extends \table_sql implements \renderable {
                    gi.itemtype, gi.itemmodule, gi.iteminstance, gi.itemnumber, ';
 
         // Add extra user fields that we need for the graded user.
-        $extrafields = get_extra_user_fields($this->context);
+        // TODO Does not support custom profile fields.
+        $extrafields = \core\user_fields::get_identity_fields($this->context, false);
         foreach ($extrafields as $field) {
             $fields .= 'u.' . $field . ', ';
         }
-        $gradeduserfields = get_all_user_name_fields(true, 'u');
+        $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+        ['selects' => $gradeduserfields] = $userfieldsapi->get_sql('u', false, '', '', false);
         $fields .= $gradeduserfields . ', ';
         $groupby = $fields;
 
         // Add extra user fields that we need for the grader user.
-        $fields .= get_all_user_name_fields(true, 'ug', '', 'grader');
-        $groupby .= get_all_user_name_fields(true, 'ug');
+        $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+        $fields .= $userfieldsapi->get_sql('ug', false, 'grader', '', false);
+        $groupby .= $userfieldsapi->get_sql('ug', false, '', '', false);
 
         // Filtering on revised grades only.
         $revisedonly = !empty($this->filters->revisedonly);

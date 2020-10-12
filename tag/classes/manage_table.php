@@ -155,7 +155,8 @@ class core_tag_manage_table extends table_sql {
             $sort = "tg.name";
         }
 
-        $allusernames = get_all_user_name_fields(true, 'u');
+        $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+        ['selects' => $allusernames] = $userfieldsapi->get_sql('u', false, '', '', false);
         $sql = "
             SELECT tg.id, tg.name, tg.rawname, tg.isstandard, tg.flag, tg.timemodified,
                        u.id AS owner, $allusernames,

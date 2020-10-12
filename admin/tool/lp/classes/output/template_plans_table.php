@@ -92,7 +92,8 @@ class template_plans_table extends table_sql {
      * Setup the headers for the table.
      */
     protected function define_table_columns() {
-        $extrafields = get_extra_user_fields($this->context);
+        // TODO Does not support custom profile fields.
+        $extrafields = \core\user_fields::get_identity_fields($this->context, false);
 
         // Define headers and columns.
         $cols = array(
@@ -135,11 +136,13 @@ class template_plans_table extends table_sql {
         $fields = 'p.id, p.userid, p.name, ';
 
         // Add extra user fields that we need for the graded user.
-        $extrafields = get_extra_user_fields($this->context);
+        // TODO Does not support custom profile fields.
+        $extrafields = \core\user_fields::get_identity_fields($this->context, false);
         foreach ($extrafields as $field) {
             $fields .= 'u.' . $field . ', ';
         }
-        $fields .= get_all_user_name_fields(true, 'u');
+        $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+        $fields .= $userfieldsapi->get_sql('u', false, '', '', false);
 
         if ($count) {
             $select = "COUNT(1)";

@@ -182,7 +182,8 @@ function forum_rss_feed_discussions_sql($forum, $cm, $newsince=0) {
 
     $forumsort = "d.timemodified DESC";
     $postdata = "p.id AS postid, p.subject, p.created as postcreated, p.modified, p.discussion, p.userid, p.message as postmessage, p.messageformat AS postformat, p.messagetrust AS posttrust";
-    $userpicturefields = user_picture::fields('u', null, 'userid');
+    $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC]);
+    ['selects' => $userpicturefields] = $userfieldsapi->get_sql(null, false, false, 'u', '', 'userid', false);
 
     $sql = "SELECT $postdata, d.id as discussionid, d.name as discussionname, d.timemodified, d.usermodified, d.groupid,
                    d.timestart, d.timeend, $userpicturefields
@@ -235,7 +236,8 @@ function forum_rss_feed_posts_sql($forum, $cm, $newsince=0) {
         $privatewhere = '';
     }
 
-    $usernamefields = get_all_user_name_fields(true, 'u');
+    $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+    ['selects' => $usernamefields] = $userfieldsapi->get_sql('u', false, '', '', false);
     $sql = "SELECT p.id AS postid,
                  d.id AS discussionid,
                  d.name AS discussionname,

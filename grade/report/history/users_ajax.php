@@ -51,7 +51,8 @@ $users = \gradereport_history\helper::get_users($context, $search, $page, 25);
 $outcome->response = array('users' => array());
 $outcome->response['totalusers'] = \gradereport_history\helper::get_users_count($context, $search);;
 
-$extrafields = get_extra_user_fields($context);
+// TODO Does not support custom profile fields.
+$extrafields = \core\user_fields::get_identity_fields($context, false);
 $useroptions = array('link' => false, 'visibletoscreenreaders' => false);
 
 // Format the user record.

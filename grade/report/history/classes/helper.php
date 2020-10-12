@@ -131,7 +131,8 @@ class helper {
         global $DB, $USER;
 
         // Fields we need from the user table.
-        $extrafields = get_extra_user_fields($context);
+        // TODO Does not support custom profile fields.
+        $extrafields = \core\user_fields::get_identity_fields($context, false);
         $params = array();
         if (!empty($search)) {
             list($filtersql, $params) = users_search_sql($search, 'u', true, $extrafields);
@@ -140,7 +141,8 @@ class helper {
             $filtersql = '';
         }
 
-        $ufields = \user_picture::fields('u', $extrafields).',u.username';
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC], array_merge($extrafields, ['username']));
+        ['selects' => $ufields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
         if ($count) {
             $select = "SELECT COUNT(DISTINCT u.id) ";
             $orderby = "";
@@ -201,7 +203,8 @@ class helper {
             $groupwheresql = " AND gm.groupid $insql ";
         }
 
-        $ufields = get_all_user_name_fields(true, 'u');
+        $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+        ['selects' => $ufields] = $userfieldsapi->get_sql('u', false, '', '', false);
         $sql = "SELECT u.id, $ufields
                   FROM {user} u
                   JOIN {grade_grades_history} ggh ON ggh.usermodified = u.id

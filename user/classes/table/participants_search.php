@@ -77,7 +77,8 @@ class participants_search {
         $this->context = $context;
         $this->filterset = $filterset;
 
-        $this->userfields = get_extra_user_fields($this->context);
+        // TODO Does not support custom profile fields.
+        $this->userfields = \core\user_fields::get_identity_fields($this->context, false);
     }
 
     /**

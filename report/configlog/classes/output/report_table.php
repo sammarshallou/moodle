@@ -86,7 +86,8 @@ class report_table extends \table_sql implements \renderable {
     protected function init_sql() {
         global $DB;
 
-        $userfields = get_all_user_name_fields(true, 'u');
+        $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+        ['selects' => $userfields] = $userfieldsapi->get_sql('u', false, '', '', false);
         $fields = 'cl.id, cl.timemodified, cl.plugin, cl.name, cl.value, cl.oldvalue, cl.userid, ' . $userfields;
 
         $from = '{config_log} cl

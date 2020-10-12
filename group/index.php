@@ -81,9 +81,12 @@ switch ($action) {
     case 'ajax_getmembersingroup':
         $roles = array();
 
-        $extrafields = get_extra_user_fields($context);
+        // TODO Does not support custom profile fields.
+        $extrafields = \core\user_fields::get_identity_fields($context, false);
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC, \core\user_fields::PURPOSE_IDENTITY]);
+        ['selects' => $userfields] = $userfieldsapi->get_sql($context, false, false, 'u', '', '', false);
         if ($groupmemberroles = groups_get_members_by_role($groupids[0], $courseid,
-                'u.id, ' . user_picture::fields('u', $extrafields))) {
+                'u.id, ' . $userfields)) {
 
             $viewfullnames = has_capability('moodle/site:viewfullnames', $context);
 
@@ -202,9 +205,12 @@ if ($groups) {
 // Get list of group members to render if there is a single selected group.
 $members = array();
 if ($singlegroup) {
-    $extrafields = get_extra_user_fields($context);
+    // TODO Does not support custom profile fields.
+    $extrafields = \core\user_fields::get_identity_fields($context, false);
+    $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC, \core\user_fields::PURPOSE_IDENTITY]);
+    ['selects' => $userfields] = $userfieldsapi->get_sql($context, false, false, 'u', '', '', false);
     if ($groupmemberroles = groups_get_members_by_role(reset($groupids), $courseid,
-            'u.id, ' . user_picture::fields('u', $extrafields))) {
+            'u.id, ' . $userfields)) {
 
         $viewfullnames = has_capability('moodle/site:viewfullnames', $context);
 

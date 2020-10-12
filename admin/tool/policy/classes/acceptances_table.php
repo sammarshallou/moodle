@@ -91,8 +91,10 @@ class acceptances_table extends \table_sql {
             }
         }
 
-        $extrafields = get_extra_user_fields(\context_system::instance());
-        $userfields = \user_picture::fields('u', $extrafields);
+        // TODO Does not support custom profile fields.
+        $extrafields = \core\user_fields::get_identity_fields(\context_system::instance(), false);
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC, \core\user_fields::PURPOSE_IDENTITY]);
+        ['selects' => $userfields] = $userfieldsapi->get_sql(\context_system::instance(), false, false, 'u', '', '', false);
 
         $this->set_sql("$userfields",
             "{user} u",
@@ -103,7 +105,7 @@ class acceptances_table extends \table_sql {
         }
         $this->add_column_header('fullname', get_string('fullnameuser', 'core'));
         foreach ($extrafields as $field) {
-            $this->add_column_header($field, get_user_field_name($field));
+            $this->add_column_header($field, \core\user_fields::get_display_name($field));
         }
 
         if (!$this->is_downloading() && !has_capability('tool/policy:acceptbehalf', \context_system::instance())) {
@@ -168,7 +170,8 @@ class acceptances_table extends \table_sql {
      * Helper configuration method.
      */
     protected function configure_for_single_version() {
-        $userfieldsmod = get_all_user_name_fields(true, 'm', null, 'mod');
+        $userfieldsapi = new \core\user_fields(null, [\core\user_fields::PURPOSE_NAME]);
+        ['selects' => $userfieldsmod] = $userfieldsapi->get_sql('m', false, 'mod', '', false);
         $v = key($this->versionids);
         $this->sql->fields .= ", $userfieldsmod, a{$v}.status AS status{$v}, a{$v}.note, ".
            "a{$v}.timemodified, a{$v}.usermodified AS usermodified{$v}";

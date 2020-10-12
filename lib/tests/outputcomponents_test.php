@@ -34,7 +34,7 @@ require_once($CFG->libdir . '/outputcomponents.php');
 class core_outputcomponents_testcase extends advanced_testcase {
 
     public function test_fields_aliasing() {
-        $fields = user_picture::fields();
+        $fields = implode(',', \core\user_fields::get_picture_fields());
         $fields = array_map('trim', explode(',', $fields));
         $this->assertTrue(in_array('id', $fields));
 
@@ -47,7 +47,9 @@ class core_outputcomponents_testcase extends advanced_testcase {
             }
         }
 
-        $returned = user_picture::fields('', array('custom1', 'id'), 'aliasedid', 'prefix');
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC], ['custom1', 'id']);
+        ['selects' => $returned] = $userfieldsapi->get_sql(null, false, false, '', 'prefix', 'aliasedid', false);
+        $returned = str_replace('{user}.', '', $returned);
         $returned = array_map('trim', explode(',', $returned));
         $this->assertEquals(count($returned), count($fields) + 1); // Only one extra field added.
 
@@ -63,7 +65,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
     }
 
     public function test_fields_unaliasing() {
-        $fields = user_picture::fields();
+        $fields = implode(',', \core\user_fields::get_picture_fields());
         $fields = array_map('trim', explode(',', $fields));
 
         $fakerecord = new stdClass();
@@ -87,7 +89,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
     }
 
     public function test_fields_unaliasing_null() {
-        $fields = user_picture::fields();
+        $fields = implode(',', \core\user_fields::get_picture_fields());
         $fields = array_map('trim', explode(',', $fields));
 
         $fakerecord = new stdClass();

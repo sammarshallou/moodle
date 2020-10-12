@@ -92,7 +92,8 @@ if ($formaction == 'bulkchange.php') {
                         'email' => get_string('email'),
                     );
 
-                    $identityfields = get_extra_user_fields($context);
+                    // TODO Does not support custom profile fields.
+                    $identityfields = \core\user_fields::get_identity_fields($context, false);
                     $identityfieldsselect = '';
 
                     foreach ($identityfields as $field) {

@@ -3140,8 +3140,10 @@ function user_get_participants_sql($courseid, $groupid = 0, $accesssince = 0, $r
     $joins = array('FROM {user} u');
     $wheres = array();
 
-    $userfields = get_extra_user_fields($context);
-    $userfieldssql = user_picture::fields('u', $userfields);
+    // TODO Does not support custom profile fields.
+    $userfields = \core\user_fields::get_identity_fields($context, false);
+    $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC], $userfields);
+    ['selects' => $userfieldssql] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
 
     if ($isfrontpage) {
         $select = "SELECT $userfieldssql, u.lastaccess";
@@ -3409,7 +3411,7 @@ function get_extra_user_fields_sql($context, $alias='', $prefix='', $already = a
 
     $fields = new \core\user_fields([\core\user_fields::PURPOSE_IDENTITY], [], $already);
     // Note: There will never be any joins or join params because we turned off profile fields.
-    [$selects, , , ] = $fields->get_sql($context, false, false, $alias, $prefix);
+    ['selects' => $selects] = $fields->get_sql($context, false, false, $alias, $prefix);
 
     if ($alias === '') {
         // The new code puts {user}. in front of the field names while the old code didn't.

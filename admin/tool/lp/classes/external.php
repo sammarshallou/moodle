@@ -880,7 +880,8 @@ class external extends external_api {
 
         // TODO Does not support custom profile fields.
         $extrasearchfields = \core\user_fields::get_identity_fields($context, false);
-        $fields = \user_picture::fields('u', $extrasearchfields);
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC, \core\user_fields::PURPOSE_IDENTITY]);
+        ['selects' => $fields] = $userfieldsapi->get_sql($context, false, false, 'u', '', '', false);
 
         list($wheresql, $whereparams) = users_search_sql($query, 'u', true, $extrasearchfields);
         list($sortsql, $sortparams) = users_order_by_sql('u', $query, $context);

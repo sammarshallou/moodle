@@ -455,7 +455,8 @@ class rating_manager {
             'component'  => $options->component,
             'ratingarea' => $options->ratingarea,
         );
-        $userfields = user_picture::fields('u', null, 'userid');
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC]);
+        ['selects' => $userfields] = $userfieldsapi->get_sql(null, false, false, 'u', '', 'userid', false);
         $sql = "SELECT r.id, r.rating, r.itemid, r.userid, r.timemodified, r.component, r.ratingarea, $userfields
                   FROM {rating} r
              LEFT JOIN {user} u ON r.userid = u.id

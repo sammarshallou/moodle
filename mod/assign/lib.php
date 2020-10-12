@@ -587,7 +587,8 @@ function assign_print_recent_activity($course, $viewfullnames, $timestart) {
     // Do not use log table if possible, it may be huge.
 
     $dbparams = array($timestart, $course->id, 'assign', ASSIGN_SUBMISSION_STATUS_SUBMITTED);
-    $namefields = user_picture::fields('u', null, 'userid');
+    $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC]);
+    ['selects' => $namefields] = $userfieldsapi->get_sql(null, false, false, 'u', '', 'userid', false);;
     if (!$submissions = $DB->get_records_sql("SELECT asb.id, asb.timemodified, cm.id AS cmid, um.id as recordid,
                                                      $namefields
                                                 FROM {assign_submission} asb
@@ -744,7 +745,8 @@ function assign_get_recent_mod_activity(&$activities,
     $params['timestart'] = $timestart;
     $params['submitted'] = ASSIGN_SUBMISSION_STATUS_SUBMITTED;
 
-    $userfields = user_picture::fields('u', null, 'userid');
+    $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC]);
+    ['selects' => $userfields] = $userfieldsapi->get_sql(null, false, false, 'u', '', 'userid', false);
 
     if (!$submissions = $DB->get_records_sql('SELECT asb.id, asb.timemodified, ' .
                                                      $userfields .
@@ -831,7 +833,7 @@ function assign_get_recent_mod_activity(&$activities,
             $activity->grade = $grades->items[0]->grades[$submission->userid]->str_long_grade;
         }
 
-        $userfields = explode(',', user_picture::fields());
+        $userfields = explode(',', implode(',', \core\user_fields::get_picture_fields()));
         foreach ($userfields as $userfield) {
             if ($userfield == 'id') {
                 // Aliased in SQL above.

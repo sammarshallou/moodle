@@ -372,7 +372,8 @@ function chat_print_recent_activity($course, $viewfullnames, $timestart) {
                 $groupselect = "";
             }
 
-            $userfields = user_picture::fields('u');
+            $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC]);
+            ['selects' => $userfields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
             if (!$users = $DB->get_records_sql("SELECT $userfields
                                                   FROM {course_modules} cm
                                                   JOIN {chat} ch        ON ch.id = cm.instance
@@ -513,7 +514,8 @@ function chat_get_users($chatid, $groupid=0, $groupingid=0) {
         $groupingjoin = '';
     }
 
-    $ufields = user_picture::fields('u');
+    $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC]);
+    ['selects' => $ufields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
     return $DB->get_records_sql("SELECT DISTINCT $ufields, c.lastmessageping, c.firstping
                                    FROM {chat_users} c
                                    JOIN {user} u ON u.id = c.userid $groupingjoin
@@ -905,7 +907,7 @@ function chat_format_message($message, $courseid, $currentuser, $chatlastrow=nul
 
     if (isset($users[$message->userid])) {
         $user = $users[$message->userid];
-    } else if ($user = $DB->get_record('user', array('id' => $message->userid), user_picture::fields())) {
+    } else if ($user = $DB->get_record('user', array('id' => $message->userid), implode(',', \core\user_fields::get_picture_fields()))) {
         $users[$message->userid] = $user;
     } else {
         return null;
@@ -936,7 +938,7 @@ function chat_format_message_theme ($message, $chatuser, $currentuser, $grouping
 
     if (isset($users[$message->userid])) {
         $sender = $users[$message->userid];
-    } else if ($sender = $DB->get_record('user', array('id' => $message->userid), user_picture::fields())) {
+    } else if ($sender = $DB->get_record('user', array('id' => $message->userid), implode(',', \core\user_fields::get_picture_fields()))) {
         $users[$message->userid] = $sender;
     } else {
         return null;

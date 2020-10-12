@@ -798,9 +798,12 @@ function choice_get_response_data($choice, $cm, $groupmode, $onlyactive) {
 
 /// First get all the users who have access here
 /// To start with we assume they are all "unanswered" then move them later
-    $extrafields = get_extra_user_fields($context);
+    // TODO Does not support custom profile fields.
+    $extrafields = \core\user_fields::get_identity_fields($context, false);
+    $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC], $extrafields);
+    ['selects' => $userfields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
     $allresponses[0] = get_enrolled_users($context, 'mod/choice:choose', $currentgroup,
-            user_picture::fields('u', $extrafields), null, 0, 0, $onlyactive);
+            $userfields, null, 0, 0, $onlyactive);
 
 /// Get all the recorded responses for this choice
     $rawresponses = $DB->get_records('choice_answers', array('choiceid' => $choice->id));

@@ -429,7 +429,8 @@ class helper {
         }
 
         list($useridsql, $usersparams) = $DB->get_in_or_equal($userids);
-        $userfields = \user_picture::fields('u', array('lastaccess'));
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_USERPIC], ['lastaccess']);
+        ['selects' => $userfields] = $userfieldsapi->get_sql(null, false, false, 'u', '', '', false);
         $userssql = "SELECT $userfields, u.deleted, mc.id AS contactid, mub.id AS blockedid
                        FROM {user} u
                   LEFT JOIN {message_contacts} mc

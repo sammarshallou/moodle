@@ -124,8 +124,9 @@ class task_log_table extends \table_sql {
             $sort = "ORDER BY $sort";
         }
 
-        $extrafields = get_extra_user_fields(\context_system::instance());
-        $userfields = \user_picture::fields('u', $extrafields, 'userid2', 'user');
+        // TODO Does not support custom profile fields.
+        $userfieldsapi = new \core\user_fields([\core\user_fields::PURPOSE_IDENTITY, \core\user_fields::PURPOSE_USERPIC]);
+        ['selects' => $userfields] = $userfieldsapi->get_sql(\context_system::instance(), false, false, 'u', 'user', 'userid2', false);
 
         $where = '';
         if (!empty($this->sql->where)) {
