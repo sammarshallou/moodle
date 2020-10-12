@@ -5,7 +5,8 @@ information provided here is intended especially for developers.
 * Admin setting admin_setting_configmulticheckbox now supports lazy-loading the options list by
   supplying a callback function instead of an array of options.
 * A new core API class \core\user_fields provides ways to get lists of user fields, and SQL related to
-  those fields.
+  those fields. This replaces existing functions get_extra_user_fields(), get_extra_user_fields_sql(),
+  and get_user_field_name(), which have all been deprecated.
 
 === 3.10 ===
 * Retains the source course id when a course is copied from another course on the same site.
