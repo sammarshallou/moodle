@@ -683,6 +683,11 @@ class search_manager_testcase extends advanced_testcase {
         // But at the same time doesn't have access to activities in the courses that the student can't access.
         $this->assertFalse(key_exists($context4->id, $contexts[$this->forumpostareaid]));
 
+        // If search is restricted to a specific course that the user isn't enrolled in, then they
+        // can search exactly that course context.
+        $contexts = $search->get_areas_user_accesses([$course3->id])->usercontexts;
+        $this->assertEquals([$course3ctx->id => $course3ctx->id], $contexts[$this->coursesareaid]);
+
         // For admins, this is still limited only if we specify the things, so it should be same.
         $this->setAdminUser();
         $contexts = $search->get_areas_user_accesses([$course1->id], [$context1->id])->usercontexts;
