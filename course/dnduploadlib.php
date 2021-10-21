@@ -389,7 +389,10 @@ class dndupload_ajax_processor {
     protected $context = null;
 
     /** @var int The section number we are uploading to */
-    protected $section = null;
+    protected $sectionnum = null;
+
+    /** @var int The section id we are uploading to */
+    protected $sectionid = null;
 
     /** @var string The type of upload (e.g. 'Files', 'text/plain') */
     protected $type = null;
@@ -409,27 +412,25 @@ class dndupload_ajax_processor {
     /**
      * Set up some basic information needed to handle the upload
      *
-     * @param int $courseid The ID of the course we are uploading to
-     * @param int $section The section number we are uploading to
+     * @param int $sectionid The section id we are uploading to
      * @param string $type The type of upload (as reported by the browser)
      * @param string $modulename The name of the module requested to handle this upload
      */
-    public function __construct($courseid, $section, $type, $modulename) {
+    public function __construct(int $sectionid, string $type, string $modulename) {
         global $DB;
 
         if (!defined('AJAX_SCRIPT')) {
             throw new coding_exception('dndupload_ajax_processor should only be used within AJAX requests');
         }
 
-        $this->course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
+        $sectionrec = $DB->get_record('course_sections', ['id' => $sectionid], 'section, course', MUST_EXIST);
+        $this->course = get_course($sectionrec->course);
+        $this->sectionid = $sectionid;
+        $this->sectionnum = $sectionrec->section;
 
         require_login($this->course, false);
         $this->context = context_course::instance($this->course->id);
 
-        if (!is_number($section) || $section < 0) {
-            throw new coding_exception("Invalid section number $section");
-        }
-        $this->section = $section;
         $this->type = $type;
 
         if (!$this->module = $DB->get_record('modules', array('name' => $modulename))) {
@@ -455,6 +456,7 @@ class dndupload_ajax_processor {
      * @param string $content optional the content of the upload (for non-file uploads)
      */
     public function process($displayname = null, $content = null) {
+        global $DB;
         require_capability('moodle/course:manageactivities', $this->context);
 
         if ($this->is_file_upload()) {
@@ -472,11 +474,16 @@ class dndupload_ajax_processor {
 
         $this->displayname = $displayname;
 
+        // Use a database transaction to ensure that all changes made to the course are consistent.
+        $transaction = $DB->start_delegated_transaction();
+
         if ($this->is_file_upload()) {
             $this->handle_file_upload();
         } else {
             $this->handle_other_upload($content);
         }
+
+        $transaction->allow_commit();
     }
 
     /**
@@ -562,7 +569,8 @@ class dndupload_ajax_processor {
     protected function create_course_module() {
         global $CFG;
         require_once($CFG->dirroot.'/course/modlib.php');
-        list($module, $context, $cw, $cm, $data) = prepare_new_moduleinfo_data($this->course, $this->module->name, $this->section);
+        list($module, $context, $cw, $cm, $data) =
+                prepare_new_moduleinfo_data($this->course, $this->module->name, $this->sectionnum);
 
         $data->coursemodule = $data->id = add_course_module($data);
         $this->cm = $data;
@@ -602,7 +610,7 @@ class dndupload_ajax_processor {
      * @param int $instanceid id returned by the mod when it was created
      */
     protected function finish_setup_course_module($instanceid) {
-        global $DB, $USER;
+        global $DB;
 
         if (!$instanceid) {
             // Something has gone wrong - undo everything we can.
@@ -611,13 +619,13 @@ class dndupload_ajax_processor {
         }
 
         // Note the section visibility
-        $visible = get_fast_modinfo($this->course)->get_section_info($this->section)->visible;
+        $visible = get_fast_modinfo($this->course)->get_section_info($this->sectionnum)->visible;
 
         $DB->set_field('course_modules', 'instance', $instanceid, array('id' => $this->cm->id));
         // Rebuild the course cache after update action
         rebuild_course_cache($this->course->id, true);
 
-        $sectionid = course_add_cm_to_section($this->course, $this->cm->id, $this->section);
+        course_add_cm_to_section($this->course, $this->cm->id, $this->sectionnum);
 
         set_coursemodule_visible($this->cm->id, $visible);
         if (!$visible) {
@@ -663,6 +671,5 @@ class dndupload_ajax_processor {
 
         echo $OUTPUT->header();
         echo json_encode($resp);
-        die();
     }
 }

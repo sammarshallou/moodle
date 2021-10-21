@@ -28,8 +28,6 @@ M.course_dndupload = {
     url: M.cfg.wwwroot + '/course/dndupload.php',
     // maximum size of files allowed in this form
     maxbytes: 0,
-    // ID of the course we are on
-    courseid: null,
     // Data about the different file/data handlers that are available
     handlers: null,
     // Nasty hack to distinguish between dragenter(first entry),
@@ -64,7 +62,7 @@ M.course_dndupload = {
      *
      * @param Y the YUI object
      * @param object options {
-     *            courseid: ID of the course we are on
+     *            courseid: ID of the course we are on (no longer used)
      *            maxbytes: maximum size of files allowed in this form
      *            handlers: Data about the different file/data handlers that are available
      *          }
@@ -77,7 +75,6 @@ M.course_dndupload = {
         }
 
         this.maxbytes = options.maxbytes;
-        this.courseid = options.courseid;
         this.handlers = options.handlers;
         this.uploadqueue = new Array();
         this.lastselected = new Array();
@@ -234,19 +231,6 @@ M.course_dndupload = {
                 return true;
             }
         }, true);
-    },
-
-    /**
-     * Work out the number of the section we have been dropped on to, from the section element
-     * @param DOMElement section the selected section
-     * @return int the section number
-     */
-    get_section_number: function(section) {
-        var sectionid = section.get('id').split('-');
-        if (sectionid.length < 2 || sectionid[0] != 'section') {
-            return false;
-        }
-        return parseInt(sectionid[1]);
     },
 
     /**
@@ -424,18 +408,17 @@ M.course_dndupload = {
 
         // Work out the number of the section we are on (from its id)
         var section = this.get_section(e.currentTarget);
-        var sectionnumber = this.get_section_number(section);
 
         // Process the file or the included data
         if (type.type == 'Files') {
             var files = e._event.dataTransfer.files;
             for (var i=0, f; f=files[i]; i++) {
-                this.handle_file(f, section, sectionnumber);
+                this.handle_file(f, section);
             }
         } else {
             var contents = e._event.dataTransfer.getData(type.realtype);
             if (contents) {
-                this.handle_item(type, contents, section, sectionnumber);
+                this.handle_item(type, contents, section);
             }
         }
 
@@ -582,9 +565,8 @@ M.course_dndupload = {
      * user which one to use. Then upload the file to the server
      * @param file the details of the file, taken from the FileList in the drop event
      * @param section the DOM element representing the selected course section
-     * @param sectionnumber the number of the selected course section
      */
-    handle_file: function(file, section, sectionnumber) {
+    handle_file: function(file, section) {
         var handlers = new Array();
         var filehandlers = this.handlers.filehandlers;
         var extension = '';
@@ -605,11 +587,11 @@ M.course_dndupload = {
         }
 
         if (handlers.length == 1) {
-            this.upload_file(file, section, sectionnumber, handlers[0].module);
+            this.upload_file(file, section, handlers[0].module);
             return;
         }
 
-        this.file_handler_dialog(handlers, extension, file, section, sectionnumber);
+        this.file_handler_dialog(handlers, extension, file, section);
     },
 
     /**
@@ -618,9 +600,8 @@ M.course_dndupload = {
      * @param extension the extension of the file being uploaded
      * @param file the File object being uploaded
      * @param section the DOM element of the section being uploaded to
-     * @param sectionnumber the number of the selected course section
      */
-    file_handler_dialog: function(handlers, extension, file, section, sectionnumber) {
+    file_handler_dialog: function(handlers, extension, file, section) {
         if (this.uploaddialog) {
             var details = new Object();
             details.isfile = true;
@@ -628,7 +609,6 @@ M.course_dndupload = {
             details.extension = extension;
             details.file = file;
             details.section = section;
-            details.sectionnumber = sectionnumber;
             this.uploadqueue.push(details);
             return;
         }
@@ -697,7 +677,7 @@ M.course_dndupload = {
                 // Remember this selection for next time
                 self.lastselected[extension] = module;
                 // Do the upload
-                self.upload_file(file, section, sectionnumber, module);
+                self.upload_file(file, section, module);
             },
             section: Y.WidgetStdMod.FOOTER
         });
@@ -723,9 +703,9 @@ M.course_dndupload = {
 
         var details = this.uploadqueue.shift();
         if (details.isfile) {
-            this.file_handler_dialog(details.handlers, details.extension, details.file, details.section, details.sectionnumber);
+            this.file_handler_dialog(details.handlers, details.extension, details.file, details.section);
         } else {
-            this.handle_item(details.type, details.contents, details.section, details.sectionnumber);
+            this.handle_item(details.type, details.contents, details.section);
         }
     },
 
@@ -735,9 +715,8 @@ M.course_dndupload = {
      * element with the real information once the AJAX call completes
      * @param file the details of the file, taken from the FileList in the drop event
      * @param section the DOM element representing the selected course section
-     * @param sectionnumber the number of the selected course section
      */
-    upload_file: function(file, section, sectionnumber, module) {
+    upload_file: function(file, section, module) {
 
         // This would be an ideal place to use the Y.io function
         // however, this does not support data encoded using the
@@ -820,8 +799,7 @@ M.course_dndupload = {
             return;
         }
         formData.append('sesskey', M.cfg.sesskey);
-        formData.append('course', this.courseid);
-        formData.append('section', sectionnumber);
+        formData.append('sectionid', section.getDOMNode().dataset.id);
         formData.append('module', module);
         formData.append('type', 'Files');
 
@@ -855,9 +833,8 @@ M.course_dndupload = {
      * @param type the details of the type of content
      * @param contents the contents to be uploaded
      * @section the DOM element for the section being uploaded to
-     * @sectionnumber the number of the section being uploaded to
      */
-    handle_item: function(type, contents, section, sectionnumber) {
+    handle_item: function(type, contents, section) {
         if (type.handlers.length == 0) {
             // Nothing to handle this - should not have got here
             return;
@@ -865,7 +842,7 @@ M.course_dndupload = {
 
         if (type.handlers.length == 1 && type.handlers[0].noname) {
             // Only one handler and it doesn't need a name (i.e. a label).
-            this.upload_item('', type.type, contents, section, sectionnumber, type.handlers[0].module);
+            this.upload_item('', type.type, contents, section, type.handlers[0].module);
             this.check_upload_queue();
             return;
         }
@@ -876,7 +853,6 @@ M.course_dndupload = {
             details.type = type;
             details.contents = contents;
             details.section = section;
-            details.setcionnumber = sectionnumber;
             this.uploadqueue.push(details);
             return;
         }
@@ -957,7 +933,7 @@ M.course_dndupload = {
             }
             panel.hide();
             // Do the upload
-            self.upload_item(name, type.type, contents, section, sectionnumber, module);
+            self.upload_item(name, type.type, contents, section, module);
         };
 
         // Add the submit/cancel buttons to the bottom of the dialog.
@@ -1015,10 +991,9 @@ M.course_dndupload = {
      * @param type the details of the data type found in the drop event
      * @param contents the actual data that was dropped
      * @param section the DOM element representing the selected course section
-     * @param sectionnumber the number of the selected course section
      * @param module the module chosen to handle this upload
      */
-    upload_item: function(name, type, contents, section, sectionnumber, module) {
+    upload_item: function(name, type, contents, section, module) {
 
         // This would be an ideal place to use the Y.io function
         // however, this does not support data encoded using the
@@ -1086,8 +1061,7 @@ M.course_dndupload = {
         formData.append('contents', contents);
         formData.append('displayname', name);
         formData.append('sesskey', M.cfg.sesskey);
-        formData.append('course', this.courseid);
-        formData.append('section', sectionnumber);
+        formData.append('sectionid', section.getDOMNode().dataset.id);
         formData.append('type', type);
         formData.append('module', module);
 
@@ -1100,7 +1074,6 @@ M.course_dndupload = {
      * Call the AJAX course editing initialisation to add the editing tools
      * to the newly-created resource link
      * @param elementid the id of the DOM element containing the new resource link
-     * @param sectionnumber the number of the selected course section
      */
     add_editing: function(elementid) {
         var node = Y.one('#' + elementid);
