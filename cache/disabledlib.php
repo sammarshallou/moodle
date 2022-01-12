@@ -91,10 +91,12 @@ class cache_disabled extends cache {
      * Sets a key value pair in the cache.
      *
      * @param int|string $key Unused.
+     * @param int $version Unused.
      * @param mixed $data Unused.
+     * @param bool $setparents Unused.
      * @return bool
      */
-    public function set($key, $data) {
+    protected function set_implementation($key, int $version, $data, bool $setparents = true): bool {
         return false;
     }
 

@@ -225,9 +225,15 @@ class cache_config_testing extends cache_config_writer {
     /**
      * Forcefully adds a file store.
      *
+     * You can turn off native TTL support if you want a way to test TTL wrapper objects.
+     *
      * @param string $name
+     * @param bool $nativettl If false, uses fixture that turns off native TTL support
      */
-    public function phpunit_add_file_store($name) {
+    public function phpunit_add_file_store(string $name, bool $nativettl = true): void {
+        if (!$nativettl) {
+            require_once(__DIR__ . '/cachestore_file_with_ttl_wrappers.php');
+        }
         $this->configstores[$name] = array(
             'name' => $name,
             'plugin' => 'file',
@@ -237,7 +243,7 @@ class cache_config_testing extends cache_config_writer {
             'features' => 6,
             'modes' => 3,
             'mappingsonly' => false,
-            'class' => 'cachestore_file',
+            'class' => $nativettl ? 'cachestore_file' : 'cachestore_file_with_ttl_wrappers',
             'default' => false,
             'lock' => 'cachelock_file_default'
         );
@@ -404,6 +410,70 @@ class cache_phpunit_dummy_datasource implements cache_data_source {
             $return[$key] = $key.' has no value really.';
         }
         return $return;
+    }
+}
+
+/**
+ * A versionable dummy datasource.
+ *
+ * @package core_cache
+ */
+class cache_phpunit_dummy_datasource_versionable extends cache_phpunit_dummy_datasource
+        implements cache_data_source_versionable {
+    /** @var array Data in cache */
+    protected $data = [];
+
+    /** @var cache_phpunit_dummy_datasource_versionable Last created instance */
+    protected static $lastinstance;
+
+    /**
+     * Returns an instance of this object for use with the cache.
+     *
+     * @param cache_definition $definition
+     * @return cache_phpunit_dummy_datasource New object
+     */
+    public static function get_instance_for_cache(cache_definition $definition):
+            cache_phpunit_dummy_datasource_versionable {
+        self::$lastinstance = new cache_phpunit_dummy_datasource_versionable();
+        return self::$lastinstance;
+    }
+
+    /**
+     * Gets the last instance that was created.
+     *
+     * @return cache_phpunit_dummy_datasource_versionable
+     */
+    public static function get_last_instance(): cache_phpunit_dummy_datasource_versionable {
+        return self::$lastinstance;
+    }
+
+    /**
+     * Sets up the datasource so that it has a value for a particular key.
+     *
+     * @param string $key Key
+     * @param int $version Version for key
+     * @param mixed $data
+     */
+    public function has_value(string $key, int $version, $data): void {
+        $this->data[$key] = new cache_version_wrapper($data, $version);
+    }
+
+    /**
+     * Loads versioned data.
+     *
+     * @param int|string $key Key
+     * @param int $requiredversion Minimum version number
+     * @return cache_version_wrapper|null Versioned data or null if not found
+     */
+    public function load_for_cache_versioned($key, int $requiredversion): ?cache_version_wrapper {
+        if (!array_key_exists($key, $this->data)) {
+            return null;
+        }
+        $value = $this->data[$key];
+        if ($value->version < $requiredversion) {
+            return null;
+        }
+        return $value;
     }
 }
 

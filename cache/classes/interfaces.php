@@ -49,6 +49,33 @@ interface cache_loader {
     public function get($key, $strictness = IGNORE_MISSING);
 
     /**
+     * Retrieves the value and actual version for the given key, with at least the required version.
+     *
+     * If there is no value for the key, or there is a value but it doesn't have the required
+     * version, then this function will return null (or throw an exception if you set strictness
+     * to MUST_EXIST).
+     *
+     * This function can be used to make it easier to support localisable caches (where the cache
+     * could be stored on a local server as well as a shared cache). Specifying the version means
+     * that it will automatically retrieve the correct version if available, either from the local
+     * server or [if that has an older version] from the shared server.
+     *
+     * If the cached version is newer than specified version, it will be returned regardless. For
+     * example, if you request version 4, but the locally cached version is 5, it will be returned.
+     * If you request version 6, and the locally cached version is 5, then the system will look in
+     * higher-level caches (if any); if there still isn't a version 6 or greater, it will return
+     * null.
+     *
+     * You must use this function if you use set_versioned.
+     *
+     * @param string|int $key The key for the data being requested.
+     * @param int $requiredversion Minimum required version of the data
+     * @param int $strictness One of IGNORE_MISSING or MUST_EXIST.
+     * @return cache_version_wrapper|null Object containing data and version, or null
+     */
+    public function get_versioned($key, int $requiredversion, int $strictness = IGNORE_MISSING): ?cache_version_wrapper;
+
+    /**
      * Retrieves an array of values for an array of keys.
      *
      * Using this function comes with potential performance implications.
@@ -81,6 +108,29 @@ interface cache_loader {
      * @return bool True on success, false otherwise.
      */
     public function set($key, $data);
+
+    /**
+     * Sets the value for the given key with the given version.
+     *
+     * The cache does not store multiple versions - any existing version will be overwritten with
+     * this one. This function should only be used if there is a known 'current version' (e.g.
+     * stored in a database table). It only ensures that the cache does not return outdated data.
+     *
+     * This function can be used to help implement localisable caches (where the cache could be
+     * stored on a local server as well as a shared cache). The version will be recorded alongside
+     * the item and get_versioned will always return the correct version.
+     *
+     * The version number must be an integer that always increases. This could be based on the
+     * current time, or a stored value that increases by 1 each time it changes, etc.
+     *
+     * If you use this function you must use get_versioned to retrieve the data.
+     *
+     * @param string|int $key The key for the data being set.
+     * @param int $version Integer for the version of the data
+     * @param mixed $data The data to set against the key.
+     * @return cache_version_wrapper|null Wrapped cache object on success, null on failure
+     */
+    public function set_versioned($key, int $version, $data): ?cache_version_wrapper;
 
     /**
      * Sends several key => value pairs to the cache.
@@ -434,6 +484,28 @@ interface cache_data_source {
      * @return array An array of matching data items.
      */
     public function load_many_for_cache(array $keys);
+}
+
+/**
+ * Versionable cache data source.
+ *
+ * This interface extends the main cache data source interface to add an extra required method if
+ * the data source is to be used for a versioned cache.
+ *
+ * @package core_cache
+ */
+interface cache_data_source_versionable extends cache_data_source {
+    /**
+     * Loads the data for the key provided ready formatted for caching.
+     *
+     * If there is no data for that key, or if the data for the required key has an older version
+     * than the specified $requiredversion, then this returns null.
+     *
+     * @param string|int $key The key to load.
+     * @param int $requiredversion Minimum required version
+     * @return cache_version_wrapper|null Versioned data, or null if none
+     */
+    public function load_for_cache_versioned($key, int $requiredversion): ?cache_version_wrapper;
 }
 
 /**

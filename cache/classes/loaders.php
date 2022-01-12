@@ -43,6 +43,11 @@ defined('MOODLE_INTERNAL') || die();
 class cache implements cache_loader {
 
     /**
+     * @var int Constant for cache entries that do not have a version number
+     */
+    const NO_VERSION = -1;
+
+    /**
      * We need a timestamp to use within the cache API.
      * This stamp needs to be used for all ttl and time based operations to ensure that we don't end up with
      * timing issues.
@@ -397,11 +402,94 @@ class cache implements cache_loader {
      * @throws coding_exception
      */
     public function get($key, $strictness = IGNORE_MISSING) {
+        return $this->get_implementation($key, self::NO_VERSION, $strictness);
+    }
+
+    /**
+     * Retrieves the value and actual version for the given key, with at least the required version.
+     *
+     * If there is no value for the key, or there is a value but it doesn't have the required
+     * version, then this function will return null (or throw an exception if you set strictness
+     * to MUST_EXIST).
+     *
+     * This function can be used to make it easier to support localisable caches (where the cache
+     * could be stored on a local server as well as a shared cache). Specifying the version means
+     * that it will automatically retrieve the correct version if available, either from the local
+     * server or [if that has an older version] from the shared server.
+     *
+     * If the cached version is newer than specified version, it will be returned regardless. For
+     * example, if you request version 4, but the locally cached version is 5, it will be returned.
+     * If you request version 6, and the locally cached version is 5, then the system will look in
+     * higher-level caches (if any); if there still isn't a version 6 or greater, it will return
+     * null.
+     *
+     * You must use this function if you use set_versioned.
+     *
+     * @param string|int $key The key for the data being requested.
+     * @param int $requiredversion Minimum required version of the data
+     * @param int $strictness One of IGNORE_MISSING or MUST_EXIST.
+     * @return cache_version_wrapper|null Object containing data and version, or null
+     * @throws \coding_exception If you call get_versioned on a non-versioned cache key
+     */
+    public function get_versioned($key, int $requiredversion, int $strictness = IGNORE_MISSING): ?cache_version_wrapper {
+        $result = $this->get_implementation($key, $requiredversion, $strictness);
+        // Return null not false if not found.
+        return $result ?: null;
+    }
+
+    /**
+     * Checks returned data to see if it matches the specified version number.
+     *
+     * For versioned data, this returns the cache_version_wrapper object (or false). For other
+     * data, it returns the actual data (or false).
+     *
+     * @param mixed $result Result data
+     * @param int $requiredversion Required version number or NO_VERSION if there must be no version
+     * @return false|mixed False or the data
+     * @throws \coding_exception If unexpected type of data (versioned vs non-versioned) is found
+     */
+    protected static function check_version($result, int $requiredversion) {
+        if ($requiredversion === self::NO_VERSION) {
+            if ($result instanceof cache_version_wrapper) {
+                throw new \coding_exception('Unexpectedly found versioned cache entry');
+            } else {
+                return $result;
+            }
+        } else {
+            // If result is false, not an object, or not a versiontag wrapper, return false.
+            if (!$result) {
+                return false;
+            }
+            if (!($result instanceof cache_version_wrapper)) {
+                throw new \coding_exception('Unexpectedly found non-versioned cache entry');
+            }
+            // If the result doesn't match the required version tag, return false.
+            if ($result->version < $requiredversion) {
+                return false;
+            }
+            // Return the result.
+            return $result;
+        }
+    }
+
+    /**
+     * Retrieves the value for the given key from the cache.
+     *
+     * @param string|int $key The key for the data being requested.
+     *      It can be any structure although using a scalar string or int is recommended in the interests of performance.
+     *      In advanced cases an array may be useful such as in situations requiring the multi-key functionality.
+     * @param int $requiredversion Minimum required version of the data or cache::NO_VERSION
+     * @param int $strictness One of IGNORE_MISSING | MUST_EXIST
+     * @return mixed|false The data from the cache or false if the key did not exist within the cache.
+     * @throws coding_exception
+     */
+    protected function get_implementation($key, int $requiredversion, int $strictness) {
         // 1. Get it from the static acceleration array if we can (only when it is enabled and it has already been requested/set).
         $usesstaticacceleration = $this->use_static_acceleration();
 
         if ($usesstaticacceleration) {
             $result = $this->static_acceleration_get($key);
+            $result = self::check_version($result, $requiredversion);
             if ($result !== false) {
                 return $result;
             }
@@ -412,13 +500,46 @@ class cache implements cache_loader {
 
         // 3. Get it from the store. Obviously wasn't in the static acceleration array.
         $result = $this->store->get($parsedkey);
+        if ($result) {
+            // Check the result has at least the required version.
+            try {
+                $result = self::check_version($result, $requiredversion);
+            } catch (\coding_exception $e) {
+                // If we get an exception because there is incorrect data in the cache (not
+                // versioned when it ought to be), delete it so this exception goes away next time.
+                // The exception should only happen if there is a code bug (which is why we still
+                // throw it) but there are unusual scenarios where it might happen and that would
+                // be annoying if it doesn't fix itself.
+                $this->store->delete($parsedkey);
+                throw $e;
+            }
+
+            // If the result was too old, delete it immediately. This improves performance in the
+            // case when the cache item is large and there may be multiple clients simultaneously
+            // requesting it - they won't all have to do a megabyte of IO just in order to find
+            // that it's out of date.
+            if (!$result) {
+                $this->store->delete($parsedkey);
+            }
+        }
         if ($result !== false) {
-            if ($result instanceof cache_ttl_wrapper) {
-                if ($result->has_expired()) {
-                    $this->store->delete($parsedkey);
-                    $result = false;
-                } else {
-                    $result = $result->data;
+            if ($requiredversion === self::NO_VERSION) {
+                if ($result instanceof cache_ttl_wrapper) {
+                    if ($result->has_expired()) {
+                        $this->store->delete($parsedkey);
+                        $result = false;
+                    } else {
+                        $result = $result->data;
+                    }
+                }
+            } else {
+                if ($result->data instanceof cache_ttl_wrapper) {
+                    if ($result->data->has_expired()) {
+                        $this->store->delete($parsedkey);
+                        $result = false;
+                    } else {
+                        $result->data = $result->data->data;
+                    }
                 }
             }
             if ($usesstaticacceleration) {
@@ -439,9 +560,27 @@ class cache implements cache_loader {
                 // We must pass the original (unparsed) key to the next loader in the chain.
                 // The next loader will parse the key as it sees fit. It may be parsed differently
                 // depending upon the capabilities of the store associated with the loader.
-                $result = $this->loader->get($key);
+                if ($requiredversion === self::NO_VERSION) {
+                    $result = $this->loader->get($key);
+                } else {
+                    $result = $this->loader->get_versioned($key, $requiredversion);
+                    // Within this function we use 'false' not null to indicate missing data.
+                    $result = $result ?? false;
+                }
             } else if ($this->datasource !== false) {
-                $result = $this->datasource->load_for_cache($key);
+                if ($requiredversion === self::NO_VERSION) {
+                    $result = $this->datasource->load_for_cache($key);
+                } else {
+                    if (!$this->datasource instanceof cache_data_source_versionable) {
+                        throw new \coding_exception('Data source is not versionable');
+                    }
+                    $result = $this->datasource->load_for_cache_versioned($key, $requiredversion);
+                    if ($result && $result->version < $requiredversion) {
+                        throw new \coding_exception('Data source returned outdated version');
+                    }
+                    // Within this function we use 'false' not null to indicate missing data.
+                    $result = $result ?? false;
+                }
             }
             $setaftervalidation = ($result !== false);
         } else if ($this->perfdebug) {
@@ -452,9 +591,15 @@ class cache implements cache_loader {
         if ($strictness === MUST_EXIST && $result === false) {
             throw new coding_exception('Requested key did not exist in any cache stores and could not be loaded.');
         }
-        // 6. Set it to the store if we got it from the loader/datasource.
+        // 6. Set it to the store if we got it from the loader/datasource. Only set to this direct
+        // store; parent method will have set it to all stores if needed.
         if ($setaftervalidation) {
-            $this->set($key, $result);
+            if ($requiredversion === self::NO_VERSION) {
+                $this->set_implementation($key, self::NO_VERSION, $result, false);
+            } else {
+                // Set it using the real version from the data, not the requested one.
+                $this->set_implementation($key, $result->version, $result->data, false);
+            }
         }
         // 7. Make sure we don't pass back anything that could be a reference.
         //    We don't want people modifying the data in the cache.
@@ -630,10 +775,56 @@ class cache implements cache_loader {
      * @return bool True on success, false otherwise.
      */
     public function set($key, $data) {
-        if ($this->loader !== false) {
+        return $this->set_implementation($key, self::NO_VERSION, $data);
+    }
+
+    /**
+     * Sets the value for the given key with the given version.
+     *
+     * The cache does not store multiple versions - any existing version will be overwritten with
+     * this one. This function should only be used if there is a known 'current version' (e.g.
+     * stored in a database table). It only ensures that the cache does not return outdated data.
+     *
+     * This function can be used to help implement localisable caches (where the cache could be
+     * stored on a local server as well as a shared cache). The version will be recorded alongside
+     * the item and get_versioned will always return the correct version.
+     *
+     * The version number must be an integer that always increases. This could be based on the
+     * current time, or a stored value that increases by 1 each time it changes, etc.
+     *
+     * If you use this function you must use get_versioned to retrieve the data.
+     *
+     * @param string|int $key The key for the data being set.
+     * @param int $version Integer for the version of the data
+     * @param mixed $data The data to set against the key.
+     * @return cache_version_wrapper|null Wrapped cache object on success, null on failure
+     */
+    public function set_versioned($key, int $version, $data): ?cache_version_wrapper {
+        if ($this->set_implementation($key, $version, $data)) {
+            return new cache_version_wrapper($data, $version);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Sets the value for the given key, optionally with a version tag.
+     *
+     * @param string|int $key The key for the data being set.
+     * @param int $version Version number for the data or cache::NO_VERSION if none
+     * @param mixed $data The data to set against the key.
+     * @param bool $setparents If true, sets all parent loaders, otherwise only this one
+     * @return bool True on success, false otherwise.
+     */
+    protected function set_implementation($key, int $version, $data, bool $setparents = true): bool {
+        if ($this->loader !== false && $setparents) {
             // We have a loader available set it there as well.
             // We have to let the loader do its own parsing of data as it may be unique.
-            $this->loader->set($key, $data);
+            if ($version === self::NO_VERSION) {
+                $this->loader->set($key, $data);
+            } else {
+                $this->loader->set_versioned($key, $version, $data);
+            }
         }
         $usestaticacceleration = $this->use_static_acceleration();
 
@@ -648,13 +839,22 @@ class cache implements cache_loader {
         }
 
         if ($usestaticacceleration) {
-            $this->static_acceleration_set($key, $data);
+            // Static acceleration cache should include the cache version wrapper, but not TTL.
+            if ($version === self::NO_VERSION) {
+                $this->static_acceleration_set($key, $data);
+            } else {
+                $this->static_acceleration_set($key, new cache_version_wrapper($data, $version));
+            }
         }
 
         if ($this->has_a_ttl() && !$this->store_supports_native_ttl()) {
             $data = new cache_ttl_wrapper($data, $this->definition->get_ttl());
         }
         $parsedkey = $this->parse_key($key);
+
+        if ($version !== self::NO_VERSION) {
+            $data = new cache_version_wrapper($data, $version);
+        }
 
         $success = $this->store->set($parsedkey, $data);
         if ($this->perfdebug) {
@@ -1505,14 +1705,16 @@ class cache_application extends cache implements cache_loader_with_locking {
      * </code>
      *
      * @param string|int $key The key for the data being requested.
+     * @param int $version Version number
      * @param mixed $data The data to set against the key.
+     * @param bool $setparents If true, sets all parent loaders, otherwise only this one
      * @return bool True on success, false otherwise.
      */
-    public function set($key, $data) {
+    protected function set_implementation($key, int $version, $data, bool $setparents = true): bool {
         if ($this->requirelockingwrite && !$this->acquire_lock($key)) {
             return false;
         }
-        $result = parent::set($key, $data);
+        $result = parent::set_implementation($key, $version, $data, $setparents);
         if ($this->requirelockingwrite && !$this->release_lock($key)) {
             debugging('Failed to release cache lock on set operation... this should not happen.', DEBUG_DEVELOPER);
         }
