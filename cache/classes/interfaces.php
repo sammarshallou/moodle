@@ -52,7 +52,7 @@ interface cache_loader {
      * Retrieves the value and actual version for the given key, with at least the required version.
      *
      * If there is no value for the key, or there is a value but it doesn't have the required
-     * version, then this function will return null (or throw an exception if you set strictness
+     * version, then this function will return false (or throw an exception if you set strictness
      * to MUST_EXIST).
      *
      * This function can be used to make it easier to support localisable caches (where the cache
@@ -71,9 +71,10 @@ interface cache_loader {
      * @param string|int $key The key for the data being requested.
      * @param int $requiredversion Minimum required version of the data
      * @param int $strictness One of IGNORE_MISSING or MUST_EXIST.
-     * @return cache_version_wrapper|null Object containing data and version, or null
+     * @param mixed &$actualversion If specified, will be set to the actual version number retrieved
+     * @return mixed Data from the cache, or false if the key did not exist or was too old
      */
-    public function get_versioned($key, int $requiredversion, int $strictness = IGNORE_MISSING): ?cache_version_wrapper;
+    public function get_versioned($key, int $requiredversion, int $strictness = IGNORE_MISSING, &$actualversion = null);
 
     /**
      * Retrieves an array of values for an array of keys.
@@ -501,11 +502,15 @@ interface cache_data_source_versionable extends cache_data_source {
      * If there is no data for that key, or if the data for the required key has an older version
      * than the specified $requiredversion, then this returns null.
      *
+     * If there is data then $actualversion should be set to the actual version number retrieved
+     * (may be the same as $requiredversion or newer).
+     *
      * @param string|int $key The key to load.
      * @param int $requiredversion Minimum required version
-     * @return cache_version_wrapper|null Versioned data, or null if none
+     * @param mixed &$actualversion Should be set to the actual version number retrieved
+     * @return mixed What ever data should be returned, or false if it can't be loaded.
      */
-    public function load_for_cache_versioned($key, int $requiredversion): ?cache_version_wrapper;
+    public function load_for_cache_versioned($key, int $requiredversion, &$actualversion);
 }
 
 /**

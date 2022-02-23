@@ -463,17 +463,19 @@ class cache_phpunit_dummy_datasource_versionable extends cache_phpunit_dummy_dat
      *
      * @param int|string $key Key
      * @param int $requiredversion Minimum version number
-     * @return cache_version_wrapper|null Versioned data or null if not found
+     * @param mixed &$actualversion Should be set to the actual version number retrieved
+     * @return mixed Data retrieved from cache or false if none
      */
-    public function load_for_cache_versioned($key, int $requiredversion): ?cache_version_wrapper {
+    public function load_for_cache_versioned($key, int $requiredversion, &$actualversion) {
         if (!array_key_exists($key, $this->data)) {
-            return null;
+            return false;
         }
         $value = $this->data[$key];
         if ($value->version < $requiredversion) {
-            return null;
+            return false;
         }
-        return $value;
+        $actualversion = $value->version;
+        return $value->data;
     }
 }
 

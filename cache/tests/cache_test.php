@@ -606,15 +606,15 @@ class cache_test extends advanced_testcase {
         $datasource->has_value('frog', 3, 'Kermit');
 
         // Check data with no value.
-        $this->assertNull($cache2->get_versioned('zombie', 1));
+        $this->assertFalse($cache2->get_versioned('zombie', 1));
 
         // Check data with value in datastore of required version.
-        $result = $cache2->get_versioned('frog', 3);
-        $this->assertEquals('Kermit', $result->data);
-        $this->assertEquals(3, $result->version);
+        $result = $cache2->get_versioned('frog', 3, IGNORE_MISSING, $actualversion);
+        $this->assertEquals('Kermit', $result);
+        $this->assertEquals(3, $actualversion);
 
         // Check when the datastore doesn't have required version.
-        $this->assertNull($cache2->get_versioned('frog', 4));
+        $this->assertFalse($cache2->get_versioned('frog', 4));
     }
 
     /**
@@ -1546,12 +1546,12 @@ class cache_test extends advanced_testcase {
         // Basic use of set_versioned and get_versioned.
         $this->assertTrue($multicache->set_versioned('game', 1, 'Pooh-sticks'));
 
-        $result = $multicache->get_versioned('game', 1);
-        $this->assertEquals('Pooh-sticks', $result->data);
-        $this->assertEquals(1, $result->version);
+        $result = $multicache->get_versioned('game', 1, IGNORE_MISSING, $actualversion);
+        $this->assertEquals('Pooh-sticks', $result);
+        $this->assertEquals(1, $actualversion);
 
         // What if you ask for a version that doesn't exist?
-        $this->assertNull($multicache->get_versioned('game', 2));
+        $this->assertFalse($multicache->get_versioned('game', 2));
 
         // What if you use get on a get_version cache?
         $multicache->set_versioned('game', 1, 'Pooh-sticks');
@@ -1573,9 +1573,9 @@ class cache_test extends advanced_testcase {
 
         // Setting a new version wipes out the old version; if you request it, you get the new one.
         $multicache->set_versioned('game', 2, 'Tag');
-        $result = $multicache->get_versioned('game', 1);
-        $this->assertEquals('Tag', $result->data);
-        $this->assertEquals(2, $result->version);
+        $result = $multicache->get_versioned('game', 1, IGNORE_MISSING, $actualversion);
+        $this->assertEquals('Tag', $result);
+        $this->assertEquals(2, $actualversion);
 
         // Get the two separate cache stores for the multi-level cache.
         $factory = cache_factory::instance();
@@ -1592,10 +1592,10 @@ class cache_test extends advanced_testcase {
         $storeb->set($hashgame, new \cache_version_wrapper($data, 3));
 
         // If we ask for the old one we'll get it straight off...
-        $this->assertEquals('Tag', $multicache->get_versioned('game', 2)->data);
+        $this->assertEquals('Tag', $multicache->get_versioned('game', 2));
 
         // But if we ask for the new one it will still get it via the shared cache.
-        $this->assertEquals('British Bulldog', $multicache->get_versioned('game', 3)->data);
+        $this->assertEquals('British Bulldog', $multicache->get_versioned('game', 3));
 
         // Also, now it will be updated in the local cache as well.
         $localvalue = $storea->get($hashgame);
@@ -1612,7 +1612,7 @@ class cache_test extends advanced_testcase {
 
         // If we ask for a newer version, then any older version should be deleted in each
         // cache level.
-        $this->assertNull($multicache->get_versioned('game', 4));
+        $this->assertFalse($multicache->get_versioned('game', 4));
         $this->assertFalse($storea->get($hashgame));
         $this->assertFalse($storeb->get($hashgame));
     }
@@ -1652,21 +1652,21 @@ class cache_test extends advanced_testcase {
         $storea->set($hashgame, new \cache_version_wrapper('Tag', 2));
 
         // Get the key from the cache, v1. This will use static acceleration.
-        $this->assertEquals('Pooh-sticks', $staticcache->get_versioned('game', 1)->data);
+        $this->assertEquals('Pooh-sticks', $staticcache->get_versioned('game', 1));
 
         // Now if we ask for a newer version, it should not use the static cached one.
-        $this->assertEquals('Tag', $staticcache->get_versioned('game', 2)->data);
+        $this->assertEquals('Tag', $staticcache->get_versioned('game', 2));
 
         // This get should have updated static acceleration, so it will be used next time without
         // a store request.
         $storea->set($hashgame, new \cache_version_wrapper('British Bulldog', 3));
-        $this->assertEquals('Tag', $staticcache->get_versioned('game', 2)->data);
+        $this->assertEquals('Tag', $staticcache->get_versioned('game', 2));
 
         // Requesting the higher version will get rid of static acceleration again.
-        $this->assertEquals('British Bulldog', $staticcache->get_versioned('game', 3)->data);
+        $this->assertEquals('British Bulldog', $staticcache->get_versioned('game', 3));
 
         // Finally ask for a version that doesn't exist anywhere, just to confirm it returns null.
-        $this->assertNull($staticcache->get_versioned('game', 4));
+        $this->assertFalse($staticcache->get_versioned('game', 4));
     }
 
     /**
@@ -1694,14 +1694,14 @@ class cache_test extends advanced_testcase {
 
         // Basic use of set_versioned and get_versioned.
         $multicache->set_versioned('game', 1, 'Pooh-sticks');
-        $this->assertEquals('Pooh-sticks', $multicache->get_versioned('game', 1)->data);
+        $this->assertEquals('Pooh-sticks', $multicache->get_versioned('game', 1));
 
         // What if you ask for a version that doesn't exist?
-        $this->assertNull($multicache->get_versioned('game', 2));
+        $this->assertFalse($multicache->get_versioned('game', 2));
 
         // Setting a new version wipes out the old version; if you request it, you get the new one.
         $multicache->set_versioned('game', 2, 'Tag');
-        $this->assertEquals('Tag', $multicache->get_versioned('game', 1)->data);
+        $this->assertEquals('Tag', $multicache->get_versioned('game', 1));
 
         // Get the three separate cache stores for the multi-level cache.
         $factory = cache_factory::instance();
@@ -1714,15 +1714,15 @@ class cache_test extends advanced_testcase {
         $storec->set($hashgame, new \cache_version_wrapper('Hopscotch', 4));
 
         // First request can be satisfied from A; second request requires B...
-        $this->assertEquals('Tag', $multicache->get_versioned('game', 2)->data);
-        $this->assertEquals('British Bulldog', $multicache->get_versioned('game', 3)->data);
+        $this->assertEquals('Tag', $multicache->get_versioned('game', 2));
+        $this->assertEquals('British Bulldog', $multicache->get_versioned('game', 3));
 
         // And should update the data in A.
         $this->assertEquals(new \cache_version_wrapper('British Bulldog', 3), $storea->get($hashgame));
-        $this->assertEquals('British Bulldog', $multicache->get_versioned('game', 1)->data);
+        $this->assertEquals('British Bulldog', $multicache->get_versioned('game', 1));
 
         // But newer data should still be in C.
-        $this->assertEquals('Hopscotch', $multicache->get_versioned('game', 4)->data);
+        $this->assertEquals('Hopscotch', $multicache->get_versioned('game', 4));
         // Now it's stored in A and B too.
         $this->assertEquals(new \cache_version_wrapper('Hopscotch', 4), $storea->get($hashgame));
         $this->assertEquals(new \cache_version_wrapper('Hopscotch', 4), $storeb->get($hashgame));

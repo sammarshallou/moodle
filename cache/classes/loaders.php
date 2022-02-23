@@ -428,13 +428,12 @@ class cache implements cache_loader {
      * @param string|int $key The key for the data being requested.
      * @param int $requiredversion Minimum required version of the data
      * @param int $strictness One of IGNORE_MISSING or MUST_EXIST.
-     * @return cache_version_wrapper|null Object containing data and version, or null
+     * @param mixed &$actualversion If specified, will be set to the actual version number retrieved
+     * @return mixed Data from the cache, or false if the key did not exist or was too old
      * @throws \coding_exception If you call get_versioned on a non-versioned cache key
      */
-    public function get_versioned($key, int $requiredversion, int $strictness = IGNORE_MISSING): ?cache_version_wrapper {
-        $result = $this->get_implementation($key, $requiredversion, $strictness);
-        // Return null not false if not found.
-        return $result ?: null;
+    public function get_versioned($key, int $requiredversion, int $strictness = IGNORE_MISSING, &$actualversion = null) {
+        return $this->get_implementation($key, $requiredversion, $strictness, $actualversion);
     }
 
     /**
@@ -480,10 +479,11 @@ class cache implements cache_loader {
      *      In advanced cases an array may be useful such as in situations requiring the multi-key functionality.
      * @param int $requiredversion Minimum required version of the data or cache::NO_VERSION
      * @param int $strictness One of IGNORE_MISSING | MUST_EXIST
+     * @param mixed &$actualversion If specified, will be set to the actual version number retrieved
      * @return mixed|false The data from the cache or false if the key did not exist within the cache.
      * @throws coding_exception
      */
-    protected function get_implementation($key, int $requiredversion, int $strictness) {
+    protected function get_implementation($key, int $requiredversion, int $strictness, &$actualversion = null) {
         // 1. Get it from the static acceleration array if we can (only when it is enabled and it has already been requested/set).
         $usesstaticacceleration = $this->use_static_acceleration();
 
@@ -491,7 +491,12 @@ class cache implements cache_loader {
             $result = $this->static_acceleration_get($key);
             $result = self::check_version($result, $requiredversion);
             if ($result !== false) {
-                return $result;
+                if ($requiredversion === self::NO_VERSION) {
+                    return $result;
+                } else {
+                    $actualversion = $result->version;
+                    return $result->data;
+                }
             }
         }
 
@@ -545,6 +550,11 @@ class cache implements cache_loader {
             if ($usesstaticacceleration) {
                 $this->static_acceleration_set($key, $result);
             }
+            // Remove version wrapper if necessary.
+            if ($requiredversion !== self::NO_VERSION) {
+                $actualversion = $result->version;
+                $result = $result->data;
+            }
             if ($result instanceof cache_cached_object) {
                 $result = $result->restore_object();
             }
@@ -563,9 +573,7 @@ class cache implements cache_loader {
                 if ($requiredversion === self::NO_VERSION) {
                     $result = $this->loader->get($key);
                 } else {
-                    $result = $this->loader->get_versioned($key, $requiredversion);
-                    // Within this function we use 'false' not null to indicate missing data.
-                    $result = $result ?? false;
+                    $result = $this->loader->get_versioned($key, $requiredversion, IGNORE_MISSING, $actualversion);
                 }
             } else if ($this->datasource !== false) {
                 if ($requiredversion === self::NO_VERSION) {
@@ -574,12 +582,10 @@ class cache implements cache_loader {
                     if (!$this->datasource instanceof cache_data_source_versionable) {
                         throw new \coding_exception('Data source is not versionable');
                     }
-                    $result = $this->datasource->load_for_cache_versioned($key, $requiredversion);
-                    if ($result && $result->version < $requiredversion) {
+                    $result = $this->datasource->load_for_cache_versioned($key, $requiredversion, $actualversion);
+                    if ($result && $actualversion < $requiredversion) {
                         throw new \coding_exception('Data source returned outdated version');
                     }
-                    // Within this function we use 'false' not null to indicate missing data.
-                    $result = $result ?? false;
                 }
             }
             $setaftervalidation = ($result !== false);
@@ -597,8 +603,7 @@ class cache implements cache_loader {
             if ($requiredversion === self::NO_VERSION) {
                 $this->set_implementation($key, self::NO_VERSION, $result, false);
             } else {
-                // Set it using the real version from the data, not the requested one.
-                $this->set_implementation($key, $result->version, $result->data, false);
+                $this->set_implementation($key, $actualversion, $result, false);
             }
         }
         // 7. Make sure we don't pass back anything that could be a reference.
