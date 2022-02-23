@@ -1774,15 +1774,17 @@ class cache_application extends cache implements cache_loader_with_locking {
      * Retrieves the value for the given key from the cache.
      *
      * @param string|int $key The key for the data being requested.
+     * @param int $requiredversion Minimum required version of the data or cache::VERSION_NONE
      * @param int $strictness One of IGNORE_MISSING | MUST_EXIST
+     * @param mixed &$actualversion If specified, will be set to the actual version number retrieved
      * @return mixed|false The data from the cache or false if the key did not exist within the cache.
      */
-    public function get($key, $strictness = IGNORE_MISSING) {
+    protected function get_implementation($key, int $requiredversion, int $strictness, &$actualversion = null) {
         if ($this->requirelockingread && $this->check_lock_state($key) === false) {
             // Read locking required and someone else has the read lock.
             return false;
         }
-        return parent::get($key, $strictness);
+        return parent::get_implementation($key, $requiredversion, $strictness, $actualversion);
     }
 
     /**
@@ -2035,16 +2037,18 @@ class cache_session extends cache {
      * @param string|int $key The key for the data being requested.
      *      It can be any structure although using a scalar string or int is recommended in the interests of performance.
      *      In advanced cases an array may be useful such as in situations requiring the multi-key functionality.
+     * @param int $requiredversion Minimum required version of the data or cache::VERSION_NONE
      * @param int $strictness One of IGNORE_MISSING | MUST_EXIST
+     * @param mixed &$actualversion If specified, will be set to the actual version number retrieved
      * @return mixed|false The data from the cache or false if the key did not exist within the cache.
      * @throws coding_exception
      */
-    public function get($key, $strictness = IGNORE_MISSING) {
+    protected function get_implementation($key, int $requiredversion, int $strictness, &$actualversion = null) {
         // Check the tracked user.
         $this->check_tracked_user();
 
         // Use parent code.
-        return parent::get($key, $strictness);
+        return parent::get_implementation($key, $requiredversion, $strictness, $actualversion);
     }
 
     /**

@@ -1412,7 +1412,9 @@ class cache_test extends advanced_testcase {
         $this->assertInstanceOf('cache_disabled', $cache);
 
         $this->assertFalse($cache->get('test'));
+        $this->assertFalse($cache->get_versioned('v', 1));
         $this->assertFalse($cache->set('test', 'test'));
+        $this->assertFalse($cache->set_versioned('v', 1, 'data'));
         $this->assertFalse($cache->delete('test'));
         $this->assertTrue($cache->purge());
 
@@ -1421,7 +1423,9 @@ class cache_test extends advanced_testcase {
         $this->assertInstanceOf('cache_disabled', $cache);
 
         $this->assertFalse($cache->get('test'));
+        $this->assertFalse($cache->get_versioned('v', 1));
         $this->assertFalse($cache->set('test', 'test'));
+        $this->assertFalse($cache->set_versioned('v', 1, 'data'));
         $this->assertFalse($cache->delete('test'));
         $this->assertTrue($cache->purge());
 
@@ -1430,7 +1434,9 @@ class cache_test extends advanced_testcase {
         $this->assertInstanceOf('cache_disabled', $cache);
 
         $this->assertFalse($cache->get('test'));
+        $this->assertFalse($cache->get_versioned('v', 1));
         $this->assertFalse($cache->set('test', 'test'));
+        $this->assertFalse($cache->set_versioned('v', 1, 'data'));
         $this->assertFalse($cache->delete('test'));
         $this->assertTrue($cache->purge());
 
