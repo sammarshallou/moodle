@@ -1589,7 +1589,7 @@ class cache_test extends advanced_testcase {
         if ($ttl) {
             $data = new \cache_ttl_wrapper($data, 600);
         }
-        $storeb->set($hashgame, new \cache_version_wrapper($data, 3));
+        $storeb->set($hashgame, new \core_cache\version_wrapper($data, 3));
 
         // If we ask for the old one we'll get it straight off...
         $this->assertEquals('Tag', $multicache->get_versioned('game', 2));
@@ -1607,7 +1607,7 @@ class cache_test extends advanced_testcase {
             $this->assertInstanceOf('cache_ttl_wrapper', $ttldata);
             $this->assertEquals('British Bulldog', $ttldata->data);
         } else {
-            $this->assertEquals(new \cache_version_wrapper('British Bulldog', 3), $localvalue);
+            $this->assertEquals(new \core_cache\version_wrapper('British Bulldog', 3), $localvalue);
         }
 
         // If we ask for a newer version, then any older version should be deleted in each
@@ -1649,7 +1649,7 @@ class cache_test extends advanced_testcase {
         // Hack a newer version into cache store without directly calling set (now the static
         // has v1, store has v2). This simulates another client updating the cache.
         $hashgame = cache_helper::hash_key('game', $definition);
-        $storea->set($hashgame, new \cache_version_wrapper('Tag', 2));
+        $storea->set($hashgame, new \core_cache\version_wrapper('Tag', 2));
 
         // Get the key from the cache, v1. This will use static acceleration.
         $this->assertEquals('Pooh-sticks', $staticcache->get_versioned('game', 1));
@@ -1659,7 +1659,7 @@ class cache_test extends advanced_testcase {
 
         // This get should have updated static acceleration, so it will be used next time without
         // a store request.
-        $storea->set($hashgame, new \cache_version_wrapper('British Bulldog', 3));
+        $storea->set($hashgame, new \core_cache\version_wrapper('British Bulldog', 3));
         $this->assertEquals('Tag', $staticcache->get_versioned('game', 2));
 
         // Requesting the higher version will get rid of static acceleration again.
@@ -1710,22 +1710,22 @@ class cache_test extends advanced_testcase {
 
         // Set up 3 different versions in each level.
         $hashgame = cache_helper::hash_key('game', $definition);
-        $storeb->set($hashgame, new \cache_version_wrapper('British Bulldog', 3));
-        $storec->set($hashgame, new \cache_version_wrapper('Hopscotch', 4));
+        $storeb->set($hashgame, new \core_cache\version_wrapper('British Bulldog', 3));
+        $storec->set($hashgame, new \core_cache\version_wrapper('Hopscotch', 4));
 
         // First request can be satisfied from A; second request requires B...
         $this->assertEquals('Tag', $multicache->get_versioned('game', 2));
         $this->assertEquals('British Bulldog', $multicache->get_versioned('game', 3));
 
         // And should update the data in A.
-        $this->assertEquals(new \cache_version_wrapper('British Bulldog', 3), $storea->get($hashgame));
+        $this->assertEquals(new \core_cache\version_wrapper('British Bulldog', 3), $storea->get($hashgame));
         $this->assertEquals('British Bulldog', $multicache->get_versioned('game', 1));
 
         // But newer data should still be in C.
         $this->assertEquals('Hopscotch', $multicache->get_versioned('game', 4));
         // Now it's stored in A and B too.
-        $this->assertEquals(new \cache_version_wrapper('Hopscotch', 4), $storea->get($hashgame));
-        $this->assertEquals(new \cache_version_wrapper('Hopscotch', 4), $storeb->get($hashgame));
+        $this->assertEquals(new \core_cache\version_wrapper('Hopscotch', 4), $storea->get($hashgame));
+        $this->assertEquals(new \core_cache\version_wrapper('Hopscotch', 4), $storeb->get($hashgame));
     }
 
     /**

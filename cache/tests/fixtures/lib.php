@@ -455,7 +455,7 @@ class cache_phpunit_dummy_datasource_versionable extends cache_phpunit_dummy_dat
      * @param mixed $data
      */
     public function has_value(string $key, int $version, $data): void {
-        $this->data[$key] = new cache_version_wrapper($data, $version);
+        $this->data[$key] = new \core_cache\version_wrapper($data, $version);
     }
 
     /**

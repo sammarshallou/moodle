@@ -844,7 +844,7 @@ class cache implements cache_loader {
             if ($version === self::NO_VERSION) {
                 $this->static_acceleration_set($key, $data);
             } else {
-                $this->static_acceleration_set($key, new cache_version_wrapper($data, $version));
+                $this->static_acceleration_set($key, new \core_cache\version_wrapper($data, $version));
             }
         }
 
@@ -854,7 +854,7 @@ class cache implements cache_loader {
         $parsedkey = $this->parse_key($key);
 
         if ($version !== self::NO_VERSION) {
-            $data = new cache_version_wrapper($data, $version);
+            $data = new \core_cache\version_wrapper($data, $version);
         }
 
         $success = $this->store->set($parsedkey, $data);
