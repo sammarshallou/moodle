@@ -1544,9 +1544,7 @@ class cache_test extends advanced_testcase {
         $multicache = cache::make('phpunit', 'multi_loader');
 
         // Basic use of set_versioned and get_versioned.
-        $result = $multicache->set_versioned('game', 1, 'Pooh-sticks');
-        $this->assertEquals('Pooh-sticks', $result->data);
-        $this->assertEquals(1, $result->version);
+        $this->assertTrue($multicache->set_versioned('game', 1, 'Pooh-sticks'));
 
         $result = $multicache->get_versioned('game', 1);
         $this->assertEquals('Pooh-sticks', $result->data);

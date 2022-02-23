@@ -128,9 +128,9 @@ interface cache_loader {
      * @param string|int $key The key for the data being set.
      * @param int $version Integer for the version of the data
      * @param mixed $data The data to set against the key.
-     * @return cache_version_wrapper|null Wrapped cache object on success, null on failure
+     * @return bool True on success, false otherwise.
      */
-    public function set_versioned($key, int $version, $data): ?cache_version_wrapper;
+    public function set_versioned($key, int $version, $data): bool;
 
     /**
      * Sends several key => value pairs to the cache.
