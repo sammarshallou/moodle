@@ -1519,17 +1519,41 @@ class cache_test extends advanced_testcase {
     }
 
     /**
-     * Tests versioned caches.
+     * Data provider to try using a TTL or non-TTL cache, and static acceleration or not.
      *
-     * @dataProvider ttl_or_not
-     * @param bool $ttl If true, uses a TTL cache.
-     * @covers ::set_versioned
-     * @covers ::get_versioned
+     * @return array
      */
-    public function test_versioned_cache(bool $ttl): void {
+    public function ttl_and_static_acceleration_or_not(): array {
+        return [[false, false], [false, true], [true, false], [true, true]];
+    }
+
+    /**
+     * Data provider to try using a TTL or non-TTL cache, and simple data on or off.
+     *
+     * @return array
+     */
+    public function ttl_and_simple_data_or_not(): array {
+        // Same values as for ttl and static acceleration (two booleans).
+        return $this->ttl_and_static_acceleration_or_not();
+    }
+
+    /**
+     * Shared code to set up a two or three-layer versioned cache for testing.
+     *
+     * @param bool $ttl If true, sets TTL in the definition
+     * @param bool $threelayer If true, uses a 3-layer instead of 2-layer cache
+     * @param bool $staticacceleration If true, enables static acceleration
+     * @param bool $simpledata If true, enables simple data
+     * @return \cache_application Cache
+     */
+    protected function create_versioned_cache(bool $ttl, bool $threelayer = false,
+            bool $staticacceleration = false, bool $simpledata = false): \cache_application {
         $instance = cache_config_testing::instance(true);
         $instance->phpunit_add_file_store('a', false);
         $instance->phpunit_add_file_store('b', false);
+        if ($threelayer) {
+            $instance->phpunit_add_file_store('c', false);
+        }
         $defarray = [
             'mode' => cache_store::MODE_APPLICATION,
             'component' => 'phpunit',
@@ -1538,21 +1562,101 @@ class cache_test extends advanced_testcase {
         if ($ttl) {
             $defarray['ttl'] = '600';
         }
+        if ($staticacceleration) {
+            $defarray['staticacceleration'] = true;
+            $defarray['staticaccelerationsize'] = 10;
+        }
+        if ($simpledata) {
+            $defarray['simpledata'] = true;
+        }
         $instance->phpunit_add_definition('phpunit/multi_loader', $defarray, false);
         $instance->phpunit_add_definition_mapping('phpunit/multi_loader', 'a', 1);
         $instance->phpunit_add_definition_mapping('phpunit/multi_loader', 'b', 2);
+        if ($threelayer) {
+            $instance->phpunit_add_definition_mapping('phpunit/multi_loader', 'c', 3);
+        }
 
         $multicache = cache::make('phpunit', 'multi_loader');
+        return $multicache;
+    }
 
-        // Basic use of set_versioned and get_versioned.
+    /**
+     * Tests basic use of versioned cache.
+     *
+     * @dataProvider ttl_and_simple_data_or_not
+     * @param bool $ttl If true, uses a TTL cache.
+     * @param bool $simpledata If true, turns on simple data flag
+     * @covers ::set_versioned
+     * @covers ::get_versioned
+     */
+    public function test_versioned_cache_basic(bool $ttl, bool $simpledata): void {
+        $multicache = $this->create_versioned_cache($ttl, false, false, $simpledata);
+
         $this->assertTrue($multicache->set_versioned('game', 1, 'Pooh-sticks'));
 
         $result = $multicache->get_versioned('game', 1, IGNORE_MISSING, $actualversion);
         $this->assertEquals('Pooh-sticks', $result);
         $this->assertEquals(1, $actualversion);
+    }
 
-        // What if you ask for a version that doesn't exist?
+    /**
+     * Tests versioned cache with objects.
+     *
+     * @dataProvider ttl_and_static_acceleration_or_not
+     * @param bool $ttl If true, uses a TTL cache.
+     * @param bool $staticacceleration If true, enables static acceleration
+     * @covers ::set_versioned
+     * @covers ::get_versioned
+     */
+    public function test_versioned_cache_objects(bool $ttl, bool $staticacceleration): void {
+        $multicache = $this->create_versioned_cache($ttl, false, $staticacceleration);
+
+        // Set an object value.
+        $data = (object)['game' => 'Pooh-sticks'];
+        $this->assertTrue($multicache->set_versioned('game', 1, $data));
+
+        // Get it.
+        $result = $multicache->get_versioned('game', 1);
+        $this->assertEquals('Pooh-sticks', $result->game);
+
+        // Mess about with the value in the returned object.
+        $result->game = 'Tag';
+
+        // Get it again and confirm the cached object has not been affected.
+        $result = $multicache->get_versioned('game', 1);
+        $this->assertEquals('Pooh-sticks', $result->game);
+    }
+
+    /**
+     * Tests requesting a version that doesn't exist.
+     *
+     * @dataProvider ttl_or_not
+     * @param bool $ttl If true, uses a TTL cache.
+     * @covers ::set_versioned
+     * @covers ::get_versioned
+     */
+    public function test_versioned_cache_not_exist(bool $ttl): void {
+        $multicache = $this->create_versioned_cache($ttl);
+
+        $multicache->set_versioned('game', 1, 'Pooh-sticks');
+
+        // Exists but with wrong version.
         $this->assertFalse($multicache->get_versioned('game', 2));
+
+        // Doesn't exist at all.
+        $this->assertFalse($multicache->get_versioned('frog', 0));
+    }
+
+    /**
+     * Tests attempts to use get after set_version or get_version after set.
+     *
+     * @dataProvider ttl_or_not
+     * @param bool $ttl If true, uses a TTL cache.
+     * @covers ::set_versioned
+     * @covers ::get_versioned
+     */
+    public function test_versioned_cache_incompatible_versioning(bool $ttl): void {
+        $multicache = $this->create_versioned_cache($ttl);
 
         // What if you use get on a get_version cache?
         $multicache->set_versioned('game', 1, 'Pooh-sticks');
@@ -1571,12 +1675,42 @@ class cache_test extends advanced_testcase {
         } catch (\coding_exception $e) {
             $this->assertStringContainsString('Unexpectedly found non-versioned cache entry', $e->getMessage());
         }
+    }
 
-        // Setting a new version wipes out the old version; if you request it, you get the new one.
+    /**
+     * Versions are only stored once, so if you set a newer version you will always get it even
+     * if you ask for the lower version number.
+     *
+     * @dataProvider ttl_or_not
+     * @param bool $ttl If true, uses a TTL cache.
+     * @covers ::set_versioned
+     * @covers ::get_versioned
+     */
+    public function test_versioned_cache_single_copy(bool $ttl): void {
+        $multicache = $this->create_versioned_cache($ttl);
+
+        $multicache->set_versioned('game', 1, 'Pooh-sticks');
         $multicache->set_versioned('game', 2, 'Tag');
-        $result = $multicache->get_versioned('game', 1, IGNORE_MISSING, $actualversion);
-        $this->assertEquals('Tag', $result);
+        $this->assertEquals('Tag', $multicache->get_versioned('game', 1, IGNORE_MISSING, $actualversion));
+
+        // The reported version number matches the one returned, not requested.
         $this->assertEquals(2, $actualversion);
+    }
+
+    /**
+     * If the first (local) store has an outdated copy but the second (shared) store has a newer
+     * one, then it should automatically be retrieved.
+     *
+     * @dataProvider ttl_or_not
+     * @param bool $ttl If true, uses a TTL cache.
+     * @covers ::set_versioned
+     * @covers ::get_versioned
+     */
+    public function test_versioned_cache_outdated_local(bool $ttl): void {
+        $multicache = $this->create_versioned_cache($ttl);
+
+        // Set initial value to version 2, 'Tag', in both stores.
+        $multicache->set_versioned('game', 2, 'Tag');
 
         // Get the two separate cache stores for the multi-level cache.
         $factory = cache_factory::instance();
@@ -1592,13 +1726,13 @@ class cache_test extends advanced_testcase {
         }
         $storeb->set($hashgame, new \core_cache\version_wrapper($data, 3));
 
-        // If we ask for the old one we'll get it straight off...
+        // If we ask for the old one we'll get it straight off from local cache.
         $this->assertEquals('Tag', $multicache->get_versioned('game', 2));
 
         // But if we ask for the new one it will still get it via the shared cache.
         $this->assertEquals('British Bulldog', $multicache->get_versioned('game', 3));
 
-        // Also, now it will be updated in the local cache as well.
+        // Also, now it will have been updated in the local cache as well.
         $localvalue = $storea->get($hashgame);
         if ($ttl) {
             // In case the time has changed slightly since the first set, we can't do an exact
@@ -1610,10 +1744,33 @@ class cache_test extends advanced_testcase {
         } else {
             $this->assertEquals(new \core_cache\version_wrapper('British Bulldog', 3), $localvalue);
         }
+    }
 
-        // If we ask for a newer version, then any older version should be deleted in each
+    /**
+     * When we request a newer version, older ones are automatically deleted in every level of the
+     * cache (to save I/O if there are multiple requests, as if there is another request it will
+     * not have to retrieve the values to find out that they're old).
+     *
+     * @dataProvider ttl_or_not
+     * @param bool $ttl If true, uses a TTL cache.
+     * @covers ::set_versioned
+     * @covers ::get_versioned
+     */
+    public function test_versioned_cache_deleting_outdated(bool $ttl): void {
+        $multicache = $this->create_versioned_cache($ttl);
+
+        // Set initial value to version 2, 'Tag', in both stores.
+        $multicache->set_versioned('game', 2, 'Tag');
+
+        // Get the two separate cache stores for the multi-level cache.
+        $factory = cache_factory::instance();
+        $definition = $factory->create_definition('phpunit', 'multi_loader');
+        [0 => $storea, 1 => $storeb] = $factory->get_store_instances_in_use($definition);
+
+        // If we request a newer version, then any older version should be deleted in each
         // cache level.
         $this->assertFalse($multicache->get_versioned('game', 4));
+        $hashgame = cache_helper::hash_key('game', $definition);
         $this->assertFalse($storea->get($hashgame));
         $this->assertFalse($storeb->get($hashgame));
     }
@@ -1625,26 +1782,14 @@ class cache_test extends advanced_testcase {
      * @covers ::get_versioned
      */
     public function test_versioned_cache_static(): void {
-        $instance = cache_config_testing::instance(true);
-        $instance->phpunit_add_file_store('a', false);
-        $defarray = [
-            'mode' => cache_store::MODE_APPLICATION,
-            'component' => 'phpunit',
-            'area' => 'versioned_static',
-            'staticacceleration' => true,
-            'staticaccelerationsize' => 10
-        ];
-        $instance->phpunit_add_definition('phpunit/versioned_static', $defarray, false);
-        $instance->phpunit_add_definition_mapping('phpunit/versioned_static', 'a', 1);
-
-        $staticcache = cache::make('phpunit', 'versioned_static');
+        $staticcache = $this->create_versioned_cache(false, false, true);
 
         // Set a value in the cache, version 1. This will store it in static acceleration.
         $staticcache->set_versioned('game', 1, 'Pooh-sticks');
 
-        // Get the two cache store.
+        // Get the first cache store (we don't need the second one for this test).
         $factory = cache_factory::instance();
-        $definition = $factory->create_definition('phpunit', 'versioned_static');
+        $definition = $factory->create_definition('phpunit', 'multi_loader');
         [0 => $storea] = $factory->get_store_instances_in_use($definition);
 
         // Hack a newer version into cache store without directly calling set (now the static
@@ -1671,27 +1816,13 @@ class cache_test extends advanced_testcase {
     }
 
     /**
-     * Tests 3-layer versioned caches.
+     * Tests basic use of 3-layer versioned caches.
      *
      * @covers ::set_versioned
      * @covers ::get_versioned
      */
-    public function test_versioned_cache_3_layers(): void {
-        $instance = cache_config_testing::instance(true);
-        $instance->phpunit_add_file_store('a', false);
-        $instance->phpunit_add_file_store('b', false);
-        $instance->phpunit_add_file_store('c', false);
-        $defarray = [
-                'mode' => cache_store::MODE_APPLICATION,
-                'component' => 'phpunit',
-                'area' => 'multi_loader'
-        ];
-        $instance->phpunit_add_definition('phpunit/multi_loader', $defarray, false);
-        $instance->phpunit_add_definition_mapping('phpunit/multi_loader', 'a', 1);
-        $instance->phpunit_add_definition_mapping('phpunit/multi_loader', 'b', 2);
-        $instance->phpunit_add_definition_mapping('phpunit/multi_loader', 'c', 3);
-
-        $multicache = cache::make('phpunit', 'multi_loader');
+    public function test_versioned_cache_3_layers_basic(): void {
+        $multicache = $this->create_versioned_cache(false, true);
 
         // Basic use of set_versioned and get_versioned.
         $multicache->set_versioned('game', 1, 'Pooh-sticks');
@@ -1703,13 +1834,25 @@ class cache_test extends advanced_testcase {
         // Setting a new version wipes out the old version; if you request it, you get the new one.
         $multicache->set_versioned('game', 2, 'Tag');
         $this->assertEquals('Tag', $multicache->get_versioned('game', 1));
+    }
+
+    /**
+     * Tests use of 3-layer versioned caches where the 3 layers currently have different versions.
+     *
+     * @covers ::set_versioned
+     * @covers ::get_versioned
+     */
+    public function test_versioned_cache_3_layers_different_data(): void {
+        // Set version 2 using normal method.
+        $multicache = $this->create_versioned_cache(false, true);
+        $multicache->set_versioned('game', 2, 'Tag');
 
         // Get the three separate cache stores for the multi-level cache.
         $factory = cache_factory::instance();
         $definition = $factory->create_definition('phpunit', 'multi_loader');
         [0 => $storea, 1 => $storeb, 2 => $storec] = $factory->get_store_instances_in_use($definition);
 
-        // Set up 3 different versions in each level.
+        // Set up two other versions so every level has a different version.
         $hashgame = cache_helper::hash_key('game', $definition);
         $storeb->set($hashgame, new \core_cache\version_wrapper('British Bulldog', 3));
         $storec->set($hashgame, new \core_cache\version_wrapper('Hopscotch', 4));
