@@ -16,16 +16,16 @@
 
 namespace core;
 
-use \advanced_testcase;
-use \cache;
-use \cm_info;
-use \coding_exception;
-use \context_course;
-use \context_module;
-use \course_modinfo;
-use \moodle_exception;
-use \moodle_url;
-use \Exception;
+use advanced_testcase;
+use cache;
+use cm_info;
+use coding_exception;
+use context_course;
+use context_module;
+use course_modinfo;
+use moodle_exception;
+use moodle_url;
+use Exception;
 
 /**
  * Unit tests for lib/modinfolib.php.

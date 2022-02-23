@@ -16,23 +16,23 @@
 
 namespace core_cache;
 
-use \advanced_testcase;
-use \cache;
-use \cache_config;
-use \cache_config_testing;
-use \cache_factory;
-use \cache_helper;
-use \cache_loader;
-use \cache_phpunit_application;
-use \cache_phpunit_cache;
-use \cache_phpunit_dummy_object;
-use \cache_phpunit_factory;
-use \cache_phpunit_session;
-use \cacheable_object_array;
-use \cache_store;
-use \coding_exception;
-use \Exception;
-use \stdClass;
+use advanced_testcase;
+use cache;
+use cache_config;
+use cache_config_testing;
+use cache_factory;
+use cache_helper;
+use cache_loader;
+use cache_phpunit_application;
+use cache_phpunit_cache;
+use cache_phpunit_dummy_object;
+use cache_phpunit_factory;
+use cache_phpunit_session;
+use cacheable_object_array;
+use cache_store;
+use coding_exception;
+use Exception;
+use stdClass;
 
 /**
  * PHPunit tests for the cache API
