@@ -531,23 +531,22 @@ class cache implements cache_loader {
             }
         }
         if ($result !== false) {
-            if ($requiredversion === self::VERSION_NONE) {
-                if ($result instanceof cache_ttl_wrapper) {
-                    if ($result->has_expired()) {
-                        $this->store->delete($parsedkey);
-                        $result = false;
-                    } else {
-                        $result = $result->data;
-                    }
-                }
+            // Look to see if there's a TTL wrapper. It might be inside a version wrapper.
+            if ($requiredversion !== self::VERSION_NONE) {
+                $ttlconsider = $result->data;
             } else {
-                if ($result->data instanceof cache_ttl_wrapper) {
-                    if ($result->data->has_expired()) {
-                        $this->store->delete($parsedkey);
-                        $result = false;
-                    } else {
-                        $result->data = $result->data->data;
-                    }
+                $ttlconsider = $result;
+            }
+            if ($ttlconsider instanceof cache_ttl_wrapper) {
+                if ($ttlconsider->has_expired()) {
+                    $this->store->delete($parsedkey);
+                    $result = false;
+                } else if ($requiredversion === self::VERSION_NONE) {
+                    // Use the data inside the TTL wrapper as the result.
+                    $result = $ttlconsider->data;
+                } else {
+                    // Put the data from the TTL wrapper directly inside the version wrapper.
+                    $result->data = $ttlconsider->data;
                 }
             }
             if ($usesstaticacceleration) {
