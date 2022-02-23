@@ -444,18 +444,19 @@ class cache implements cache_loader {
      *
      * @param mixed $result Result data
      * @param int $requiredversion Required version number or VERSION_NONE if there must be no version
-     * @return false|mixed False or the data
+     * @return bool True if version is current, false if not (or if result is false)
      * @throws \coding_exception If unexpected type of data (versioned vs non-versioned) is found
      */
-    protected static function check_version($result, int $requiredversion) {
+    protected static function check_version($result, int $requiredversion): bool {
         if ($requiredversion === self::VERSION_NONE) {
             if ($result instanceof \core_cache\version_wrapper) {
                 throw new \coding_exception('Unexpectedly found versioned cache entry');
             } else {
-                return $result;
+                // No version checks, so version is always correct.
+                return true;
             }
         } else {
-            // If result is false, not an object, or not a versiontag wrapper, return false.
+            // If there's no result, obviously it doesn't meet the required version.
             if (!$result) {
                 return false;
             }
@@ -466,8 +467,8 @@ class cache implements cache_loader {
             if ($result->version < $requiredversion) {
                 return false;
             }
-            // Return the result.
-            return $result;
+            // The version meets the requirement.
+            return true;
         }
     }
 
@@ -489,8 +490,7 @@ class cache implements cache_loader {
 
         if ($usesstaticacceleration) {
             $result = $this->static_acceleration_get($key);
-            $result = self::check_version($result, $requiredversion);
-            if ($result !== false) {
+            if ($result && self::check_version($result, $requiredversion)) {
                 if ($requiredversion === self::VERSION_NONE) {
                     return $result;
                 } else {
@@ -508,7 +508,7 @@ class cache implements cache_loader {
         if ($result) {
             // Check the result has at least the required version.
             try {
-                $result = self::check_version($result, $requiredversion);
+                $validversion = self::check_version($result, $requiredversion);
             } catch (\coding_exception $e) {
                 // If we get an exception because there is incorrect data in the cache (not
                 // versioned when it ought to be), delete it so this exception goes away next time.
@@ -519,11 +519,14 @@ class cache implements cache_loader {
                 throw $e;
             }
 
-            // If the result was too old, delete it immediately. This improves performance in the
-            // case when the cache item is large and there may be multiple clients simultaneously
-            // requesting it - they won't all have to do a megabyte of IO just in order to find
-            // that it's out of date.
-            if (!$result) {
+            if (!$validversion) {
+                // If the result was too old, don't use it.
+                $result = false;
+
+                // Also delete it immediately. This improves performance in the
+                // case when the cache item is large and there may be multiple clients simultaneously
+                // requesting it - they won't all have to do a megabyte of IO just in order to find
+                // that it's out of date.
                 $this->store->delete($parsedkey);
             }
         }
