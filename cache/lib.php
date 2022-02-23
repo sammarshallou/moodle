@@ -127,35 +127,6 @@ class cache_ttl_wrapper {
 }
 
 /**
- * Class wrapping information in the cache that is tagged with a version number.
- */
-class cache_version_wrapper {
-
-    /**
-     * The data being stored.
-     * @var mixed
-     */
-    public $data;
-
-    /**
-     * Version number for the data
-     * @var int
-     */
-    public $version;
-
-    /**
-     * Constructs a version tag wrapper.
-     *
-     * @param mixed $data
-     * @param int $version Version number
-     */
-    public function __construct($data, int $version) {
-        $this->data = $data;
-        $this->version = $version;
-    }
-}
-
-/**
  * A cache exception class. Just allows people to catch cache exceptions.
  *
  * @package    core

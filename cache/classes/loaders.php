@@ -439,7 +439,7 @@ class cache implements cache_loader {
     /**
      * Checks returned data to see if it matches the specified version number.
      *
-     * For versioned data, this returns the cache_version_wrapper object (or false). For other
+     * For versioned data, this returns the version_wrapper object (or false). For other
      * data, it returns the actual data (or false).
      *
      * @param mixed $result Result data
@@ -449,7 +449,7 @@ class cache implements cache_loader {
      */
     protected static function check_version($result, int $requiredversion) {
         if ($requiredversion === self::NO_VERSION) {
-            if ($result instanceof cache_version_wrapper) {
+            if ($result instanceof \core_cache\version_wrapper) {
                 throw new \coding_exception('Unexpectedly found versioned cache entry');
             } else {
                 return $result;
@@ -459,7 +459,7 @@ class cache implements cache_loader {
             if (!$result) {
                 return false;
             }
-            if (!($result instanceof cache_version_wrapper)) {
+            if (!($result instanceof \core_cache\version_wrapper)) {
                 throw new \coding_exception('Unexpectedly found non-versioned cache entry');
             }
             // If the result doesn't match the required version tag, return false.
