@@ -267,7 +267,7 @@ class modinfolib_test extends advanced_testcase {
         $modinfo = get_fast_modinfo($course->id);
         $cacherev = $DB->get_field('course', 'cacherev', array('id' => $course->id));
         $this->assertEquals($prevcacherev, $cacherev);
-        $cachedvalue = $cache->get_versioned($course->id, $cacherev)->data;
+        $cachedvalue = $cache->get_versioned($course->id, $cacherev);
         $this->assertNotEmpty($cachedvalue);
         $this->assertEquals($cacherev, $cachedvalue->cacherev);
         $this->assertEquals($cacherev, $modinfo->get_course()->cacherev);
@@ -281,7 +281,7 @@ class modinfolib_test extends advanced_testcase {
         $modinfo = get_fast_modinfo($course->id);
         $cacherev = $DB->get_field('course', 'cacherev', array('id' => $course->id));
         $this->assertEquals($prevcacherev, $cacherev);
-        $cachedvalue = $cache->get_versioned($course->id, $cacherev)->data;
+        $cachedvalue = $cache->get_versioned($course->id, $cacherev);
         $this->assertNotEmpty($cachedvalue);
         $this->assertEquals($cacherev, $cachedvalue->cacherev);
         $this->assertNotEmpty($cachedvalue->secretfield);
@@ -292,7 +292,7 @@ class modinfolib_test extends advanced_testcase {
         rebuild_course_cache($course->id);
         $cacherev = $DB->get_field('course', 'cacherev', array('id' => $course->id));
         $this->assertGreaterThan($prevcacherev, $cacherev);
-        $cachedvalue = $cache->get_versioned($course->id, $cacherev)->data;
+        $cachedvalue = $cache->get_versioned($course->id, $cacherev);
         $this->assertNotEmpty($cachedvalue);
         $this->assertEquals($cacherev, $cachedvalue->cacherev);
         $modinfo = get_fast_modinfo($course->id);
@@ -306,7 +306,7 @@ class modinfolib_test extends advanced_testcase {
         $modinfo = get_fast_modinfo($course->id);
         $cacherev = $DB->get_field('course', 'cacherev', array('id' => $course->id));
         $this->assertGreaterThan($prevcacherev, $cacherev);
-        $cachedvalue = $cache->get_versioned($course->id, $cacherev)->data;
+        $cachedvalue = $cache->get_versioned($course->id, $cacherev);
         $this->assertNotEmpty($cachedvalue);
         $this->assertEquals($cacherev, $cachedvalue->cacherev);
         $this->assertEquals($cacherev, $modinfo->get_course()->cacherev);
@@ -319,7 +319,7 @@ class modinfolib_test extends advanced_testcase {
         $this->assertEmpty($cache->get_versioned($course->id, $cacherev));
         // Rebuild again.
         $modinfo = get_fast_modinfo($course->id);
-        $cachedvalue = $cache->get_versioned($course->id, $cacherev)->data;
+        $cachedvalue = $cache->get_versioned($course->id, $cacherev);
         $this->assertNotEmpty($cachedvalue);
         $this->assertEquals($cacherev, $cachedvalue->cacherev);
         $this->assertEquals($cacherev, $modinfo->get_course()->cacherev);

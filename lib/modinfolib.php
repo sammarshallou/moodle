@@ -475,21 +475,20 @@ class course_modinfo {
         $cachecoursemodinfo = cache::make('core', 'coursemodinfo');
 
         // Retrieve modinfo from cache. If not present or cacherev mismatches, call rebuild and retrieve again.
-        $coursemodinfowithversion = $cachecoursemodinfo->get_versioned($course->id, $course->cacherev);
-        if (!$coursemodinfowithversion) {
+        $coursemodinfo = $cachecoursemodinfo->get_versioned($course->id, $course->cacherev);
+        if (!$coursemodinfo) {
             $lock = self::get_course_cache_lock($course->id);
             try {
                 // Only actually do the build if it's still needed after getting the lock (not if
                 // somebody else, who might have been holding the lock, built it already).
-                $coursemodinfowithversion = $cachecoursemodinfo->get_versioned($course->id, $course->cacherev);
-                if (!$coursemodinfowithversion) {
-                    $coursemodinfowithversion = self::inner_build_course_cache($course->id, $lock);
+                $coursemodinfo = $cachecoursemodinfo->get_versioned($course->id, $course->cacherev);
+                if (!$coursemodinfo) {
+                    $coursemodinfo = self::inner_build_course_cache($course, $lock);
                 }
             } finally {
                 $lock->release();
             }
         }
-        $coursemodinfo = $coursemodinfowithversion->data;
 
         // Set initial values
         $this->userid = $userid;
@@ -665,8 +664,7 @@ class course_modinfo {
 
         $lock = self::get_course_cache_lock($course->id);
         try {
-            $versionwrapper = self::inner_build_course_cache($course->id, $lock);
-            return $versionwrapper->data;
+            return self::inner_build_course_cache($course, $lock);
         } finally {
             $lock->release();
         }
@@ -675,17 +673,17 @@ class course_modinfo {
     /**
      * Called to build course cache when there is already a lock obtained.
      *
-     * @param int $courseid Course id
+     * @param stdClass $course object from DB table course
      * @param \core\lock\lock $lock Lock object - not actually used, just there to indicate you have a lock
-     * @return cache_version_wrapper Course object and version that has been stored in MUC
+     * @return stdClass Course object that has been stored in MUC
      */
-    protected static function inner_build_course_cache(int $courseid, \core\lock\lock $lock): cache_version_wrapper {
+    protected static function inner_build_course_cache($course, \core\lock\lock $lock) {
         global $DB, $CFG;
         require_once("{$CFG->dirroot}/course/lib.php");
 
         // Always reload the course object from database to ensure we have the latest possible
         // value for cacherev.
-        $course = $DB->get_record('course', ['id' => $courseid],
+        $course = $DB->get_record('course', ['id' => $course->id],
                 implode(',', array_merge(['id'], self::$cachedfields)), MUST_EXIST);
 
         // Retrieve all information about activities and sections.
@@ -697,7 +695,8 @@ class course_modinfo {
         }
         // Set the accumulated activities and sections information in cache, together with cacherev.
         $cachecoursemodinfo = cache::make('core', 'coursemodinfo');
-        return $cachecoursemodinfo->set_versioned($course->id, $course->cacherev, $coursemodinfo);
+        $cachecoursemodinfo->set_versioned($course->id, $course->cacherev, $coursemodinfo);
+        return $coursemodinfo;
     }
 }
 
