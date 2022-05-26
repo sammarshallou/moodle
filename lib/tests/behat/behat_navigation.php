@@ -1013,6 +1013,15 @@ class behat_navigation extends behat_base {
         $this->execute('behat_general::i_click_on_in_the',
             [$link, 'link', '.primary-navigation .moremenu.navigation', 'css_element']
         );
+        // In Firefox on some setups, this step is necessary otherwise it won't wait for the
+        // page to load before trying to find the link.
+        if ($this->running_javascript()) {
+            // Wait until we're definitely on the right page.
+            $this->getSession()->wait(self::get_extended_timeout() * 1000,
+                    'document.body.id == "page-admin-search"');
+            // Now wait until it loads completely.
+            $this->execute('behat_general::wait_until_the_page_is_ready', array());
+        }
     }
 
     /**
