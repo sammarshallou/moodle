@@ -374,8 +374,21 @@ function edit_module_post_actions($moduleinfo, $course) {
     }
 
     rebuild_course_cache($course->id, true);
+
     if ($hasgrades) {
-        grade_regrade_final_grades($course->id);
+        // If regrading will be slow, and this is happening in response to front-end UI...
+        if (!empty($moduleinfo->canregradelater) && grade_needs_regrade_progress_bar($course->id)) {
+            // And if it actually needs regrading...
+            $courseitem = grade_item::fetch_course_item($course->id);
+            if ($courseitem->needsupdate) {
+                // Then don't do it as part of this form save, do it on an extra web request with a
+                // progress bar.
+                $moduleinfo->needsregradelater = true;
+            }
+        } else {
+            // Regrade now.
+            grade_regrade_final_grades($course->id);
+        }
     }
 
     // To be removed (deprecated) with MDL-67526 (both lines).
