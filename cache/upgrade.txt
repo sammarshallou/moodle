@@ -1,5 +1,12 @@
 This files describes API changes in /cache/stores/* - cache store plugins.
 Information provided here is intended especially for developers.
+
+=== 4.3 ===
+* The acquire_lock function within cache loaders now throws an exception if it fails to obtain the
+  lock after a timeout, instead of returning false.
+* When caches are configured to apply automatic locking, all methods throw exceptions (instead of
+  returning false or partial values) if any locks cannot be obtained after a timeout.
+
 === 4.2 ===
 * The memcached cachestore has been removed.
 * The mongodb cachestore has been removed.

@@ -882,14 +882,23 @@ class cache_test extends \advanced_testcase {
             'component' => 'phpunit',
             'area' => 'lockingtest'
         ));
+        // Configure the lock timeout so the test doesn't take too long to run.
+        $instance->phpunit_edit_store_config('default_application', ['lockwait' => 2]);
         $cache1 = cache::make('phpunit', 'lockingtest');
         $cache2 = clone($cache1);
 
         $this->assertTrue($cache1->set('testkey', 'test data'));
         $this->assertTrue($cache2->set('testkey', 'test data'));
 
-        $this->assertTrue($cache1->acquire_lock('testkey'));
-        $this->assertFalse($cache2->acquire_lock('testkey'));
+        $cache1->acquire_lock('testkey');
+        try {
+            $cache2->acquire_lock('testkey');
+            $this->fail();
+        } catch (\moodle_exception $e) {
+            // Check the right exception message, and debug info mentions the store type.
+            $this->assertMatchesRegularExpression('~Unable to acquire a lock.*cachestore_file.*~',
+                    $e->getMessage());
+        }
 
         $this->assertTrue($cache1->check_lock_state('testkey'));
         $this->assertFalse($cache2->check_lock_state('testkey'));
@@ -2109,6 +2118,77 @@ class cache_test extends \advanced_testcase {
         $this->assertEquals(array('b' => 'B', 'c' => 'C'), $cache->get_many(array('b', 'c')));
         $this->assertTrue($cache->delete('a'));
         $this->assertFalse($cache->has('a'));
+    }
+
+    /**
+     * Tests the automatic locking on read and write when the lock is not available.
+     */
+    public function test_application_locking_blocked() {
+        $instance = cache_config_testing::instance(true);
+        $instance->phpunit_add_definition('phpunit/test_application_locking', array(
+            'mode' => cache_store::MODE_APPLICATION,
+            'component' => 'phpunit',
+            'area' => 'test_application_locking',
+            'staticacceleration' => true,
+            'staticaccelerationsize' => 1,
+            'requirelockingread' => true,
+            'requirelockingwrite' => true
+        ));
+        // Test should only wait 1 second for the lock to become available.
+        $instance->phpunit_edit_store_config('default_application', ['lockwait' => 1]);
+        $cache = cache::make('phpunit', 'test_application_locking');
+        $cache2 = clone($cache);
+
+        // Set items a and b.
+        $this->assertTrue($cache->set('a', 'A'));
+        $this->assertTrue($cache->set('b', 'B'));
+
+        // Lock item b from one cache.
+        $cache->acquire_lock('b');
+        try {
+            // Try to write both items from the other cache. Only the unlocked one should work.
+            $this->assertTrue($cache2->set('a', 'A*'));
+            try {
+                $cache2->set('b', 'B*');
+                $this->fail();
+            } catch (\moodle_exception $e) {
+                $this->assertStringContainsString('Unable to acquire a lock', $e->getMessage());
+            }
+
+            // Try to write both at once using set_many. Neither write should take effect (values
+            // checked next).
+            try {
+                $cache2->set_many(['a' => 'A**', 'b' => 'B**']);
+                $this->fail();
+            } catch (\moodle_exception $e) {
+                $this->assertStringContainsString('Unable to acquire a lock', $e->getMessage());
+            }
+
+            // Try to read both items. Only the unlocked one should work.
+            $this->assertEquals('A*', $cache2->get('a'));
+            try {
+                $cache2->get('b');
+                $this->fail();
+            } catch (\moodle_exception $e) {
+                $this->assertStringContainsString('Unable to acquire a lock', $e->getMessage());
+            }
+
+            // Try to read both at once using get_many.
+            try {
+                $cache2->get_many(['a', 'b']);
+                $this->fail();
+            } catch (\moodle_exception $e) {
+                $this->assertStringContainsString('Unable to acquire a lock', $e->getMessage());
+            }
+        } finally {
+            $cache->release_lock('b');
+        }
+
+        // There is no lock any more so now it should work.
+        $this->assertTrue($cache2->set('b', 'B*'));
+        $this->assertEquals('B*', $cache2->get('b'));
+        $cache2->set_many(['a' => 'A**', 'b' => 'B**']);
+        $this->assertEquals(['a' => 'A**', 'b' => 'B**'], $cache2->get_many(['a', 'b']));
     }
 
     /**
