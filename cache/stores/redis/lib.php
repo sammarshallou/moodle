@@ -119,6 +119,12 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
      */
     protected $lastiobytes = 0;
 
+    /** @var int Maximum number of seconds to wait for a lock before giving up. */
+    protected $lockwait = 60;
+
+    /** @var int Timeout before lock is automatically released (in case of crashes) */
+    protected $locktimeout = 600;
+
     /**
      * Determines if the requirements for this type of store are met.
      *
@@ -182,6 +188,12 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
         }
         $password = !empty($configuration['password']) ? $configuration['password'] : '';
         $prefix = !empty($configuration['prefix']) ? $configuration['prefix'] : '';
+        if (array_key_exists('lockwait', $configuration)) {
+            $this->lockwait = (int)$configuration['lockwait'];
+        }
+        if (array_key_exists('locktimeout', $configuration)) {
+            $this->locktimeout = (int)$configuration['locktimeout'];
+        }
         $this->redis = $this->new_redis($configuration['server'], $prefix, $password);
     }
 
@@ -527,7 +539,26 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
      * @return bool True if the lock was acquired, false if it was not.
      */
     public function acquire_lock($key, $ownerid) {
-        return $this->redis->setnx($key, $ownerid);
+        $timelimit = time() + $this->lockwait;
+        do {
+            // If the key doesn't already exist, grab it and return true.
+            if ($this->redis->setnx($key, $ownerid . ':' . time())) {
+                return true;
+            }
+            // Check the current one in case it's timed out.
+            $current = $this->redis->get($key);
+            if ($current !== false) {
+                [, $acquiretime] = explode(':', $current);
+                if (time() > (int)$acquiretime + $this->locktimeout) {
+                    // Overwrite the lock with our id and time.
+                    $this->redis->set($key, $ownerid . ':' . time());
+                    return true;
+                }
+            }
+            // Wait 1 second then retry.
+            sleep(1);
+        } while (time() < $timelimit);
+        return false;
     }
 
     /**
@@ -541,11 +572,12 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
      */
     public function check_lock_state($key, $ownerid) {
         $result = $this->redis->get($key);
-        if ($result === $ownerid) {
-            return true;
-        }
         if ($result === false) {
             return null;
+        }
+        [$existingid, ] = explode(':', $result);
+        if ($existingid === (string)$ownerid) {
+            return true;
         }
         return false;
     }
