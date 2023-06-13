@@ -1112,6 +1112,7 @@ class page_requirements_manager {
         if ($ondomready) {
             $jscode = "Y.on('domready', function() { $jscode });";
         }
+        $jscode = 'require(["core/first"], function() {' . $jscode . '});';
         $this->jsinitcode[] = $jscode;
     }
 
