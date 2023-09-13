@@ -1675,9 +1675,13 @@ class cache_application extends cache implements cache_loader_with_locking {
      * @return bool Returns true if the lock could be acquired, false otherwise.
      */
     public function acquire_lock($key) {
-        global $CFG;
+        $gotparentlock = false;
         if ($this->get_loader() !== false) {
-            $this->get_loader()->acquire_lock($key);
+            if (!$this->get_loader()->acquire_lock($key)) {
+                return false;
+            }
+            // Store the key because the key variable is overwritten below.
+            $gotparentlock = $key;
         }
         $key = cache_helper::hash_key($key, $this->get_definition());
         $before = microtime(true);
@@ -1693,6 +1697,12 @@ class cache_application extends cache implements cache_loader_with_locking {
             if (MDL_PERF || $this->perfdebug) {
                 \core\lock\timing_wrapper_lock_factory::record_lock_data($after, $before,
                         $this->get_definition()->get_id(), $key, $lock, $this->get_identifier() . $key);
+            }
+        } else {
+            // If we successfully got the parent lock, but are now failing to get this lock, then we should release
+            // the parent one.
+            if ($gotparentlock) {
+                $this->get_loader()->release_lock($gotparentlock);
             }
         }
         return $lock;
