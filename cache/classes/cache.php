@@ -614,9 +614,13 @@ class cache implements loader_interface {
             try {
                 // Only try to acquire a lock for this cache if we do not already have one.
                 if (!empty($this->requirelockingbeforewrite) && !$this->check_lock_state($key)) {
-                    $this->acquire_lock($key);
+                    // Lock only in this store because we're going to set only in this store.
+                    // Note: The acquire_lock_implementation method is only available in the cache_application
+                    // subclass, but that is also the only one which sets requirelockingbeforewrite.
+                    $this->acquire_lock_implementation($key, false);
                     $lock = true;
                 }
+                // Set only in this store.
                 if ($requiredversion === self::VERSION_NONE) {
                     $this->set_implementation($key, self::VERSION_NONE, $result, false);
                 } else {
@@ -624,7 +628,7 @@ class cache implements loader_interface {
                 }
             } finally {
                 if ($lock) {
-                    $this->release_lock($key);
+                    $this->release_lock_implementation($key, false);
                 }
             }
         }
@@ -734,18 +738,23 @@ class cache implements loader_interface {
                 }
                 foreach ($resultmissing as $key => $value) {
                     $result[$keysparsed[$key]] = $value;
-                    $lock = false;
-                    try {
-                        if (!empty($this->requirelockingbeforewrite)) {
-                            $this->acquire_lock($key);
-                            $lock = true;
-                        }
-                        if ($value !== false) {
-                            $this->set($key, $value);
-                        }
-                    } finally {
-                        if ($lock) {
-                            $this->release_lock($key);
+                    if ($value !== false) {
+                        // Set it to the store if we got it from the loader/datasource. Only set to
+                        // this direct store; parent method will set it to other stores if needed.
+                        $lock = false;
+                        try {
+                            // Only try to acquire a lock for this cache if we do not already have one.
+                            if (!empty($this->requirelockingbeforewrite) && !$this->check_lock_state($key)) {
+                                // Lock only in this store because we're going to set only in this store.
+                                $this->acquire_lock_implementation($key, false);
+                                $lock = true;
+                            }
+                            // Set only in this store.
+                            $this->set_implementation($key, self::VERSION_NONE, $value, false);
+                        } finally {
+                            if ($lock) {
+                                $this->release_lock_implementation($key, false);
+                            }
                         }
                     }
                 }
