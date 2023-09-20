@@ -127,20 +127,33 @@ class application_cache extends cache implements loader_with_locking_interface {
     /**
      * Acquires a lock on the given key.
      *
-     * This is done automatically if the definition requires it.
-     * It is recommended to use a definition if you want to have locking although it is possible to do locking without having
-     * it required by the definition.
-     * The problem with such an approach is that you cannot ensure that code will consistently use locking. You will need to
-     * rely on the integrators review skills.
+     * Some cache definition require locking before you set a key - the requirelockingbeforewrite option. It is also
+     * possible to use the locking mechanism on all caches.
      *
      * @param string|int $key The key as given to get|set|delete
      * @return bool Always returns true
      * @throws moodle_exception If the lock cannot be obtained
      */
     public function acquire_lock($key) {
+        $this->acquire_lock_implementation($key);
+        return true;
+    }
+
+    /**
+     * Acquires a lock on the given key.
+     *
+     * This protected implementation includes the ability to acquire a lock only on this level
+     * and not on any parent caches, which is used internally and not available in the public
+     * API.
+     *
+     * @param string|int $key The key as given to get|set|delete
+     * @param bool $lockparent If true (default), also locks parent cache
+     * @throws moodle_exception If the lock cannot be obtained
+     */
+    protected function acquire_lock_implementation($key, bool $lockparent = true): void {
         $releaseparent = false;
         try {
-            if ($this->get_loader() !== false) {
+            if ($this->get_loader() !== false && $lockparent) {
                 $this->get_loader()->acquire_lock($key);
                 // We need to release this lock later if the lock is not successful.
                 $releaseparent = true;
@@ -167,7 +180,6 @@ class application_cache extends cache implements loader_with_locking_interface {
                     );
                 }
                 $releaseparent = false;
-                return true;
             } else {
                 throw new moodle_exception(
                     'ex_unabletolock',
@@ -212,6 +224,17 @@ class application_cache extends cache implements loader_with_locking_interface {
      * @return bool True if the operation succeeded, false otherwise.
      */
     public function release_lock($key) {
+        return $this->release_lock_implementation($key);
+    }
+
+    /**
+     * Releases the lock this cache has on the given key.
+     *
+     * @param string|int $key
+     * @param bool $releaseparent If true, also releases parent lock
+     * @return bool True if the operation succeeded, false otherwise.
+     */
+    protected function release_lock_implementation($key, $releaseparent = true): bool {
         $loaderkey = $key;
         $key = helper::hash_key($key, $this->get_definition());
         if ($this->nativelocking) {
@@ -226,8 +249,10 @@ class application_cache extends cache implements loader_with_locking_interface {
                 \core\lock\timing_wrapper_lock_factory::record_lock_released_data($this->get_identifier() . $key);
             }
         }
-        if ($this->get_loader() !== false) {
-            $this->get_loader()->release_lock($loaderkey);
+        if ($this->get_loader() !== false && $releaseparent) {
+            if (!$this->get_loader()->release_lock($loaderkey)) {
+                $released = false;
+            }
         }
         return $released;
     }
