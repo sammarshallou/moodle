@@ -624,9 +624,11 @@ class cache implements cache_loader {
             try {
                 // Only try to acquire a lock for this cache if we do not already have one.
                 if (!empty($this->requirelockingbeforewrite) && !$this->check_lock_state($key)) {
-                    $this->acquire_lock($key);
+                    // Lock only in this store because we're going to set only in this store.
+                    $this->acquire_lock_implementation($key, false);
                     $lock = true;
                 }
+                // Set only in this store.
                 if ($requiredversion === self::VERSION_NONE) {
                     $this->set_implementation($key, self::VERSION_NONE, $result, false);
                 } else {
@@ -634,7 +636,7 @@ class cache implements cache_loader {
                 }
             } finally {
                 if ($lock) {
-                    $this->release_lock($key);
+                    $this->release_lock_implementation($key, false);
                 }
             }
         }
@@ -744,18 +746,23 @@ class cache implements cache_loader {
                 }
                 foreach ($resultmissing as $key => $value) {
                     $result[$keysparsed[$key]] = $value;
-                    $lock = false;
-                    try {
-                        if (!empty($this->requirelockingbeforewrite)) {
-                            $this->acquire_lock($key);
-                            $lock = true;
-                        }
-                        if ($value !== false) {
-                            $this->set($key, $value);
-                        }
-                    } finally {
-                        if ($lock) {
-                            $this->release_lock($key);
+                    if ($value !== false) {
+                        // Set it to the store if we got it from the loader/datasource. Only set to
+                        // this direct store; parent method will set it to other stores if needed.
+                        $lock = false;
+                        try {
+                            // Only try to acquire a lock for this cache if we do not already have one.
+                            if (!empty($this->requirelockingbeforewrite) && !$this->check_lock_state($key)) {
+                                // Lock only in this store because we're going to set only in this store.
+                                $this->acquire_lock_implementation($key, false);
+                                $lock = true;
+                            }
+                            // Set only in this store.
+                            $this->set_implementation($key, self::VERSION_NONE, $value, false);
+                        } finally {
+                            if ($lock) {
+                                $this->release_lock_implementation($key, false);
+                            }
                         }
                     }
                 }
@@ -1673,20 +1680,33 @@ class cache_application extends cache implements cache_loader_with_locking {
     /**
      * Acquires a lock on the given key.
      *
-     * This is done automatically if the definition requires it.
-     * It is recommended to use a definition if you want to have locking although it is possible to do locking without having
-     * it required by the definition.
-     * The problem with such an approach is that you cannot ensure that code will consistently use locking. You will need to
-     * rely on the integrators review skills.
+     * Some cache definition require locking before you set a key - the requirelockingbeforewrite option. It is also
+     * possible to use the locking mechanism on all caches.
      *
      * @param string|int $key The key as given to get|set|delete
      * @return bool Always returns true
      * @throws moodle_exception If the lock cannot be obtained
      */
     public function acquire_lock($key) {
+        $this->acquire_lock_implementation($key);
+        return true;
+    }
+
+    /**
+     * Acquires a lock on the given key.
+     *
+     * This protected implementation includes the abililty to acquire a lock only on this level
+     * and not on any parent caches, which is used internally and not availablein the public
+     * API.
+     *
+     * @param string|int $key The key as given to get|set|delete
+     * @param bool $lockparent If true (default), also locks parent cache
+     * @throws moodle_exception If the lock cannot be obtained
+     */
+    protected function acquire_lock_implementation($key, bool $lockparent = true): void {
         $releaseparent = false;
         try {
-            if ($this->get_loader() !== false) {
+            if ($this->get_loader() !== false && $lockparent) {
                 $this->get_loader()->acquire_lock($key);
                 // We need to release this lock later if the lock is not successful.
                 $releaseparent = true;
@@ -1707,7 +1727,6 @@ class cache_application extends cache implements cache_loader_with_locking {
                         $this->get_definition()->get_id(), $hashedkey, $lock, $this->get_identifier() . $hashedkey);
                 }
                 $releaseparent = false;
-                return true;
             } else {
                 throw new moodle_exception('ex_unabletolock', 'cache', '', null,
                     'store: ' . get_class($this->get_store()) . ', lock: ' . $hashedkey);
@@ -1747,6 +1766,17 @@ class cache_application extends cache implements cache_loader_with_locking {
      * @return bool True if the operation succeeded, false otherwise.
      */
     public function release_lock($key) {
+        return $this->release_lock_implementation($key);
+    }
+
+    /**
+     * Releases the lock this cache has on the given key
+     *
+     * @param string|int $key
+     * @param bool $releaseparent If true, also releases parent lock
+     * @return bool True if the operation succeeded, false otherwise.
+     */
+    protected function release_lock_implementation($key, $releaseparent = true): bool {
         $loaderkey = $key;
         $key = cache_helper::hash_key($key, $this->get_definition());
         if ($this->nativelocking) {
@@ -1761,8 +1791,10 @@ class cache_application extends cache implements cache_loader_with_locking {
                 \core\lock\timing_wrapper_lock_factory::record_lock_released_data($this->get_identifier() . $key);
             }
         }
-        if ($this->get_loader() !== false) {
-            $this->get_loader()->release_lock($loaderkey);
+        if ($this->get_loader() !== false && $releaseparent) {
+            if (!$this->get_loader()->release_lock($loaderkey)) {
+                $released = false;
+            }
         }
         return $released;
     }
