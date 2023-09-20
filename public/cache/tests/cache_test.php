@@ -909,6 +909,237 @@ final class cache_test extends \advanced_testcase {
     }
 
     /**
+     * Tests that when you get an item from a 2-layer cache, where it is present in the shared but
+     * not local cache, the system correctly locks the cache before writing it to local cache if
+     * required.
+     */
+    public function test_automatic_locking_multiple_layers_get(): void {
+        $instance = cache_config_testing::instance(true);
+        $instance->phpunit_add_definition('phpunit/test_application_locking', [
+            'mode' => store::MODE_APPLICATION,
+            'component' => 'phpunit',
+            'area' => 'test_application_locking',
+            'staticacceleration' => true,
+            'staticaccelerationsize' => 1,
+            'requirelockingbeforewrite' => true,
+        ], false);
+        $instance->phpunit_add_file_store('phpunittest1');
+        $instance->phpunit_add_file_store('phpunittest2');
+        $instance->phpunit_add_definition_mapping('phpunit/test_application_locking', 'phpunittest1', 1);
+        $instance->phpunit_add_definition_mapping('phpunit/test_application_locking', 'phpunittest2', 2);
+
+        $cache = cache::make('phpunit', 'test_application_locking');
+
+        // We need to get the individual stores so as to set up the right behaviour here.
+        $ref = new \ReflectionClass('\cache');
+        $definitionprop = $ref->getProperty('definition');
+        $storeprop = $ref->getProperty('store');
+        $loaderprop = $ref->getProperty('loader');
+
+        $definition = $definitionprop->getValue($cache);
+        $localstore = $storeprop->getValue($cache);
+        $sharedcache = $loaderprop->getValue($cache);
+        $sharedstore = $storeprop->getValue($sharedcache);
+
+        // Set the lock waiting time to 1 second so it doesn't take forever to run the 'fail' test.
+        $ref = new \ReflectionClass('\cachestore_file');
+        $lockwaitprop = $ref->getProperty('lockwait');
+        $lockwaitprop->setValue($localstore, 1);
+
+        // The shared store contains the value, but local store does not.
+        $key = 'frog';
+        $hashedkey = helper::hash_key($key, $definition);
+        $sharedstore->set($hashedkey, 'kermit');
+
+        // A 'get' returns value from shared store...
+        $this->assertEquals('kermit', $cache->get($key));
+
+        // ...and value is set to local store now.
+        $this->assertEquals('kermit', $localstore->get($hashedkey));
+
+        // Continue testing with a different key.
+        $key = 'toad';
+        $hashedkey = helper::hash_key($key, $definition);
+        $sharedstore->set($hashedkey, 'mr');
+
+        // The same scenario also works if we already hold a lock on the value.
+        $cache->acquire_lock($key);
+        try {
+            $this->assertEquals('mr', $cache->get($key));
+        } finally {
+            $cache->release_lock($key);
+        }
+        $this->assertEquals('mr', $localstore->get($hashedkey));
+
+        // Continue testing with a different key.
+        $key = 'squirrel';
+        $hashedkey = helper::hash_key($key, $definition);
+        $sharedstore->set($hashedkey, 'nutkin');
+
+        // If somebody else holds a lock on the value, on the shared not local store, this is OK.
+        $sharedstore->acquire_lock($hashedkey, 'somebodyelse');
+        try {
+            $this->assertEquals('nutkin', $cache->get($key));
+        } finally {
+            $sharedstore->release_lock($hashedkey, 'somebodyelse');
+        }
+        $this->assertEquals('nutkin', $localstore->get($hashedkey));
+
+        // Continue testing with a different key.
+        $key = 'rabbit';
+        $hashedkey = helper::hash_key($key, $definition);
+        $sharedstore->set($hashedkey, 'peter');
+
+        // If somebody else holds a lock on the value, on the local store, it should fail.
+        $localstore->acquire_lock($hashedkey, 'somebodyelse');
+        try {
+            $cache->get($key);
+            $this->fail();
+        } catch (\moodle_exception $e) {
+            $this->assertStringContainsString('Unable to acquire a lock', $e->getMessage());
+        } finally {
+            $localstore->release_lock($hashedkey, 'somebodyelse');
+        }
+        $this->assertEquals(false, $localstore->get($hashedkey));
+    }
+
+    /**
+     * Tests that when you get_many items from a 2-layer cache, where it is present in the shared but
+     * not local cache, the system correctly locks the cache before writing it to local cache if
+     * required.
+     */
+    public function test_automatic_locking_multiple_layers_get_many(): void {
+        $instance = cache_config_testing::instance(true);
+        $instance->phpunit_add_definition('phpunit/test_application_locking', [
+            'mode' => store::MODE_APPLICATION,
+            'component' => 'phpunit',
+            'area' => 'test_application_locking',
+            'staticacceleration' => true,
+            'staticaccelerationsize' => 1,
+            'requirelockingbeforewrite' => true,
+        ], false);
+        $instance->phpunit_add_file_store('phpunittest1');
+        $instance->phpunit_add_file_store('phpunittest2');
+        $instance->phpunit_add_definition_mapping('phpunit/test_application_locking', 'phpunittest1', 1);
+        $instance->phpunit_add_definition_mapping('phpunit/test_application_locking', 'phpunittest2', 2);
+
+        $cache = cache::make('phpunit', 'test_application_locking');
+
+        // We need to get the individual stores so as to set up the right behaviour here.
+        $ref = new \ReflectionClass('\cache');
+        $definitionprop = $ref->getProperty('definition');
+        $storeprop = $ref->getProperty('store');
+        $loaderprop = $ref->getProperty('loader');
+
+        $definition = $definitionprop->getValue($cache);
+        $localstore = $storeprop->getValue($cache);
+        $sharedcache = $loaderprop->getValue($cache);
+        $sharedstore = $storeprop->getValue($sharedcache);
+
+        // Set the lock waiting time to 1 second so it doesn't take forever to run the 'fail' test.
+        $ref = new \ReflectionClass('\cachestore_file');
+        $lockwaitprop = $ref->getProperty('lockwait');
+        $lockwaitprop->setValue($localstore, 1);
+
+        // Initialises a set of keys for testing.
+        // Param: int $index Index used as a suffix on key names.
+        // Returns: Array of hashed keys.
+        $initkeys = function (int $index) use ($definition, $sharedstore): array {
+            $keys = ['a' . $index, 'b' . $index, 'c' . $index];
+            $hashedkeys = [];
+            foreach ($keys as $key) {
+                $hashedkeys[$key] = helper::hash_key($key, $definition);
+            }
+            $sharedstore->set($hashedkeys['a' . $index], 'a');
+            $sharedstore->set($hashedkeys['c' . $index], 'c');
+            return $hashedkeys;
+        };
+        $hashedkeys = $initkeys(1);
+
+        // A 'get_many' returns value from shared store...
+        $this->assertEquals(
+            ['a1' => 'a', 'b1' => false, 'c1' => 'c'],
+            $cache->get_many(['a1', 'b1', 'c1']),
+        );
+
+        // ...and values are set to local store now.
+        $this->assertEquals('a', $localstore->get($hashedkeys['a1']));
+        $this->assertEquals('c', $localstore->get($hashedkeys['c1']));
+
+        // Continue testing with different keys.
+        $hashedkeys = $initkeys(2);
+
+        // The same scenario also works if we already hold a lock on all values.
+        $cache->acquire_lock('a2');
+        $cache->acquire_lock('b2');
+        $cache->acquire_lock('c2');
+        try {
+            $this->assertEquals(
+                ['a2' => 'a', 'b2' => false, 'c2' => 'c'],
+                $cache->get_many(['a2', 'b2', 'c2']),
+            );
+        } finally {
+            $cache->release_lock('c2');
+            $cache->release_lock('b2');
+            $cache->release_lock('a2');
+        }
+        $this->assertEquals('a', $localstore->get($hashedkeys['a2']));
+        $this->assertEquals('c', $localstore->get($hashedkeys['c2']));
+
+        // Continue testing with different keys.
+        $hashedkeys = $initkeys(3);
+
+        // If somebody else holds a lock on the values, on the shared not local store, this is OK.
+        $sharedstore->acquire_lock($hashedkeys['a3'], 'somebodyelse');
+        $sharedstore->acquire_lock($hashedkeys['b3'], 'somebodyelse');
+        $sharedstore->acquire_lock($hashedkeys['c3'], 'somebodyelse');
+        try {
+            $this->assertEquals(
+                ['a3' => 'a', 'b3' => false, 'c3' => 'c'],
+                $cache->get_many(['a3', 'b3', 'c3']),
+            );
+        } finally {
+            $sharedstore->release_lock($hashedkeys['c3'], 'somebodyelse');
+            $sharedstore->release_lock($hashedkeys['b3'], 'somebodyelse');
+            $sharedstore->release_lock($hashedkeys['a3'], 'somebodyelse');
+        }
+        $this->assertEquals('a', $localstore->get($hashedkeys['a3']));
+        $this->assertEquals('c', $localstore->get($hashedkeys['c3']));
+
+        // Continue testing with different keys.
+        $hashedkeys = $initkeys(4);
+
+        // If somebody else holds a lock on the C value, on the local store, it will fail.
+        $localstore->acquire_lock($hashedkeys['c4'], 'somebodyelse');
+        try {
+            $cache->get_many(['a4', 'b4', 'c4']);
+            $this->fail();
+        } catch (\moodle_exception $e) {
+            $this->assertStringContainsString('Unable to acquire a lock', $e->getMessage());
+        } finally {
+            $localstore->release_lock($hashedkeys['c4'], 'somebodyelse');
+        }
+        $this->assertEquals('a', $localstore->get($hashedkeys['a4']));
+        $this->assertEquals(false, $localstore->get($hashedkeys['c4']));
+
+        // Continue testing with different keys.
+        $hashedkeys = $initkeys(5);
+
+        // If somebody else holds a lock on the B value, on the local store, it doesn't care.
+        $localstore->acquire_lock($hashedkeys['b5'], 'somebodyelse');
+        try {
+            $this->assertEquals(
+                ['a5' => 'a', 'b5' => false, 'c5' => 'c'],
+                $cache->get_many(['a5', 'b5', 'c5']),
+            );
+        } finally {
+            $localstore->release_lock($hashedkeys['b5'], 'somebodyelse');
+        }
+        $this->assertEquals('a', $localstore->get($hashedkeys['a5']));
+        $this->assertEquals('c', $localstore->get($hashedkeys['c5']));
+    }
+
+    /**
      * Tests application cache event invalidation
      */
     public function test_application_event_invalidation(): void {
