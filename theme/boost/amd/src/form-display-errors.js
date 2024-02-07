@@ -73,14 +73,17 @@ define(['jquery', 'core_form/events'], function($, FormEvent) {
                         $(element).attr('aria-describedby', describedByIds.join(" "));
                     }
                     $(element).attr('aria-invalid', true);
-                    feedback.attr('tabindex', 0);
-                    feedback.html(msg);
 
-                    // Only display and focus when the error was not already visible.
-                    // This is so that, when tabbing around the form, you don't get stuck.
+                    // Use aria-live to ensure screenreader gets this message. Timeout may be
+                    // required when adding aria-live dynamically.
+                    feedback.attr('aria-live', 'assertive');
+                    setTimeout(() => {
+                        feedback.html(msg);
+                    }, 0);
+
+                    // Display if the error was not already visible.
                     if (!feedback.is(':visible')) {
                         feedback.show();
-                        feedback.focus();
                     }
 
                 } else {
@@ -103,6 +106,7 @@ define(['jquery', 'core_form/events'], function($, FormEvent) {
                             $(element).removeAttr('aria-describedby');
                         }
                         $(element).attr('aria-invalid', false);
+                        feedback.removeAttr('aria-live');
                         feedback.hide();
                     }
                 }
