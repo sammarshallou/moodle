@@ -28,6 +28,10 @@ class fields {
     const PROFILE_FIELD_PREFIX = 'profile_field_';
     /** @var string Regular expression used to match a field name against the prefix */
     const PROFILE_FIELD_REGEX = '~^' . self::PROFILE_FIELD_PREFIX . '(.*)$~';
+    /** @var string Prefix used to identify icon fields */
+    const ICON_FIELD_PREFIX = 'icon_f2_';
+    /** @var string Regular expression used to match a field name against the prefix */
+    const ICON_FIELD_REGEX = '~^' . self::ICON_FIELD_PREFIX . '(.*)$~';
 
     /** @var int All fields required to display user's identity, based on server configuration */
     const PURPOSE_IDENTITY = 0;
@@ -218,6 +222,7 @@ class fields {
      *
      * The results may include basic field names (columns from the 'user' database table) and,
      * unless turned off, custom profile field names in the format 'profile_field_myfield'.
+     * Also file fields in the format 'icon_f2_field'.
      *
      * You should not rely on the order of fields, with one exception: if there is an id field
      * it will be returned first. This is in case it is used with get_records calls.
@@ -244,7 +249,7 @@ class fields {
                 }
             }
             if ($this->purposes[self::PURPOSE_USERPIC]) {
-                foreach (self::get_picture_fields() as $field) {
+                foreach (self::get_picture_fields($this->allowcustom) as $field) {
                     if (!array_key_exists($field, $this->fields)) {
                         $this->fields[$field] = [];
                     }
@@ -310,13 +315,21 @@ class fields {
     /**
      * Gets fields required for user pictures.
      *
-     * The results include only basic field names (columns from the 'user' database table).
+     * The results include only basic field names (columns from the 'user' database table)
+     * unless you specify withfile in which case it will also include file fields.
      *
+     * @param bool $withf2 If set, also includes icon file information
      * @return string[] All fields required for user pictures
      */
-    public static function get_picture_fields(): array {
-        return ['id', 'picture', 'firstname', 'lastname', 'firstnamephonetic', 'lastnamephonetic',
+    public static function get_picture_fields(bool $withf2 = false): array {
+        $basic = ['id', 'picture', 'firstname', 'lastname', 'firstnamephonetic', 'lastnamephonetic',
                 'middlename', 'alternatename', 'imagealt', 'email'];
+        if ($withf2) {
+            return array_merge($basic, [self::ICON_FIELD_PREFIX . 'id',
+                self::ICON_FIELD_PREFIX . 'contenthash', self::ICON_FIELD_PREFIX .'filename']);
+        } else {
+            return $basic;
+        }
     }
 
     /**
@@ -503,7 +516,8 @@ class fields {
             // so we can refer to the fields by name alone.
             $gotcustomfields = false;
             foreach ($fields as $field) {
-                if (preg_match(self::PROFILE_FIELD_REGEX, $field, $matches)) {
+                if (preg_match(self::PROFILE_FIELD_REGEX, $field) ||
+                        preg_match(self::ICON_FIELD_REGEX, $field)) {
                     $gotcustomfields = true;
                     break;
                 }
@@ -515,6 +529,8 @@ class fields {
             }
         }
 
+        $contextalias = '';
+        $filesalias = '';
         foreach ($fields as $field) {
             if (preg_match(self::PROFILE_FIELD_REGEX, $field, $matches)) {
                 // Custom profile field.
@@ -538,6 +554,31 @@ class fields {
                                  AND $dataalias.userid = {$usertable}id";
                 // For Oracle we need to convert the field into a usable format.
                 $fieldsql = $DB->sql_compare_text($dataalias . '.data', 255);
+                $selects .= ", $fieldsql AS $prefix$field";
+                $mappings[$field] = $fieldsql;
+            } else if (preg_match(self::ICON_FIELD_REGEX, $field, $matches)) {
+                // Custom icon field.
+                $fieldname = $matches[1];
+
+                // If we have not yet done the join to files table then we need it now.
+                if ($contextalias === '') {
+                    $contextalias = 'uf' . $unique . 'cx';
+                    $filesalias = 'uf' . $unique . 'fs';
+                    $contextlevel = CONTEXT_USER;
+
+                    $joins .= " JOIN {context} $contextalias ON
+                                     $contextalias.instanceid = {$usertable}id 
+                                     AND $contextalias.contextlevel = $contextlevel
+                           LEFT JOIN {files} $filesalias ON
+                                     $filesalias.contextid = $contextalias.id
+                                     AND $filesalias.component = 'user'
+                                     AND $filesalias.filearea = 'icon'
+                                     AND $filesalias.itemid = 0
+                                     AND $filesalias.filepath = '/'
+                                     AND $filesalias.filename LIKE 'f2.%'";
+                }
+
+                $fieldsql = "$filesalias.$fieldname";
                 $selects .= ", $fieldsql AS $prefix$field";
                 $mappings[$field] = $fieldsql;
             } else {

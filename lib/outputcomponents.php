@@ -349,6 +349,16 @@ class user_picture implements renderable {
             $size = (int)$this->size;
         }
 
+        // If the user object contains file information then use 'fast file' to return it.
+        if ($filename === 'f2' && !empty($this->user->icon_f2_id)) {
+            $url = \core_files\fast_file::get_url('core_user', 'icon', '/' . $this->user->icon_f2_filename,
+                $this->user->icon_f2_id, $this->user->icon_f2_contenthash, false);
+            if ($url) {
+                return $url;
+            }
+            // I don't know why it would fail, but if it does, let's just use previous behaviour.
+        }
+
         $defaulturl = $renderer->image_url('u/'.$filename); // default image
 
         if ((!empty($CFG->forcelogin) and !isloggedin()) ||
