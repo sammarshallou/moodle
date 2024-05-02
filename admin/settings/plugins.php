@@ -751,6 +751,12 @@ if ($hassiteconfig) {
     $ADMIN->add('searchplugins', new admin_externalpage('searchareas', new lang_string('searchareas', 'admin'),
         new moodle_url('/admin/searchareas.php')));
 
+    // Only add reindex page if search indexing is enabled.
+    if (\core_search\manager::is_indexing_enabled()) {
+        $ADMIN->add('searchplugins', new admin_externalpage('searchreindex', new lang_string('reindexcourse', 'search'),
+            new moodle_url('/search/reindex.php')));
+    }
+
     core_collator::asort_objects_by_property($pages, 'visiblename');
     foreach ($pages as $page) {
         $ADMIN->add('searchplugins', $page);

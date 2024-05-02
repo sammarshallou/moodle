@@ -1752,6 +1752,12 @@ $functions = array(
         'type' => 'read',
         'ajax' => true
     ),
+    'core_search_get_course_activities' => [
+        'classname' => '\core_search\external\get_course_activities',
+        'description' => 'Gets activities on a particular course',
+        'type' => 'read',
+        'ajax' => true
+    ],
     'core_search_get_results' => [
         'classname' => '\core_search\external\get_results',
         'description' => 'Get search results.',
