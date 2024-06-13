@@ -45,11 +45,11 @@ class reindex extends \moodleform {
         $mform->addElement('course', 'courseid', get_string('course'));
         $mform->addRule('courseid', null, 'required', null, 'client');
 
-//        $options = [
-//            'ajax' => 'core_search/activityselector'
-//        ];
-//        $mform->addElement('autocomplete', 'cmid', get_string('activity'), [], $options);
-//        $mform->disabledIf('cmid', 'courseid', 'eq', 0);
+        $options = [
+            'ajax' => 'core_search/activityselector'
+        ];
+        $mform->addElement('autocomplete', 'cmid', get_string('activity'), [], $options);
+        $mform->disabledIf('cmid', 'courseid');
 
         $mform->addElement('submit', 'reindex', get_string('reindexcourse', 'search'));
     }
