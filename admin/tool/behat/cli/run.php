@@ -31,6 +31,9 @@ define('ABORT_AFTER_CONFIG', true);
 define('CACHE_DISABLE_ALL', true);
 define('NO_OUTPUT_BUFFERING', true);
 
+// It makes no sense to use BEHAT_CLI for this script, so disable it.
+putenv('BEHAT_CLI=0');
+
 require_once(__DIR__ .'/../../../../config.php');
 require_once(__DIR__.'/../../../../lib/clilib.php');
 require_once(__DIR__.'/../../../../lib/behat/lib.php');
@@ -521,4 +524,3 @@ function get_status_lines_from_run_op(Symfony\Component\Process\Process $process
 
     return $statusstr;
 }
-
