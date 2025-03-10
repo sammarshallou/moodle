@@ -36,6 +36,9 @@ if (function_exists('opcache_reset')) {
 define('CLI_SCRIPT', true);
 define('CACHE_DISABLE_ALL', true);
 
+// It makes no sense to use BEHAT_CLI for this script, so disable it.
+putenv('BEHAT_CLI=0');
+
 // Basic functions.
 require_once(__DIR__ . '/../../../../lib/clilib.php');
 require_once(__DIR__ . '/../../../../lib/behat/lib.php');

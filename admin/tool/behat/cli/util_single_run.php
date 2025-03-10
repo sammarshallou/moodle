@@ -33,6 +33,9 @@ if (isset($_SERVER['REMOTE_ADDR'])) {
     die(); // No access from web!.
 }
 
+// It makes no sense to use BEHAT_CLI for this script, so disable it.
+putenv('BEHAT_CLI=0');
+
 // Basic functions.
 require_once(__DIR__ . '/../../../../lib/clilib.php');
 require_once(__DIR__ . '/../../../../lib/behat/lib.php');
