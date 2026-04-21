@@ -45,6 +45,52 @@ Feature: In an assignment, the administrator can edit students' submissions
     And I press "Save changes"
     And I should see "I have seen the movie chef."
 
+  @javascript @frogfrog
+  Scenario: Admin can edit a submission after cutoff date but only if user is allowed to via extension or override
+    # Make an assignment that's expired, and two more students.
+    Given the following "activity" exists:
+      | activity                            | assign           |
+      | course                              | C1               |
+      | name                                | Test2 assignment |
+      | submissiondrafts                    | 0                |
+      | assignsubmission_onlinetext_enabled | 1                |
+      | cutoffdate                          | ## 2025-01-10 ## |
+    And the time is frozen at "2025-01-15"
+    And the following "users" exist:
+      | username | firstname | lastname | email                |
+      | student2 | Student   | 2        | student2@example.com |
+      | student3 | Student   | 3        | student3@example.com |
+    And the following "course enrolments" exist:
+      | user     | course | role    |
+      | student2 | C1     | student |
+      | student3 | C1     | student |
+    # One of students has an extension, the other one has a user override to turn off the cutoff date.
+    And the following "mod_assign > extensions" exist:
+      | assign           | user     | extensionduedate |
+      | Test2 assignment | student2 | ## 2025-01-20 ## |
+    And the following "mod_assign > overrides" exist:
+      | assign           | user     | cutoffdate |
+      | Test2 assignment | student3 | 0          |
+    And I am on the "Test2 assignment" Activity page logged in as admin
+    And I navigate to "Submissions" in current page administration
+    And I change window size to "large"
+    And I open the action menu in "Student 1" "table_row"
+    Then I should not see "Edit submission"
+    And I open the action menu in "Student 2" "table_row"
+    And I should see "Edit submission"
+    And I choose "Edit submission" in the open action menu
+    When I set the following fields to these values:
+      | Online text | Have you seen the movie The Magic Faraway Tree? |
+    And I press "Save changes"
+    Then I should see "Have you seen the movie The Magic Faraway Tree?" in the "Student 2" "table_row"
+    And I open the action menu in "Student 3" "table_row"
+    And I should see "Edit submission"
+    And I choose "Edit submission" in the open action menu
+    When I set the following fields to these values:
+      | Online text | I have seen the movie The Magic Faraway Tree. |
+    And I press "Save changes"
+    Then I should see "I have seen the movie The Magic Faraway Tree." in the "Student 3" "table_row"
+
   @javascript
   Scenario: Teacher can edit a submission when granted the necessary permissions
     Given the following "permission overrides" exist:

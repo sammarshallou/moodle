@@ -2543,6 +2543,29 @@ You can see it appended to your <a href="' . $assignurl .
         $assign->testable_save_user_extension($student->id, $tomorrow);
         $this->assertEquals(true, $assign->testable_submissions_open($student->id));
 
+        // User override, changing cutoff date to a different date.
+        $assign = $this->create_instance($course, ['duedate' => $yesterday, 'cutoffdate' => $yesterday]);
+        $this->assertEquals(false, $assign->testable_submissions_open($student->id));
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_assign');
+        $generator->create_override([
+            'assignid' => $assign->get_instance()->id,
+            'userid' => $student->id,
+            'cutoffdate' => $tomorrow,
+        ]);
+        $this->assertEquals(true, $assign->testable_submissions_open($student->id));
+
+        // Group override, changing cutoff date to off (0).
+        $assign = $this->create_instance($course, ['duedate' => $yesterday, 'cutoffdate' => $yesterday]);
+        $this->assertEquals(false, $assign->testable_submissions_open($student->id));
+        $group = $this>self::getDataGenerator()->create_group(['courseid' => $course->id]);
+        groups_add_member($group, $student->id);
+        $generator->create_override([
+            'assignid' => $assign->get_instance()->id,
+            'groupid' => $group->id,
+            'cutoffdate' => 0,
+        ]);
+        $this->assertEquals(true, $assign->testable_submissions_open($student->id));
+
         $assign = $this->create_instance($course, ['submissiondrafts' => 1]);
         $this->assertEquals(true, $assign->testable_submissions_open($student->id));
 
