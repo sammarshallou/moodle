@@ -186,12 +186,19 @@ class mod_assign_generator extends testing_module_generator {
     /**
      * Create an assign override (either user or group).
      *
-     * @param array $data must specify assignid, and one of userid or groupid.
+     * @param array $data must specify assignid or cmid, and one of userid or groupid.
      * @throws coding_exception
      */
     public function create_override(array $data): void {
         global $DB;
 
+        // If you specify cmid, look up the assign id.
+        if (isset($data['cmid'])) {
+            // Verify that the cmid matches an assign instance, and get the instance id.
+            [, $cm] = get_course_and_cm_from_cmid($data['cmid'], 'assign');
+            $data['assignid'] = $cm->instance;
+            unset($data['cmid']);
+        }
         if (!isset($data['assignid'])) {
             throw new coding_exception('Must specify assignid when creating an assign override.');
         }

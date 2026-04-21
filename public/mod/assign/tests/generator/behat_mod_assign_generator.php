@@ -49,6 +49,12 @@ class behat_mod_assign_generator extends behat_generator_base {
                 'required' => ['assign', 'user', 'marker'],
                 'switchids' => ['assign' => 'cmid', 'user' => 'userid', 'marker' => 'markerid'],
             ],
+            'overrides' => [
+                'singular' => 'override',
+                'datagenerator' => 'override',
+                'required' => ['assign'],
+                'switchids' => ['assign' => 'cmid', 'user' => 'userid', 'group' => 'groupid'],
+            ],
         ];
     }
 
