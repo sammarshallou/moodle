@@ -321,6 +321,9 @@ $definitions = array(
         'simpledata' => true,
         'staticacceleration' => true,
         'staticaccelerationsize' => 30,
+        'invalidationevents' => [
+            'changesincoursecat',
+        ],
     ),
 
     // Caches plugins existing functions by function name and file.
