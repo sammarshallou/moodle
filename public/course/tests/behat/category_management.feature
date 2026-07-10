@@ -367,6 +367,43 @@ Feature: Test category management actions
     Then I should see category "CAT2" as subcategory of "CAT1" in the management interface
 
   @javascript
+  Scenario: Test overrides when moving a category using the management interface.
+    Given the following "categories" exist:
+      | name  | category | idnumber |
+      | Cat 1 | 0        | CAT1     |
+      | Cat 2 | 0        | CAT2     |
+    And the following "courses" exist:
+      | category | fullname | shortname | idnumber |
+      | CAT1     | Course 1 | Course 1  | C1       |
+    And the following "users" exist:
+      | username | email                  |
+      | student1 | student1@email.invalid |
+    And the following "course enrolments" exist:
+      | user     | course   | role    |
+      | student1 | Course 1 | student |
+    And the following "permission overrides" exist:
+      | role    | capability                      | permission | contextlevel | reference |
+      | student | moodle/course:viewhiddencourses | Allow      | Course       | Course 1  |
+
+    # Confirm that the user initially has permission.
+    And I am on the "C1" "check permissions" page logged in as "admin"
+    And I set the field "Select a user" to "student1@email.invalid"
+    And I press "Show this user's permissions"
+    And I should see "Yes" in the "View hidden courses" "table_row"
+
+    # Move the category.
+    When I am on the "CAT1" "course > category manage" page
+    And I select category "Cat 1" in the management interface
+    And I set the field "menumovecategoriesto" to "Cat 2"
+    And I press "bulkmovecategories"
+
+    # Confirm they still have permission after the category move.
+    And I am on the "C1" "check permissions" page
+    And I set the field "Select a user" to "student1@email.invalid"
+    And I press "Show this user's permissions"
+    Then I should see "Yes" in the "View hidden courses" "table_row"
+
+  @javascript
   Scenario: Test bulk action is shown only when some category/course is selected
     Given the following "categories" exist:
       | name | category | idnumber |
