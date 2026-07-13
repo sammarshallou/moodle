@@ -219,6 +219,12 @@ class behat_course extends behat_base {
                     $params['expand[]'] = $subtype;
                 }
                 return new moodle_url('/course/overview.php', $params);
+
+            case 'category manage':
+                return new moodle_url(
+                    '/course/management.php',
+                    ['categoryid' => $this->get_category_id($identifier)],
+                );
         }
         throw new Exception('Unrecognised core page type "' . $type . '."');
     }
