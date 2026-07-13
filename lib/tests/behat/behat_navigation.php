@@ -884,6 +884,13 @@ class behat_navigation extends behat_base {
                 }
                 $context = context_course::instance($courseid);
                 return new moodle_url('/admin/roles/permissions.php', ['contextid' => $context->id]);
+            case 'check permissions':
+                $courseid = $this->get_course_id($identifier);
+                if (!$courseid) {
+                    throw $coursenotfoundexception;
+                }
+                $context = context_course::instance($courseid);
+                return new moodle_url('/admin/roles/check.php', ['contextid' => $context->id]);
             case 'enrolment methods':
                 $courseid = $this->get_course_id($identifier);
                 if (!$courseid) {
