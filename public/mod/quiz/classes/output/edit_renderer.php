@@ -801,6 +801,10 @@ class edit_renderer extends \plugin_renderer_base {
             'questionnumber' => $this->question_number($questionnumber, $structure->get_slot_by_number($slot)->defaultnumber),
             'questionname' => $this->get_question_name_for_slot($structure, $slot, $pageurl),
             'questionicons' => $this->get_action_icon($structure, $slot, $pageurl),
+            'questionmaxmark' => $structure->make_slot_maxmark_in_place_editable(
+                $structure->get_slot_id_for_slot($slot),
+                $structure->get_context(),
+            ),
             'questiondependencyicon' => ($structure->can_be_edited() ? $this->question_dependency_icon($structure, $slot) : ''),
             'versionselection' => false,
             'draftversion' => $structure->get_question_in_slot($slot)->status == question_version_status::QUESTION_STATUS_DRAFT,
@@ -832,14 +836,17 @@ class edit_renderer extends \plugin_renderer_base {
      */
     public function get_checkbox_render(structure $structure, int $slot): string {
         $questionslot = $structure->get_displayed_number_for_slot($slot);
-        $checkbox = new \core\output\checkbox_toggleall($this->togglegroup, false,
+        $checkbox = new \core\output\checkbox_toggleall(
+            $this->togglegroup,
+            false,
             [
                 'id' => 'selectquestion-' . $slot,
                 'name' => 'selectquestion[]',
                 'classes' => 'select-multiple-checkbox',
                 'label' => get_string('selectquestionslot', 'quiz', $questionslot),
                 'labelclasses' => 'visually-hidden',
-            ]);
+            ],
+        );
 
         return $this->render($checkbox);
     }
@@ -1213,22 +1220,16 @@ class edit_renderer extends \plugin_renderer_base {
             return html_writer::span($output, 'instancemaxmarkcontainer infoitem');
         }
 
-        $output = html_writer::span($structure->formatted_question_grade($slot),
-                'instancemaxmark decimalplaces_' . $structure->get_decimal_places_for_question_marks(),
-                ['title' => get_string('maxmark', 'quiz')]);
+        $output = $this->output->render($structure->make_slot_maxmark_in_place_editable(
+            $structure->get_slot_id_for_slot($slot),
+            $structure->get_context(),
+        ));
 
-        $output .= html_writer::span(
-            html_writer::link(
-                new \moodle_url('#'),
-                $this->pix_icon('t/editstring', '', 'moodle', ['class' => 'editicon visibleifjs', 'title' => '']),
-                [
-                    'class' => 'editing_maxmark',
-                    'data-action' => 'editmaxmark',
-                    'title' => get_string('editmaxmark', 'quiz'),
-                ]
-            )
+        return html_writer::span(
+            $output,
+            'instancemaxmarkcontainer instancemaxmark newsummarks decimalplaces_' .
+                $structure->get_decimal_places_for_question_marks(),
         );
-        return html_writer::span($output, 'instancemaxmarkcontainer');
     }
 
     /**
