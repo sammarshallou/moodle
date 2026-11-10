@@ -595,7 +595,7 @@ class modinfo {
         if (count(self::$instancecache) >= self::MAX_CACHE_SIZE) {
             // Find the course that was the least recently accessed.
             asort(self::$cacheaccessed, SORT_NUMERIC);
-            $courseidtoremove = key(array_reverse(self::$cacheaccessed, true));
+            $courseidtoremove = array_key_first(self::$cacheaccessed);
             self::clear_instance_cache($courseidtoremove);
         }
 
