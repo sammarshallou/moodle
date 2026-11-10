@@ -1308,4 +1308,83 @@ final class modinfo_test extends \advanced_testcase {
         $this->expectExceptionMessage('Invalid module ID: 99999');
         $modinfo->get_instance_of('page', 99999, MUST_EXIST);
     }
+
+    /**
+     * Tests that the MRU cache retains the most recent accessed modinfo entries.
+     */
+    public function test_instance_mru_cache(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+
+        // Create a number of courses greater than the MRU cache size.
+        $courses = [];
+        for ($i = 0; $i < modinfo::MAX_CACHE_SIZE + 1; $i++) {
+            $courses[] = $generator->create_course();
+        }
+
+        // Loop around each course in order, getting modinfo.
+        for ($i = 0; $i < modinfo::MAX_CACHE_SIZE + 1; $i++) {
+            get_fast_modinfo($courses[$i]);
+        }
+
+        // Purge the MUC cache so that getting anything not in the MRU cache will require a
+        // rebuild, which we can see by counting db queries.
+        $cachecoursemodinfo = cache::make('core', 'coursemodinfo');
+        $cachecoursemodinfo->purge();
+
+        $before = $DB->perf_get_queries();
+        // Re-request course 4 lots of times for no good reason (this is to make sure it doesn't
+        // use up cache entries if you re-request an existing one).
+        for ($i = 0; $i < modinfo::MAX_CACHE_SIZE; $i++) {
+            get_fast_modinfo($courses[4]);
+        }
+        // Re-request all the courses except first, these should all be in cache.
+        for ($i = 1; $i < modinfo::MAX_CACHE_SIZE + 1; $i++) {
+            get_fast_modinfo($courses[$i]);
+        }
+        $this->assertEquals(
+            $before,
+            $DB->perf_get_queries(),
+            'Should use cached version, making no DB queries',
+        );
+
+        // The first course will need to be reloaded.
+        get_fast_modinfo($courses[0]);
+        $this->assertGreaterThan(
+            $before,
+            $DB->perf_get_queries(),
+            'First course should not be in MRU cache',
+        );
+
+        // Now request all but one of the courses, they should all go in cache.
+        for ($i = 0; $i < modinfo::MAX_CACHE_SIZE; $i++) {
+            get_fast_modinfo($courses[$i]);
+        }
+        $cachecoursemodinfo->purge();
+
+        // Request course 0 again, this should make it the most recent.
+        get_fast_modinfo($courses[0]);
+
+        // Now when we request the last course, this will go into cache, but course 0 should
+        // not be evicted as it's now the most recently used.
+        get_fast_modinfo($courses[modinfo::MAX_CACHE_SIZE]);
+
+        $before = $DB->perf_get_queries();
+        get_fast_modinfo($courses[0]);
+        $this->assertEquals(
+            $before,
+            $DB->perf_get_queries(),
+            'Course 0 should still be in MRU cache',
+        );
+
+        // Course 1 should be evicted instead.
+        get_fast_modinfo($courses[1]);
+        $this->assertGreaterThan(
+            $before,
+            $DB->perf_get_queries(),
+            'Course 1 should not be in MRU cache',
+        );
+    }
 }
